@@ -1,8 +1,10 @@
 'use client'
 
 import { ThemeProvider } from 'next-themes'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { dictionaries, type Locale, type TranslationKey } from '@/lib/i18n'
+import { logFeatureChange } from '@/lib/services'
+import { getVersion, subscribe } from '@/lib/store'
 
 export type FeatureKey =
   | 'inventory'
@@ -37,6 +39,8 @@ interface AppContextValue {
   t: (key: TranslationKey, vars?: Record<string, string | number>) => string
   features: Features
   setFeature: (key: FeatureKey, value: boolean) => void
+  /** Bumps after every committed transaction so views re-read the tables. */
+  dataVersion: number
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -72,13 +76,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
     [locale],
   )
 
-  const setFeature = useCallback((key: FeatureKey, value: boolean) => {
-    setFeatures((prev) => ({ ...prev, [key]: value }))
-  }, [])
+  const dataVersion = useSyncExternalStore(subscribe, getVersion, getVersion)
+
+  const setFeature = useCallback(
+    (key: FeatureKey, value: boolean) => {
+      if (features[key] === value) return
+      logFeatureChange(key, features[key], value)
+      setFeatures((prev) => ({ ...prev, [key]: value }))
+    },
+    [features],
+  )
 
   const value = useMemo(
-    () => ({ locale, setLocale, t, features, setFeature }),
-    [locale, setLocale, t, features, setFeature],
+    () => ({ locale, setLocale, t, features, setFeature, dataVersion }),
+    [locale, setLocale, t, features, setFeature, dataVersion],
   )
 
   return (

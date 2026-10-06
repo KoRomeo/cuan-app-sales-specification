@@ -52,6 +52,7 @@ interface DataTableProps<T> {
   contextActions?: (row: T) => RowAction[]
   editable?: boolean
   deletable?: boolean
+  onDelete?: (row: T) => void
   pageSize?: number
   toolbarExtra?: React.ReactNode
   footer?: React.ReactNode
@@ -70,6 +71,7 @@ export function DataTable<T>({
   contextActions,
   editable = true,
   deletable = true,
+  onDelete,
   pageSize = 10,
   toolbarExtra,
   footer,
@@ -80,7 +82,7 @@ export function DataTable<T>({
   const [filter, setFilter] = useState(initialFilter)
   const [page, setPage] = useState(1)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
-  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<T | null>(null)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -273,7 +275,7 @@ export function DataTable<T>({
                           {deletable && (
                             <>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+                              <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(row)}>
                                 <Trash2 />
                                 {t('common.delete')}
                               </DropdownMenuItem>
@@ -322,8 +324,9 @@ export function DataTable<T>({
       </div>
 
       <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
+        open={deleteTarget !== null}
+        onOpenChange={(next) => !next && setDeleteTarget(null)}
+        onConfirm={() => deleteTarget && onDelete?.(deleteTarget)}
         title={t('deleteDialog.title')}
         description={t('deleteDialog.body')}
         confirmLabel={t('common.delete')}
