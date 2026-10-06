@@ -25,7 +25,6 @@ import {
   orderTotal,
   type Period,
   periodRange,
-  profitAndLoss,
   type Purchase,
   purchaseOutstanding,
   purchases,
@@ -33,6 +32,7 @@ import {
   supplierById,
   TODAY,
 } from '@/lib/data'
+import { profitAndLoss } from '@/lib/accounting'
 import { formatDate, formatIDR, formatPercent } from '@/lib/format'
 
 const accounts = ['Cash', 'Bank BCA', 'Bank Mandiri'].map((v) => ({ value: v, label: v }))
