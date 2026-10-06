@@ -1,8 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Columns3, Eye, MoreHorizontal, Pencil, Plus, Search, Trash2, type LucideIcon } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Columns3, Eye, MoreHorizontal, Pencil, Plus, Search, Trash2, type LucideIcon } from 'lucide-react'
+import { Children, isValidElement, useMemo, useState, type ReactNode } from 'react'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,50 @@ export interface Column<T> {
   cell: (row: T) => React.ReactNode
   align?: 'left' | 'right' | 'center'
   className?: string
+  sortable?: boolean
+  sortValue?: (row: T) => string | number | null | undefined
+}
+
+type SortKey = number | string
+type SortState = { key: string; dir: 'asc' | 'desc' } | null
+
+function nodeText(node: ReactNode): string | number {
+  if (node === null || node === undefined || typeof node === 'boolean') return ''
+  if (typeof node === 'string' || typeof node === 'number') return node
+  if (Array.isArray(node)) return node.map(nodeText).join(' ').trim()
+  if (isValidElement(node)) {
+    const props = node.props as { value?: unknown; children?: ReactNode }
+    if (typeof props.value === 'number') return props.value
+    return Children.toArray(props.children).map(nodeText).join(' ').trim()
+  }
+  return ''
+}
+
+function toSortKey(raw: string | number | null | undefined): SortKey | null {
+  if (raw === null || raw === undefined) return null
+  if (typeof raw === 'number') return raw
+  const text = raw.trim()
+  if (text === '' || text === '—') return null
+  const date = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text)
+  if (date) return Number(`${date[3]}${date[2]}${date[1]}`)
+  if (/^-?\d+(\.\d+)?$/.test(text)) return Number(text)
+  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(text)) return Number(text.replace(/\./g, '').replace(',', '.'))
+  return text
+}
+
+function compareKeys(a: SortKey | null, b: SortKey | null, dir: 'asc' | 'desc') {
+  if (a === null && b === null) return 0
+  if (a === null) return 1
+  if (b === null) return -1
+  const result =
+    typeof a === 'number' && typeof b === 'number'
+      ? a - b
+      : typeof a === 'number'
+        ? -1
+        : typeof b === 'number'
+          ? 1
+          : a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+  return dir === 'asc' ? result : -result
 }
 
 export interface FilterOption<T> {
@@ -83,16 +127,33 @@ export function DataTable<T>({
   const [page, setPage] = useState(1)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [sort, setSort] = useState<SortState>(null)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     const activeFilter = filters?.find((f) => f.value === filter)
-    return rows.filter((r) => {
+    const matched = rows.filter((r) => {
       if (activeFilter && !activeFilter.predicate(r)) return false
       if (q && !searchText(r).toLowerCase().includes(q)) return false
       return true
     })
-  }, [rows, query, filter, filters, searchText])
+    const sortColumn = sort ? columns.find((c) => c.key === sort.key) : undefined
+    if (!sort || !sortColumn) return matched
+    const keyOf = (row: T) => toSortKey(sortColumn.sortValue ? sortColumn.sortValue(row) : nodeText(sortColumn.cell(row)))
+    return matched
+      .map((row) => ({ row, key: keyOf(row) }))
+      .sort((a, b) => compareKeys(a.key, b.key, sort.dir))
+      .map((entry) => entry.row)
+  }, [rows, query, filter, filters, searchText, sort, columns])
+
+  function toggleSort(key: string) {
+    setSort((prev) => {
+      if (!prev || prev.key !== key) return { key, dir: 'asc' }
+      if (prev.dir === 'asc') return { key, dir: 'desc' }
+      return null
+    })
+    setPage(1)
+  }
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
   const current = Math.min(page, pageCount)
@@ -189,18 +250,38 @@ export function DataTable<T>({
         <table className={cn('w-full text-sm', scrollable ? 'min-w-[720px]' : 'table-fixed')}>
           <thead>
             <tr className="border-b bg-muted/40">
-              {visibleColumns.map((c) => (
-                <th
-                  key={c.key}
-                  scope="col"
-                  className={cn(
-                    'h-10 whitespace-nowrap px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground',
-                    c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
-                  )}
-                >
-                  {c.header}
-                </th>
-              ))}
+              {visibleColumns.map((c) => {
+                const sortable = c.sortable !== false
+                const direction = sort?.key === c.key ? sort.dir : null
+                const SortIcon = direction === 'asc' ? ArrowUp : direction === 'desc' ? ArrowDown : ArrowUpDown
+                return (
+                  <th
+                    key={c.key}
+                    scope="col"
+                    aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : sortable ? 'none' : undefined}
+                    className={cn(
+                      'h-10 whitespace-nowrap px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground',
+                      c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
+                    )}
+                  >
+                    {sortable ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleSort(c.key)}
+                        className={cn(
+                          'group/sort -mx-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-1 uppercase tracking-wider transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40',
+                          direction && 'text-foreground',
+                        )}
+                      >
+                        {c.header}
+                        <SortIcon className={cn('size-3 shrink-0', direction ? 'text-primary' : 'opacity-40 group-hover/sort:opacity-100')} aria-hidden="true" />
+                      </button>
+                    ) : (
+                      c.header
+                    )}
+                  </th>
+                )
+              })}
               {hasActions && (
                 <th scope="col" className="h-10 w-12 px-4">
                   <span className="sr-only">{t('common.actions')}</span>

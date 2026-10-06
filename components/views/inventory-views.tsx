@@ -28,11 +28,12 @@ export function ProductsView() {
     {
       key: 'margin',
       header: t('products.margin'),
+      sortValue: (p) => (p.sellingPrice - p.averageCost) / p.sellingPrice,
       align: 'right',
       cell: (p) => <span className="font-mono text-xs tabular-nums text-success">{formatPercent(((p.sellingPrice - p.averageCost) / p.sellingPrice) * 100)}</span>,
     },
-    { key: 'stock', header: t('products.stock'), align: 'right', cell: (p) => <span className={`font-mono font-medium tabular-nums ${p.stock < 0 ? 'text-destructive' : ''}`}>{p.stock}</span> },
-    { key: 'status', header: t('common.status'), cell: (p) => <StockStatusBadge status={stockStatusOf(p)} /> },
+    { key: 'stock', header: t('products.stock'), align: 'right', sortValue: (p) => p.stock, cell: (p) => <span className={`font-mono font-medium tabular-nums ${p.stock < 0 ? 'text-destructive' : ''}`}>{p.stock}</span> },
+    { key: 'status', header: t('common.status'), sortValue: (p) => stockStatusOf(p), cell: (p) => <StockStatusBadge status={stockStatusOf(p)} /> },
   ]
 
   return (
@@ -85,11 +86,12 @@ export function StockView() {
         {p.name}
       </span>
     ) },
-    { key: 'stock', header: t('stock.current'), align: 'right', cell: (p) => <span className={`font-mono text-base font-semibold tabular-nums ${p.stock < 0 ? 'text-destructive' : p.stock === 0 ? 'text-muted-foreground' : ''}`}>{p.stock}</span> },
+    { key: 'stock', header: t('stock.current'), align: 'right', sortValue: (p) => p.stock, cell: (p) => <span className={`font-mono text-base font-semibold tabular-nums ${p.stock < 0 ? 'text-destructive' : p.stock === 0 ? 'text-muted-foreground' : ''}`}>{p.stock}</span> },
     { key: 'min', header: t('products.minimumStock'), align: 'right', cell: (p) => <span className="font-mono tabular-nums text-muted-foreground">{p.minimumStock}</span> },
     {
       key: 'level',
       header: '',
+      sortable: false,
       cell: (p) => {
         const pct = p.minimumStock ? Math.max(0, Math.min((p.stock / (p.minimumStock * 2)) * 100, 100)) : p.stock > 0 ? 100 : 0
         const color = p.stock < 0 ? 'bg-destructive' : stockStatusOf(p) === 'low' ? 'bg-warning' : 'bg-success'
@@ -102,7 +104,7 @@ export function StockView() {
     },
     { key: 'avg', header: t('products.averageCost'), align: 'right', cell: (p) => <Money value={p.averageCost} className="text-muted-foreground" /> },
     { key: 'value', header: t('stock.value'), align: 'right', cell: (p) => <Money value={Math.max(p.stock, 0) * p.averageCost} /> },
-    { key: 'status', header: t('stock.stockStatus'), cell: (p) => <StockStatusBadge status={stockStatusOf(p)} /> },
+    { key: 'status', header: t('stock.stockStatus'), sortValue: (p) => stockStatusOf(p), cell: (p) => <StockStatusBadge status={stockStatusOf(p)} /> },
   ]
 
   return (
@@ -175,6 +177,7 @@ export function StockMovementsView() {
     {
       key: 'change',
       header: t('movements.change'),
+      sortValue: (m) => m.qty,
       align: 'right',
       cell: (m) => (
         <span className={`inline-flex items-center gap-1 font-mono font-medium tabular-nums ${m.qty > 0 ? 'text-success' : m.qty < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
