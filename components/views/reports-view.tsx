@@ -120,17 +120,17 @@ export function ReportsView() {
       {tab === 'sales' && (
         <div className="grid gap-4 lg:grid-cols-2">
           <SectionCard title={t('reports.byCustomer')} bodyClassName="p-0 md:p-0">
-            <DataTable rows={byCustomer} columns={totalColumns(t('common.customer'))} getRowId={(r) => r.id} searchText={(r) => r.name} pageSize={8} />
+            <DataTable rows={byCustomer} columns={totalColumns(t('common.customer'))} getRowId={(r) => r.id} searchText={(r) => r.name} pageSize={8} scrollable={false} />
           </SectionCard>
           <SectionCard title={t('reports.byProduct')} bodyClassName="p-0 md:p-0">
-            <DataTable rows={byProduct} columns={totalColumns(t('common.product'))} getRowId={(r) => r.id} searchText={(r) => r.name} pageSize={8} />
+            <DataTable rows={byProduct} columns={totalColumns(t('common.product'))} getRowId={(r) => r.id} searchText={(r) => r.name} pageSize={8} scrollable={false} />
           </SectionCard>
         </div>
       )}
 
       {tab === 'purchase' && (
         <SectionCard title={t('reports.bySupplier')} bodyClassName="p-0 md:p-0">
-          <DataTable rows={bySupplier} columns={totalColumns(t('common.supplier'))} getRowId={(r) => r.id} searchText={(r) => r.name} pageSize={10} />
+          <DataTable rows={bySupplier} columns={totalColumns(t('common.supplier'))} getRowId={(r) => r.id} searchText={(r) => r.name} pageSize={10} scrollable={false} />
         </SectionCard>
       )}
 
@@ -141,6 +141,7 @@ export function ReportsView() {
             getRowId={(p) => p.id}
             searchText={(p) => `${p.id} ${p.name}`}
             pageSize={12}
+            scrollable={false}
             columns={[
               { key: 'id', header: 'ID', cell: (p) => <IdCell>{p.id}</IdCell> },
               { key: 'name', header: t('common.product'), cell: (p) => <span className="font-medium">{p.name}</span> },
@@ -236,6 +237,7 @@ export function ReportsView() {
                 getRowId={(r) => `${r.entryId}-${r.debit}-${r.credit}`}
                 searchText={(r) => `${r.entryId} ${r.memo}`}
                 pageSize={10}
+                scrollable={false}
                 columns={[
                   { key: 'date', header: t('common.date'), cell: (r) => <span className="font-mono text-xs text-muted-foreground">{formatDate(r.date)}</span> },
                   { key: 'entry', header: t('common.reference'), cell: (r) => <IdCell>{r.entryId}</IdCell> },

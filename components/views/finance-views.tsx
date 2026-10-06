@@ -197,6 +197,7 @@ export function ExpensesView() {
     { key: 'category', header: t('common.category'), cell: (e) => <Pill tone="neutral">{e.category}</Pill> },
     { key: 'description', header: t('common.description'), cell: (e) => <span className="font-medium">{e.description}</span> },
     { key: 'account', header: t('common.account'), cell: (e) => <span className="text-muted-foreground">{e.account}</span> },
+    { key: 'status', header: t('common.status'), cell: () => <Pill tone="success">Posted</Pill> },
     { key: 'amount', header: t('common.amount'), align: 'right', cell: (e) => <Money value={e.amount} /> },
   ]
 
