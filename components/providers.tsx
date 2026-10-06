@@ -6,6 +6,7 @@ import { dictionaries, type Locale, type TranslationKey } from '@/lib/i18n'
 
 export type FeatureKey =
   | 'inventory'
+  | 'negativeStock'
   | 'purchasing'
   | 'customerCredit'
   | 'supplierCredit'
@@ -19,6 +20,7 @@ type Features = Record<FeatureKey, boolean>
 
 const defaultFeatures: Features = {
   inventory: true,
+  negativeStock: true,
   purchasing: true,
   customerCredit: true,
   supplierCredit: true,
