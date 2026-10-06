@@ -55,6 +55,7 @@ interface DataTableProps<T> {
   pageSize?: number
   toolbarExtra?: React.ReactNode
   footer?: React.ReactNode
+  scrollable?: boolean
 }
 
 export function DataTable<T>({
@@ -73,6 +74,7 @@ export function DataTable<T>({
   pageSize = 10,
   toolbarExtra,
   footer,
+  scrollable = true,
 }: DataTableProps<T>) {
   const { t } = useApp()
   const router = useRouter()
@@ -183,8 +185,8 @@ export function DataTable<T>({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-sm">
+      <div className={scrollable ? 'overflow-x-auto' : 'overflow-x-hidden'}>
+        <table className={cn('w-full text-sm', scrollable ? 'min-w-[720px]' : 'table-fixed')}>
           <thead>
             <tr className="border-b bg-muted/40">
               {visibleColumns.map((c) => (
