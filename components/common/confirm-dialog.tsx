@@ -2,6 +2,7 @@
 
 import { AlertTriangle } from 'lucide-react'
 import { useApp } from '@/components/providers'
+import { useDomainError } from '@/lib/use-domain-error'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -28,8 +29,15 @@ export function ConfirmDialog({
   onConfirm?: () => void
 }) {
   const { t } = useApp()
+  const { error, run, clear } = useDomainError()
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        clear()
+        onOpenChange(next)
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <span className="flex size-10 items-center justify-center rounded-full bg-destructive/12 text-destructive">
@@ -38,6 +46,11 @@ export function ConfirmDialog({
           <DialogTitle className="text-base">{title}</DialogTitle>
           <DialogDescription className="leading-relaxed">{description}</DialogDescription>
         </DialogHeader>
+        {error && (
+          <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </p>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t('common.cancel')}
@@ -45,8 +58,7 @@ export function ConfirmDialog({
           <Button
             className="bg-destructive text-white hover:bg-destructive/90"
             onClick={() => {
-              onConfirm?.()
-              onOpenChange(false)
+              if (run(() => onConfirm?.())) onOpenChange(false)
             }}
           >
             {confirmLabel}

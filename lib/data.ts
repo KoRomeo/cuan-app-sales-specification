@@ -98,6 +98,8 @@ export interface Expense {
   amount: number
   account: string
   description: string
+  /** Soft delete: the row stays in the table and its journal is reversed, never removed. */
+  deletedAt?: string | null
 }
 
 export interface StockMovement {
@@ -574,24 +576,3 @@ export function periodRange(period: Period): [string, string] {
 
 export const inRange = (date: string, [from, to]: [string, string]) => date >= from && date <= to
 
-export function profitAndLoss(range: [string, string]) {
-  const periodOrders = activeOrders().filter((o) => inRange(o.date, range))
-  const revenue = periodOrders.reduce((s, o) => s + orderTotal(o), 0)
-  const cogs = periodOrders.reduce((s, o) => s + orderCogs(o), 0)
-  const transport = periodOrders.reduce((s, o) => s + (o.delivery?.transportCost ?? 0), 0)
-  const byCategory = new Map<string, number>()
-  for (const e of expenses.filter((e) => inRange(e.date, range))) {
-    byCategory.set(e.category, (byCategory.get(e.category) ?? 0) + e.amount)
-  }
-  const operating = [...byCategory.values()].reduce((s, v) => s + v, 0) + transport
-  const grossProfit = revenue - cogs
-  return {
-    revenue,
-    cogs,
-    grossProfit,
-    transport,
-    expenseByCategory: [...byCategory.entries()].sort((a, b) => b[1] - a[1]),
-    operating,
-    netProfit: grossProfit - operating,
-  }
-}

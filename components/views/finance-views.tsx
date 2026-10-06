@@ -25,7 +25,6 @@ import {
   orderTotal,
   type Period,
   periodRange,
-  profitAndLoss,
   type Purchase,
   purchaseOutstanding,
   purchases,
@@ -33,7 +32,10 @@ import {
   supplierById,
   TODAY,
 } from '@/lib/data'
+import { profitAndLoss } from '@/lib/accounting'
 import { formatDate, formatIDR, formatPercent } from '@/lib/format'
+import { addPurchasePayment, createExpense, deleteExpense, receiveCustomerPayment, restoreExpense } from '@/lib/services'
+import { DomainError } from '@/lib/store'
 
 const accounts = ['Cash', 'Bank BCA', 'Bank Mandiri'].map((v) => ({ value: v, label: v }))
 const in7Days = '2026-10-13'
@@ -106,6 +108,7 @@ export function ReceivablesView() {
         onOpenChange={setOpen}
         title={t('orders.addPayment')}
         description={t('receivables.allocationHint')}
+        onSubmit={(v) => receiveCustomerPayment(v.customer, { date: v.date, account: v.account, amount: Number(v.amount) })}
         fields={[
           { name: 'customer', label: t('common.customer'), type: 'select', options: customers.filter((c) => rows.some((o) => o.customerId === c.id)).map((c) => ({ value: c.id, label: c.name })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
@@ -170,6 +173,7 @@ export function PayablesView() {
         open={open}
         onOpenChange={setOpen}
         title={t('orders.addPayment')}
+        onSubmit={(v) => addPurchasePayment(v.purchase, { date: v.date, account: v.account, amount: Number(v.amount) })}
         fields={[
           { name: 'purchase', label: t('purchases.id'), type: 'select', options: rows.map((p) => ({ value: p.id, label: `${p.id} · ${supplierById(p.supplierId)?.name}` })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
@@ -185,9 +189,10 @@ export function ExpensesView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
   const [catOpen, setCatOpen] = useState(false)
-  const total = expenses.reduce((s, e) => s + e.amount, 0)
+  const active = expenses.filter((e) => !e.deletedAt)
+  const total = active.reduce((s, e) => s + e.amount, 0)
   const byCat = expenseCategories
-    .map((c) => [c, expenses.filter((e) => e.category === c).reduce((s, e) => s + e.amount, 0)] as const)
+    .map((c) => [c, active.filter((e) => e.category === c).reduce((s, e) => s + e.amount, 0)] as const)
     .filter(([, v]) => v > 0)
     .sort((a, b) => b[1] - a[1])
 
@@ -195,7 +200,12 @@ export function ExpensesView() {
     { key: 'id', header: 'ID', cell: (e) => <IdCell>{e.id}</IdCell> },
     { key: 'date', header: t('common.date'), cell: (e) => <span className="font-mono text-xs text-muted-foreground">{formatDate(e.date)}</span> },
     { key: 'category', header: t('common.category'), cell: (e) => <Pill tone="neutral">{e.category}</Pill> },
-    { key: 'description', header: t('common.description'), cell: (e) => <span className="font-medium">{e.description}</span> },
+    { key: 'description', header: t('common.description'), cell: (e) => (
+      <span className={`flex items-center gap-2 font-medium ${e.deletedAt ? 'text-muted-foreground line-through' : ''}`}>
+        {e.description}
+        {e.deletedAt && <Pill tone="destructive">{t('common.deleted')}</Pill>}
+      </span>
+    ) },
     { key: 'account', header: t('common.account'), cell: (e) => <span className="text-muted-foreground">{e.account}</span> },
     { key: 'amount', header: t('common.amount'), align: 'right', cell: (e) => <Money value={e.amount} /> },
   ]
@@ -216,8 +226,8 @@ export function ExpensesView() {
       <KpiGrid>
         <KpiCard label={t('expenses.total')} value={formatIDR(total)} icon={Receipt} />
         <KpiCard label={t('expenses.largest')} value={byCat[0]?.[0] ?? '—'} hint={byCat[0] ? formatIDR(byCat[0][1]) : undefined} icon={Tags} tone="warning" />
-        <KpiCard label={t('expenses.count')} value={expenses.length} icon={Plus} tone="neutral" />
-        <KpiCard label={t('period.thisMonth')} value={formatIDR(expenses.filter((e) => inRange(e.date, periodRange('thisMonth'))).reduce((s, e) => s + e.amount, 0))} icon={CalendarClock} />
+        <KpiCard label={t('expenses.count')} value={active.length} icon={Plus} tone="neutral" />
+        <KpiCard label={t('period.thisMonth')} value={formatIDR(active.filter((e) => inRange(e.date, periodRange('thisMonth'))).reduce((s, e) => s + e.amount, 0))} icon={CalendarClock} />
       </KpiGrid>
 
       <div className="grid gap-4 xl:grid-cols-4">
@@ -230,6 +240,9 @@ export function ExpensesView() {
             filters={[{ value: 'all', label: t('common.all'), predicate: () => true }, ...byCat.slice(0, 4).map(([c]) => ({ value: c, label: c, predicate: (e: Expense) => e.category === c }))]}
             addLabel={t('expenses.add')}
             onAdd={() => setOpen(true)}
+            editable={false}
+            onDelete={(e) => deleteExpense(e.id)}
+            contextActions={(e) => (e.deletedAt ? [{ label: t('common.restore'), icon: RotateCcw, onSelect: () => restoreExpense(e.id) }] : [])}
           />
         </div>
         <SectionCard title={t('common.category')}>
@@ -254,6 +267,7 @@ export function ExpensesView() {
         open={open}
         onOpenChange={setOpen}
         title={t('expenses.add')}
+        onSubmit={(v) => createExpense({ date: v.date, category: v.category, amount: Number(v.amount), account: v.account, description: v.description })}
         fields={[
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
           { name: 'category', label: t('common.category'), type: 'select', half: true, options: expenseCategories.map((c) => ({ value: c, label: c })) },
@@ -262,7 +276,13 @@ export function ExpensesView() {
           { name: 'description', label: t('common.description'), type: 'textarea' },
         ]}
       />
-      <FormDialog open={catOpen} onOpenChange={setCatOpen} title={t('expenses.addCategory')} fields={[{ name: 'name', label: t('expenses.categoryName') }]} />
+      <FormDialog open={catOpen} onOpenChange={setCatOpen} title={t('expenses.addCategory')}
+        onSubmit={(v) => {
+          const name = v.name.trim()
+          if (!name || expenseCategories.includes(name)) throw new DomainError('err.invalidCategory')
+          expenseCategories.push(name)
+        }}
+        fields={[{ name: 'name', label: t('expenses.categoryName') }]} />
     </>
   )
 }

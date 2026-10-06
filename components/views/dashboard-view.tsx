@@ -26,12 +26,12 @@ import {
   periodRange,
   productById,
   products,
-  profitAndLoss,
   purchaseOutstanding,
   purchases,
   stockStatusOf,
   supplierById,
 } from '@/lib/data'
+import { profitAndLoss } from '@/lib/accounting'
 import { formatCompactIDR, formatDate, formatIDR, formatPercent } from '@/lib/format'
 
 const monthLabels: Record<string, [string, string]> = {

@@ -1,5 +1,7 @@
 'use client'
 
+import { AlertTriangle } from 'lucide-react'
+import { useState } from 'react'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { useDomainError } from '@/lib/use-domain-error'
 import { cn } from '@/lib/utils'
 
 export interface FormField {
@@ -38,6 +41,8 @@ export function FormDialog({
   fields,
   submitLabel,
   children,
+  onSubmit,
+  submitDisabled,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -46,22 +51,38 @@ export function FormDialog({
   fields: FormField[]
   submitLabel?: string
   children?: React.ReactNode
+  /** Receives every field value as a string. Throwing a DomainError keeps the dialog open and shows the message. */
+  onSubmit?: (values: Record<string, string>) => void
+  submitDisabled?: boolean
 }) {
   const { t } = useApp()
+  const { error, run, clear } = useDomainError()
+  const [submitting, setSubmitting] = useState(false)
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        clear()
+        onOpenChange(next)
+      }}
+    >
       <DialogContent className="sm:max-w-lg">
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            onOpenChange(false)
+            if (submitting) return
+            const values = Object.fromEntries([...new FormData(e.currentTarget)].map(([k, v]) => [k, String(v)]))
+            setSubmitting(true)
+            const ok = run(() => onSubmit?.(values))
+            setSubmitting(false)
+            if (ok) onOpenChange(false)
           }}
           className="flex flex-col gap-4"
         >
           <DialogHeader>
             <DialogTitle className="text-base">{title}</DialogTitle>
-            <DialogDescription>{description ?? t('common.prototypeNote')}</DialogDescription>
+            <DialogDescription>{description ?? t('common.savedNote')}</DialogDescription>
           </DialogHeader>
 
           <div className="grid grid-cols-2 gap-3">
@@ -105,11 +126,18 @@ export function FormDialog({
 
           {children}
 
+          {error && (
+            <p role="alert" className="flex items-start gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              {error}
+            </p>
+          )}
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit">{submitLabel ?? t('common.save')}</Button>
+            <Button type="submit" disabled={submitting || submitDisabled}>{submitLabel ?? t('common.save')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
