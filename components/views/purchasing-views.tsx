@@ -42,7 +42,7 @@ export function PurchasesView() {
         </span>
       ),
     },
-    { key: 'status', header: t('orders.paymentStatus'), cell: (p) => <PaymentStatusBadge status={purchasePaymentStatus(p)} /> },
+    { key: 'status', header: t('orders.paymentStatus'), sortValue: (p) => purchasePaymentStatus(p), cell: (p) => <PaymentStatusBadge status={purchasePaymentStatus(p)} /> },
     { key: 'total', header: t('common.total'), align: 'right', cell: (p) => <Money value={purchaseTotal(p)} /> },
     { key: 'paid', header: t('common.paid'), align: 'right', cell: (p) => <Money value={purchasePaid(p)} className="text-muted-foreground" /> },
     { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (p) => <Money value={purchaseOutstanding(p)} className={purchaseOutstanding(p) > 0 ? 'font-medium text-warning' : 'text-muted-foreground'} /> },

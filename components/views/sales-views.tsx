@@ -115,7 +115,7 @@ export function InvoicesView() {
           <span className="text-xs text-muted-foreground">—</span>
         ),
     },
-    { key: 'status', header: t('common.status'), cell: (o) => <PaymentStatusBadge status={orderPaymentStatus(o)} /> },
+    { key: 'status', header: t('common.status'), sortValue: (o) => orderPaymentStatus(o), cell: (o) => <PaymentStatusBadge status={orderPaymentStatus(o)} /> },
     { key: 'total', header: t('common.total'), align: 'right', cell: (o) => <Money value={orderTotal(o)} /> },
     { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (o) => <Money value={orderOutstanding(o)} className={orderOutstanding(o) > 0 ? 'text-warning' : 'text-muted-foreground'} /> },
   ]

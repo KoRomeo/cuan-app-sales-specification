@@ -62,7 +62,7 @@ export function ReceivablesView() {
     { key: 'id', header: t('orders.id'), cell: (o) => <IdCell>{o.id}</IdCell> },
     { key: 'date', header: t('common.date'), cell: (o) => <span className="font-mono text-xs text-muted-foreground">{formatDate(o.date)}</span> },
     { key: 'customer', header: t('common.customer'), cell: (o) => <span className="font-medium">{customerById(o.customerId)?.name}</span> },
-    { key: 'due', header: t('common.dueDate'), cell: (o) => <DueCell due={o.dueDate} outstanding={orderOutstanding(o)} /> },
+    { key: 'due', header: t('common.dueDate'), sortValue: (o) => o.dueDate, cell: (o) => <DueCell due={o.dueDate} outstanding={orderOutstanding(o)} /> },
     { key: 'total', header: t('common.total'), align: 'right', cell: (o) => <Money value={orderTotal(o)} className="text-muted-foreground" /> },
     { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (o) => <Money value={orderOutstanding(o)} className="font-semibold text-warning" /> },
   ]
@@ -128,7 +128,7 @@ export function PayablesView() {
     { key: 'id', header: t('purchases.id'), cell: (p) => <IdCell>{p.id}</IdCell> },
     { key: 'date', header: t('common.date'), cell: (p) => <span className="font-mono text-xs text-muted-foreground">{formatDate(p.date)}</span> },
     { key: 'supplier', header: t('common.supplier'), cell: (p) => <span className="font-medium">{supplierById(p.supplierId)?.name}</span> },
-    { key: 'due', header: t('common.dueDate'), cell: (p) => <DueCell due={p.dueDate} outstanding={purchaseOutstanding(p)} /> },
+    { key: 'due', header: t('common.dueDate'), sortValue: (p) => p.dueDate, cell: (p) => <DueCell due={p.dueDate} outstanding={purchaseOutstanding(p)} /> },
     { key: 'total', header: t('common.total'), align: 'right', cell: (p) => <Money value={purchaseTotal(p)} className="text-muted-foreground" /> },
     { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (p) => <Money value={purchaseOutstanding(p)} className="font-semibold text-warning" /> },
   ]
