@@ -236,10 +236,14 @@ export function AuthView({ mode }: { mode: AuthMode }) {
 
                   {!isRegister && (
                     <div className="flex justify-end">
-                      <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={() => {
-                        setShowResetNotice(true)
-                        toast.info(t('auth.passwordResetPreview'))
-                      }}>
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto px-0"
+                        nativeButton={false}
+                        render={<Link href="/forgot-password" />}
+                      >
                         {t('auth.forgotPassword')}
                       </Button>
                     </div>
