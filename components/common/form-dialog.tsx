@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { LoaderCircle } from 'lucide-react'
 import { appToast as toast } from '@/lib/toast'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
@@ -55,9 +56,20 @@ export function FormDialog({
   const { t } = useApp()
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [validated, setValidated] = useState(false)
+  const [isChecking, setIsChecking] = useState(false)
+  const timerRef = useRef<number | null>(null)
+
+  useEffect(() => () => {
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current)
+  }, [])
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
+      setIsChecking(false)
       setErrors({})
       setValidated(false)
     }
@@ -76,6 +88,7 @@ export function FormDialog({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (isChecking) return
     const controls = Array.from(event.currentTarget.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('[name]'))
     const invalid = controls.filter((control) => !control.validity.valid)
     const nextErrors = Object.fromEntries(
@@ -90,14 +103,20 @@ export function FormDialog({
       return
     }
 
-    setValidated(true)
-    toast.info(t('form.previewFeedback'))
+    setValidated(false)
+    setIsChecking(true)
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null
+      setIsChecking(false)
+      setValidated(true)
+      toast.info(t('form.previewFeedback'))
+    }, 350)
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
-        <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form noValidate onSubmit={handleSubmit} aria-busy={isChecking} className="flex flex-col gap-4">
           <DialogHeader>
             <DialogTitle className="text-base">{title}</DialogTitle>
             <DialogDescription>{description ?? t('common.prototypeNote')}</DialogDescription>
@@ -121,6 +140,7 @@ export function FormDialog({
                       name={field.name}
                       defaultValue={field.defaultValue}
                       required={required}
+                      disabled={isChecking}
                       aria-invalid={Boolean(errors[field.name])}
                       aria-describedby={describedBy}
                       className={selectClass}
@@ -138,6 +158,7 @@ export function FormDialog({
                       placeholder={field.placeholder}
                       rows={3}
                       required={required}
+                      disabled={isChecking}
                       aria-invalid={Boolean(errors[field.name])}
                       aria-describedby={describedBy}
                       onChange={() => clearFieldError(field.name)}
@@ -156,6 +177,7 @@ export function FormDialog({
                         defaultValue={field.defaultValue}
                         placeholder={field.placeholder}
                         required={required}
+                        disabled={isChecking}
                         min={field.min}
                         max={field.max}
                         aria-invalid={Boolean(errors[field.name])}
@@ -185,9 +207,11 @@ export function FormDialog({
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" aria-label={submitLabel ? `${t('form.validateAction')}: ${submitLabel}` : undefined}>
-              {t('form.validateAction')}
+            <Button type="submit" disabled={isChecking} aria-label={isChecking ? t('form.checking') : submitLabel ?? t('form.validateAction')}>
+              {isChecking && <LoaderCircle data-icon="inline-start" className="animate-spin" aria-hidden="true" />}
+              {isChecking ? t('form.checking') : submitLabel ?? t('form.validateAction')}
             </Button>
+
           </DialogFooter>
         </form>
       </DialogContent>

@@ -24,6 +24,7 @@ import {
   orderTotal,
 } from '@/lib/data'
 import { formatDate, formatIDR, formatNumber } from '@/lib/format'
+import { translateAccountName, translateExpenseCategory } from '@/lib/i18n'
 
 type ReportTab = 'sales' | 'purchase' | 'inventory' | 'financial'
 type FinancialTab = 'profitLoss' | 'balanceSheet' | 'cashFlow' | 'ledger'
@@ -109,9 +110,9 @@ export function ReportsView() {
         actions={<PeriodSelect value={period} onChange={setPeriod} />}
       />
 
-      <div role="tablist" aria-label={t('reports.title')} className="mb-6 flex flex-wrap gap-2">
+      <div role="group" aria-label={t('reports.title')} className="mb-6 flex flex-wrap gap-2">
         {tabs.map((x) => (
-          <Button key={x.value} role="tab" aria-selected={tab === x.value} variant={tab === x.value ? 'default' : 'outline'} size="sm" onClick={() => setTab(x.value)}>
+          <Button key={x.value} aria-pressed={tab === x.value} variant={tab === x.value ? 'default' : 'outline'} size="sm" onClick={() => setTab(x.value)}>
             {x.label}
           </Button>
         ))}
@@ -155,9 +156,9 @@ export function ReportsView() {
 
       {tab === 'financial' && (
         <>
-          <div role="tablist" className="mb-4 flex flex-wrap gap-2">
+          <div role="group" aria-label={t('reports.financial')} className="mb-4 flex flex-wrap gap-2">
             {financialTabs.map((x) => (
-              <Button key={x.value} role="tab" aria-selected={financial === x.value} variant={financial === x.value ? 'secondary' : 'ghost'} size="sm" onClick={() => setFinancial(x.value)}>
+              <Button key={x.value} aria-pressed={financial === x.value} variant={financial === x.value ? 'secondary' : 'ghost'} size="sm" onClick={() => setFinancial(x.value)}>
                 {x.label}
               </Button>
             ))}
@@ -171,7 +172,7 @@ export function ReportsView() {
                 <StatementRow label={t('pl.grossProfit')} value={pl.grossProfit} strong />
                 <StatementRow label={t('pl.transport')} value={-pl.transport} indent />
                 {pl.expenseByCategory.map(([c, v]) => (
-                  <StatementRow key={c} label={c} value={-v} indent />
+                  <StatementRow key={c} label={translateExpenseCategory(c, t)} value={-v} indent />
                 ))}
                 <StatementRow label={t('pl.netProfit')} value={pl.netProfit} strong />
               </div>
@@ -225,7 +226,7 @@ export function ReportsView() {
                 >
                   {chartOfAccounts.map((a) => (
                     <option key={a.code} value={a.code}>
-                      {a.code} · {a.name}
+                      {a.code} · {translateAccountName(a.name, t)}
                     </option>
                   ))}
                 </select>

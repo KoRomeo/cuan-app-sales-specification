@@ -64,10 +64,10 @@ export function ProductsView() {
         title={t('products.add')}
         fields={[
           { name: 'name', label: t('common.product') },
-          { name: 'price', label: t('products.sellingPrice'), type: 'number', prefix: 'Rp', half: true },
-          { name: 'cost', label: t('products.costReference'), type: 'number', prefix: 'Rp', half: true },
-          { name: 'opening', label: t('mov.opening'), type: 'number', defaultValue: '0', half: true },
-          { name: 'min', label: t('products.minimumStock'), type: 'number', defaultValue: '0', half: true },
+          { name: 'price', label: t('products.sellingPrice'), type: 'number', prefix: 'Rp', min: 0, half: true },
+          { name: 'cost', label: t('products.costReference'), type: 'number', prefix: 'Rp', min: 0, half: true },
+          { name: 'opening', label: t('mov.opening'), type: 'number', min: 0, defaultValue: '0', half: true },
+          { name: 'min', label: t('products.minimumStock'), type: 'number', min: 0, defaultValue: '0', half: true },
         ]}
       />
     </>

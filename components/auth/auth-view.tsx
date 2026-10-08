@@ -49,15 +49,16 @@ export function AuthView({ mode }: { mode: AuthMode }) {
   const timerRef = useRef<number | null>(null)
 
   useEffect(() => () => {
-    if (timerRef.current) clearTimeout(timerRef.current)
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current)
   }, [])
 
   const updateField = (field: AuthField, value: string) => {
     setFields((current) => ({ ...current, [field]: value }))
     setErrors((current) => {
-      if (!current[field]) return current
+      if (!current[field] && !(field === 'password' && current.confirm)) return current
       const next = { ...current }
       delete next[field]
+      if (field === 'password' && mode === 'register') delete next.confirm
       return next
     })
     setIsComplete(false)
@@ -82,6 +83,7 @@ export function AuthView({ mode }: { mode: AuthMode }) {
     setIsLoading(true)
     setIsComplete(false)
     timerRef.current = window.setTimeout(() => {
+      timerRef.current = null
       setIsLoading(false)
       setIsComplete(true)
       toast.info(t(mode === 'register' ? 'auth.registerResult' : 'auth.loginResult'))
@@ -152,7 +154,7 @@ export function AuthView({ mode }: { mode: AuthMode }) {
               </CardHeader>
 
               <CardContent>
-                <form noValidate onSubmit={handleSubmit} className="grid gap-4">
+                <form noValidate onSubmit={handleSubmit} aria-busy={isLoading} className="grid gap-4">
                   {isRegister && (
                     <AuthField id="auth-name" label={t('auth.name')} error={errors.name}>
                       <Input
@@ -207,6 +209,7 @@ export function AuthView({ mode }: { mode: AuthMode }) {
                         size="icon-sm"
                         className="absolute right-1 top-1/2 -translate-y-1/2"
                         aria-label={t(showPassword ? 'auth.hidePassword' : 'auth.showPassword')}
+                        disabled={isLoading}
                         onClick={() => setShowPassword((visible) => !visible)}
                       >
                         {showPassword ? <EyeOff /> : <Eye />}
@@ -262,7 +265,7 @@ export function AuthView({ mode }: { mode: AuthMode }) {
                       <div className="grid gap-2">
                         <p className="text-sm font-semibold">{t('auth.previewComplete')}</p>
                         <p className="text-sm leading-6 text-muted-foreground">{resultMessage}</p>
-                        <Button size="sm" variant="outline" className="mt-1 w-fit" render={<Link href="/onboarding" />}>
+                        <Button size="sm" variant="outline" className="mt-1 w-fit" nativeButton={false} render={<Link href="/onboarding" />}>
                           {t('auth.previewOnboarding')}
                           <ArrowRight data-icon="inline-end" aria-hidden="true" />
                         </Button>

@@ -21,15 +21,15 @@ import { isOverdue, orderOutstanding, orders, products, purchaseOutstanding, pur
 import { cn } from '@/lib/utils'
 
 const businesses = [
-  { id: 'BUS-0001', name: 'CV Cuan Sejahtera', type: 'Sales / Distribution' },
-  { id: 'BUS-0002', name: 'Toko Grosir Makmur', type: 'Sales / Distribution' },
-]
+  { id: 'BUS-0001', name: 'CV Cuan Sejahtera', typeKey: 'onboarding.salesType' },
+  { id: 'BUS-0002', name: 'Toko Grosir Makmur', typeKey: 'onboarding.salesType' },
+] as const
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
   const { t } = useApp()
   const { resolvedTheme, setTheme } = useTheme()
   const router = useRouter()
-  const [business, setBusiness] = useState(businesses[0])
+  const [business, setBusiness] = useState<(typeof businesses)[number]>(businesses[0])
 
   const negativeCount = products.filter((p) => p.stock < 0).length
   const overdueCount = orders.filter((o) => isOverdue(o.dueDate, orderOutstanding(o))).length
@@ -60,7 +60,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           </span>
           <span className="hidden flex-col leading-tight sm:flex">
             <span className="text-sm font-medium">{business.name}</span>
-            <span className="text-[11px] text-muted-foreground">{business.type}</span>
+            <span className="text-[11px] text-muted-foreground">{t(business.typeKey)}</span>
           </span>
           <ChevronsUpDown className="size-3.5 text-muted-foreground" />
         </DropdownMenuTrigger>

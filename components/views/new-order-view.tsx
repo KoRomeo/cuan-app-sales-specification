@@ -184,7 +184,7 @@ export function NewOrderView() {
               </div>
             </div>
             <div className="mt-5 flex gap-2">
-              <Button type="button" variant="outline" className="flex-1" render={<Link href="/orders" />}>
+              <Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/orders" />}>
                 {t('common.cancel')}
               </Button>
               <Button type="submit" className="flex-1">{t('form.validateAction')}</Button>

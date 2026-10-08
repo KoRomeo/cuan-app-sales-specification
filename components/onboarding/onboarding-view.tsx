@@ -28,7 +28,7 @@ export function OnboardingView() {
   const timerRef = useRef<number | null>(null)
 
   useEffect(() => () => {
-    if (timerRef.current) clearTimeout(timerRef.current)
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current)
   }, [])
 
   const stepLabels = [
@@ -67,6 +67,7 @@ export function OnboardingView() {
   const finishPreview = () => {
     setIsLoading(true)
     timerRef.current = window.setTimeout(() => {
+      timerRef.current = null
       setIsLoading(false)
       setIsComplete(true)
       toast.info(t('onboarding.completeTitle'))
@@ -106,7 +107,7 @@ export function OnboardingView() {
               <p role="note" className="rounded-lg border bg-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground">{t('onboarding.note')}</p>
             </CardHeader>
 
-            <CardContent className="grid gap-6 pt-6">
+            <CardContent aria-busy={isLoading} className="grid gap-6 pt-6">
               {!isComplete ? (
                 <>
                   <div className="grid gap-4">
@@ -267,7 +268,7 @@ export function OnboardingView() {
                     <p className="text-sm leading-6 text-muted-foreground">{t('onboarding.completeDescription')}</p>
                   </div>
                   <div className="flex flex-wrap justify-center gap-2">
-                    <Button render={<Link href="/dashboard" />}>
+                    <Button nativeButton={false} render={<Link href="/dashboard" />}>
                       {t('onboarding.previewDashboard')}
                       <ArrowRight data-icon="inline-end" aria-hidden="true" />
                     </Button>
@@ -281,12 +282,12 @@ export function OnboardingView() {
               <CardFooter className="flex-col items-stretch gap-3 border-t pt-5 sm:flex-row sm:justify-between">
                 <div>
                   {step === 0 ? (
-                    <Button variant="ghost" render={<Link href="/register" />}>
+                    <Button variant="ghost" disabled={isLoading} nativeButton={false} render={<Link href="/register" />}>
                       <ArrowLeft data-icon="inline-start" aria-hidden="true" />
                       {t('onboarding.back')}
                     </Button>
                   ) : (
-                    <Button variant="ghost" onClick={goBack}>
+                    <Button variant="ghost" disabled={isLoading} onClick={goBack}>
                       <ArrowLeft data-icon="inline-start" aria-hidden="true" />
                       {t('onboarding.back')}
                     </Button>
@@ -295,8 +296,8 @@ export function OnboardingView() {
                 <div className="flex flex-col-reverse gap-2 sm:flex-row">
                   {step < 3 ? (
                     <>
-                      <Button variant="outline" onClick={() => advance(true)}>{t('onboarding.skip')}</Button>
-                      <Button onClick={() => advance(false)}>
+                      <Button variant="outline" disabled={isLoading} onClick={() => advance(true)}>{t('onboarding.skip')}</Button>
+                      <Button disabled={isLoading} onClick={() => advance(false)}>
                         {t('onboarding.continue')}
                         <ArrowRight data-icon="inline-end" aria-hidden="true" />
                       </Button>

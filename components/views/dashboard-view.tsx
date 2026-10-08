@@ -205,31 +205,39 @@ export function DashboardView() {
 
         <SectionCard title={t('dash.outReceivables')} href="/receivables" hrefLabel={t('common.viewAll')} bodyClassName="p-0 md:p-0">
           <ul className="divide-y">
-            {receivableByCustomer.map((r) => (
-              <li key={r.customer.id} className="flex items-center justify-between gap-3 px-4 py-2.5 md:px-5">
-                <span className="flex min-w-0 items-center gap-2 text-sm">
-                  <span className="truncate">{r.customer.name}</span>
-                  {r.overdue && <span className="rounded bg-destructive/12 px-1.5 py-0.5 text-[10px] font-medium text-destructive">{t('common.overdue')}</span>}
-                </span>
-                <span className="font-mono text-sm font-medium tabular-nums">{formatIDR(r.amount)}</span>
-              </li>
-            ))}
+            {receivableByCustomer.length === 0 ? (
+              <li className="p-5 text-sm text-muted-foreground">{t('dash.noReceivables')}</li>
+            ) : (
+              receivableByCustomer.map((r) => (
+                <li key={r.customer.id} className="flex items-center justify-between gap-3 px-4 py-2.5 md:px-5">
+                  <span className="flex min-w-0 items-center gap-2 text-sm">
+                    <span className="truncate">{r.customer.name}</span>
+                    {r.overdue && <span className="rounded bg-destructive/12 px-1.5 py-0.5 text-[10px] font-medium text-destructive">{t('common.overdue')}</span>}
+                  </span>
+                  <span className="font-mono text-sm font-medium tabular-nums">{formatIDR(r.amount)}</span>
+                </li>
+              ))
+            )}
           </ul>
         </SectionCard>
 
         <SectionCard title={t('dash.outPayables')} href="/payables" hrefLabel={t('common.viewAll')} bodyClassName="p-0 md:p-0">
           <ul className="divide-y">
-            {payableBySupplier.map((r) => (
-              <li key={r.purchase.id} className="flex items-center justify-between gap-3 px-4 py-2.5 md:px-5">
-                <div className="min-w-0">
-                  <p className="truncate text-sm">{r.supplier?.name}</p>
-                  <p className="font-mono text-[11px] text-muted-foreground">
-                    {r.purchase.id} · {r.purchase.dueDate ? formatDate(r.purchase.dueDate) : t('common.noDueDate')}
-                  </p>
-                </div>
-                <span className="font-mono text-sm font-medium tabular-nums">{formatIDR(r.amount)}</span>
-              </li>
-            ))}
+            {payableBySupplier.length === 0 ? (
+              <li className="p-5 text-sm text-muted-foreground">{t('dash.noPayables')}</li>
+            ) : (
+              payableBySupplier.map((r) => (
+                <li key={r.purchase.id} className="flex items-center justify-between gap-3 px-4 py-2.5 md:px-5">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm">{r.supplier?.name}</p>
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      {r.purchase.id} · {r.purchase.dueDate ? formatDate(r.purchase.dueDate) : t('common.noDueDate')}
+                    </p>
+                  </div>
+                  <span className="font-mono text-sm font-medium tabular-nums">{formatIDR(r.amount)}</span>
+                </li>
+              ))
+            )}
           </ul>
         </SectionCard>
 
@@ -249,14 +257,24 @@ export function DashboardView() {
                 </p>
               </li>
             ))}
-            {topProducts.length === 0 && <li className="text-sm text-muted-foreground">{t('common.noResults')}</li>}
+            {topProducts.length === 0 && <li className="text-sm text-muted-foreground">{t('dash.noProductsSold')}</li>}
           </ul>
         </SectionCard>
       </div>
 
       <SectionCard title={t('dash.recentOrders')} href="/orders" hrefLabel={t('common.viewAll')} className="mt-4" bodyClassName="p-0 md:p-0">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
+          <table aria-label={t('dash.recentOrders')} className="w-full min-w-[640px] text-sm">
+            <thead className="sr-only">
+              <tr>
+                <th scope="col">{t('history.recordId')}</th>
+                <th scope="col">{t('common.customer')}</th>
+                <th scope="col">{t('common.date')}</th>
+                <th scope="col">{t('common.status')}</th>
+                <th scope="col">{t('dash.paymentStatus')}</th>
+                <th scope="col">{t('common.total')}</th>
+              </tr>
+            </thead>
             <tbody className="divide-y">
               {recentOrders.map((o) => (
                 <tr key={o.id} className="transition-colors hover:bg-muted/40">
@@ -272,6 +290,13 @@ export function DashboardView() {
                   <td className="px-4 py-3 text-right font-mono tabular-nums md:px-5">{formatIDR(orderTotal(o))}</td>
                 </tr>
               ))}
+              {recentOrders.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-muted-foreground">
+                    {t('dash.noRecentOrders')}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
