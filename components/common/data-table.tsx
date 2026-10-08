@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Columns3, Eye, MoreHorizontal, Pencil, Plus, Search, Trash2, type LucideIcon } from 'lucide-react'
 import { Children, isValidElement, useMemo, useState, type ReactNode } from 'react'
+import { appToast as toast } from '@/lib/toast'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
@@ -86,6 +87,8 @@ export interface RowAction {
 interface DataTableProps<T> {
   rows: T[]
   columns: Column<T>[]
+  loading?: boolean
+  error?: string
   getRowId: (row: T) => string
   searchText: (row: T) => string
   filters?: FilterOption<T>[]
@@ -105,6 +108,8 @@ interface DataTableProps<T> {
 export function DataTable<T>({
   rows,
   columns,
+  loading = false,
+  error,
   getRowId,
   searchText,
   filters,
@@ -247,7 +252,7 @@ export function DataTable<T>({
       </div>
 
       <div className={scrollable ? 'overflow-x-auto' : 'overflow-x-hidden'}>
-        <table className={cn('w-full text-sm', scrollable ? 'min-w-[720px]' : 'table-fixed')}>
+        <table aria-busy={loading} className={cn('w-full text-sm', scrollable ? 'min-w-[720px]' : 'table-fixed')}>
           <thead>
             <tr className="border-b bg-muted/40">
               {visibleColumns.map((c) => {
@@ -290,10 +295,31 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {visibleRows.length === 0 && (
+            {error && (
               <tr>
-                <td colSpan={visibleColumns.length + 1} className="px-4 py-14 text-center text-sm text-muted-foreground">
-                  {t('common.noResults')}
+                <td colSpan={Math.max(1, visibleColumns.length + (hasActions ? 1 : 0))} className="px-4 py-12 text-center text-sm text-destructive">
+                  <p role="alert">{error}</p>
+                </td>
+              </tr>
+            )}
+            {!error && loading && (
+              <tr>
+                <td colSpan={Math.max(1, visibleColumns.length + (hasActions ? 1 : 0))} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                  <p role="status" aria-live="polite">{t('common.loading')}</p>
+                </td>
+              </tr>
+            )}
+            {!error && !loading && visibleRows.length === 0 && (
+              <tr>
+                <td colSpan={Math.max(1, visibleColumns.length + (hasActions ? 1 : 0))} className="px-4 py-12 text-center text-sm">
+                  {rows.length === 0 && query.trim() === '' && filter === initialFilter ? (
+                    <div className="mx-auto grid max-w-sm gap-1">
+                      <p className="font-medium text-foreground">{t('common.emptyTitle')}</p>
+                      <p className="text-muted-foreground">{t('common.emptyDescription')}</p>
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">{t('common.noResults')}</p>
+                  )}
                 </td>
               </tr>
             )}
@@ -332,7 +358,7 @@ export function DataTable<T>({
                             </DropdownMenuItem>
                           )}
                           {editable && (
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => toast.info(t('form.editUnavailable'))}>
                               <Pencil />
                               {t('common.edit')}
                             </DropdownMenuItem>
@@ -403,13 +429,16 @@ export function DataTable<T>({
           </Button>
         </div>
       </div>
+      <p role="note" className="border-t px-4 py-2 text-xs text-muted-foreground">{t('common.demoDataNotice')}</p>
 
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title={t('deleteDialog.title')}
-        description={t('deleteDialog.body')}
-        confirmLabel={t('common.delete')}
+        title={t('deleteDialog.previewTitle')}
+        description={t('deleteDialog.previewBody')}
+        confirmLabel={t('common.previewAction')}
+        previewOnly
+        onConfirm={() => toast.info(t('form.deleteUnavailable'))}
       />
     </div>
   )

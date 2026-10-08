@@ -1,19 +1,40 @@
 'use client'
 
-import { createToastManager } from '@base-ui/react/toast'
-
-export const appToastManager = createToastManager()
+import { toast as sonnerToast } from 'sonner'
 
 type ToastKind = 'info' | 'success' | 'error'
+type ToastOptions = { description?: string; id?: string; duration?: number }
 
-function pushToast(type: ToastKind, title: string, description?: string) {
-  return appToastManager.add({
-    title,
+function pushToast(
+  type: ToastKind,
+  title: string,
+  description?: string,
+  options: Pick<ToastOptions, 'id' | 'duration'> = {},
+) {
+  const toastOptions = {
     description,
-    type,
-    timeout: type === 'error' ? 6500 : 4500,
-    priority: type === 'error' ? 'high' : 'low',
-  })
+    duration: options.duration ?? (type === 'error' ? 6500 : 4500),
+    ...(options.id ? { id: options.id } : {}),
+  }
+
+  if (type === 'error') return sonnerToast.error(title, toastOptions)
+  if (type === 'success') return sonnerToast.success(title, toastOptions)
+  return sonnerToast.info(title, toastOptions)
+}
+
+export const appToastManager = {
+  add({ title, description, type, timeout }: { title: string; description?: string; type: ToastKind; timeout?: number; priority?: 'high' | 'low' }) {
+    return pushToast(type, title, description, { duration: timeout })
+  },
+  close(id?: string) {
+    sonnerToast.dismiss(id)
+  },
+  update(id: string, { title, description, type, timeout }: { title: string; description?: string; type: ToastKind; timeout?: number }) {
+    return pushToast(type, title, description, { id, duration: timeout })
+  },
+  promise<Value>(promise: Promise<Value>, options: { loading: string; success: string | ((value: Value) => string); error: string | ((error: unknown) => string) }) {
+    return sonnerToast.promise(promise, options)
+  },
 }
 
 export const appToast = {
@@ -127,10 +148,6 @@ export function toastWarning(title: string, description?: string) {
 
 export function toastNotice(title: string, description?: string) {
   return appToast.info(title, description)
-}
-
-export function toastSuccess(title: string, description?: string) {
-  return appToast.success(title, description)
 }
 
 export function toastFailure(title: string, description?: string) {

@@ -2,7 +2,8 @@
 
 import { useTheme } from 'next-themes'
 import { useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
+import { appToast as toast } from '@/lib/toast'
 import { PageHeader } from '@/components/common/page-header'
 import { SectionCard } from '@/components/common/section-card'
 import { type FeatureKey, useApp } from '@/components/providers'
@@ -16,12 +17,16 @@ type Tab = 'business' | 'features' | 'profile' | 'preferences'
 
 const featureKeys: FeatureKey[] = ['inventory', 'purchasing', 'customerCredit', 'supplierCredit', 'ownDelivery', 'expedition', 'employees', 'accounting', 'tax']
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ id, label, hint, error, required, children }: { id: string; label: string; hint?: string; error?: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="grid gap-1.5">
-      <Label>{label}</Label>
+      <Label htmlFor={id}>
+        {label}
+        {required && <span aria-hidden="true" className="ml-1 text-destructive">*</span>}
+      </Label>
       {children}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p id={`${id}-hint`} className="text-xs text-muted-foreground">{hint}</p>}
+      {error && <p id={`${id}-error`} role="alert" className="text-xs text-destructive">{error}</p>}
     </div>
   )
 }
@@ -34,6 +39,37 @@ export function SettingsView() {
   const [tab, setTab] = useState<Tab>(
     requested === 'features' || requested === 'profile' || requested === 'preferences' ? requested : 'business',
   )
+  const [businessName, setBusinessName] = useState('CuanApp Sales')
+  const [businessError, setBusinessError] = useState('')
+  const [profileName, setProfileName] = useState('Shane')
+  const [profileEmail, setProfileEmail] = useState('shane@cuanapp.id')
+  const [profileNameError, setProfileNameError] = useState('')
+  const [profileEmailError, setProfileEmailError] = useState('')
+
+  const validateBusiness = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!businessName.trim()) {
+      const message = t('settings.businessNameRequired')
+      setBusinessError(message)
+      toast.error(message)
+      return
+    }
+    setBusinessError('')
+    toast.success(t('settings.draftValidated'))
+  }
+
+  const validateProfile = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const nameError = profileName.trim() ? '' : t('settings.profileInvalid')
+    const emailError = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileEmail.trim()) ? '' : t('settings.profileInvalid')
+    setProfileNameError(nameError)
+    setProfileEmailError(emailError)
+    if (nameError || emailError) {
+      toast.error(t('settings.profileInvalid'))
+      return
+    }
+    toast.success(t('settings.draftValidated'))
+  }
 
   const tabs: { value: Tab; label: string }[] = [
     { value: 'business', label: t('settings.business') },
@@ -55,36 +91,47 @@ export function SettingsView() {
     <>
       <PageHeader breadcrumbs={[{ label: t('nav.settings') }]} title={t('settings.title')} description={t('settings.desc')} />
 
-      <div role="tablist" aria-label={t('settings.title')} className="mb-6 flex flex-wrap gap-2">
+      <div role="group" aria-label={t('settings.title')} className="mb-6 flex flex-wrap gap-2">
         {tabs.map((x) => (
-          <Button key={x.value} role="tab" aria-selected={tab === x.value} variant={tab === x.value ? 'default' : 'outline'} size="sm" onClick={() => setTab(x.value)}>
+          <Button key={x.value} type="button" aria-pressed={tab === x.value} variant={tab === x.value ? 'default' : 'outline'} size="sm" onClick={() => setTab(x.value)}>
             {x.label}
           </Button>
         ))}
       </div>
 
       {tab === 'business' && (
-        <SectionCard title={t('settings.business')} className="max-w-2xl">
-          <div className="grid gap-4">
-            <Field label={t('settings.businessName')}>
-              <Input defaultValue="CuanApp Sales" />
+        <SectionCard title={t('settings.business')} description={t('settings.businessDesc')} className="max-w-2xl">
+          <form onSubmit={validateBusiness} noValidate className="grid gap-4">
+            <Field id="settings-business-name" label={t('settings.businessName')} error={businessError} required>
+              <Input
+                id="settings-business-name"
+                value={businessName}
+                required
+                aria-invalid={Boolean(businessError)}
+                aria-describedby={businessError ? 'settings-business-name-error' : undefined}
+                onChange={(event) => {
+                  setBusinessName(event.target.value)
+                  setBusinessError('')
+                }}
+              />
             </Field>
-            <Field label={t('settings.businessType')}>
-              <Input value="CuanApp Sales" disabled readOnly />
+            <Field id="settings-business-type" label={t('settings.businessType')}>
+              <Input id="settings-business-type" value="CuanApp Sales" disabled readOnly />
             </Field>
-            <Field label={t('settings.currency')} hint={t('settings.currencyLocked')}>
-              <Input value="IDR (Rp)" disabled readOnly />
+            <Field id="settings-currency" label={t('settings.currency')} hint={t('settings.currencyLocked')}>
+              <Input id="settings-currency" value="IDR (Rp)" disabled readOnly aria-describedby="settings-currency-hint" />
             </Field>
-            <Field label={t('settings.costing')}>
-              <Input value={t('settings.costingValue')} disabled readOnly />
+            <Field id="settings-costing" label={t('settings.costing')}>
+              <Input id="settings-costing" value={t('settings.costingValue')} disabled readOnly />
             </Field>
-            <p className="text-xs text-muted-foreground">{t('common.prototypeNote')}</p>
-          </div>
+            <Button type="submit" className="w-fit">{t('settings.savePreview')}</Button>
+          </form>
         </SectionCard>
       )}
 
       {tab === 'features' && (
         <SectionCard title={t('settings.features')} description={t('settings.featuresHint')} className="max-w-2xl">
+          <p role="note" className="mb-2 text-xs text-muted-foreground">{t('settings.featureSessionOnly')}</p>
           <ul className="divide-y">
             {featureKeys.map((key) => (
               <li key={key} className="flex items-center justify-between gap-4 py-3">
@@ -102,43 +149,69 @@ export function SettingsView() {
       )}
 
       {tab === 'profile' && (
-        <SectionCard title={t('settings.profile')} className="max-w-2xl">
-          <div className="grid gap-4">
-            <Field label={t('settings.name')}>
-              <Input defaultValue="Shane" />
+        <SectionCard title={t('settings.profile')} description={t('settings.accountDesc')} className="max-w-2xl">
+          <form onSubmit={validateProfile} noValidate className="grid gap-4">
+            <Field id="settings-profile-name" label={t('settings.name')} error={profileNameError} required>
+              <Input
+                id="settings-profile-name"
+                value={profileName}
+                required
+                autoComplete="name"
+                aria-invalid={Boolean(profileNameError)}
+                aria-describedby={profileNameError ? 'settings-profile-name-error' : undefined}
+                onChange={(event) => {
+                  setProfileName(event.target.value)
+                  setProfileNameError('')
+                }}
+              />
             </Field>
-            <Field label={t('settings.email')}>
-              <Input type="email" defaultValue="shane@cuanapp.id" />
+            <Field id="settings-profile-email" label={t('settings.email')} error={profileEmailError} required>
+              <Input
+                id="settings-profile-email"
+                type="email"
+                value={profileEmail}
+                required
+                autoComplete="email"
+                aria-invalid={Boolean(profileEmailError)}
+                aria-describedby={profileEmailError ? 'settings-profile-email-error' : undefined}
+                onChange={(event) => {
+                  setProfileEmail(event.target.value)
+                  setProfileEmailError('')
+                }}
+              />
             </Field>
-            <Field label={t('settings.role')}>
-              <Input value={t('settings.owner')} disabled readOnly />
+            <Field id="settings-profile-role" label={t('settings.role')}>
+              <Input id="settings-profile-role" value={t('settings.owner')} disabled readOnly />
             </Field>
-            <p className="text-xs text-muted-foreground">{t('common.prototypeNote')}</p>
-          </div>
+            <Button type="submit" className="w-fit">{t('settings.savePreview')}</Button>
+          </form>
         </SectionCard>
       )}
 
       {tab === 'preferences' && (
-        <SectionCard title={t('settings.preferences')} className="max-w-2xl">
+        <SectionCard title={t('settings.preferences')} description={t('settings.preferencesDesc')} className="max-w-2xl">
           <div className="grid gap-6">
-            <Field label={t('top.language')}>
+            <fieldset className="grid gap-1.5">
+              <legend className="text-sm font-medium">{t('top.language')}</legend>
               <div className="flex flex-wrap gap-2">
-                {languages.map((l) => (
-                  <Button key={l.value} variant={locale === l.value ? 'default' : 'outline'} size="sm" aria-pressed={locale === l.value} onClick={() => setLocale(l.value)}>
-                    {l.label}
+                {languages.map((language) => (
+                  <Button key={language.value} type="button" variant={locale === language.value ? 'default' : 'outline'} size="sm" aria-pressed={locale === language.value} onClick={() => setLocale(language.value)}>
+                    {language.label}
                   </Button>
                 ))}
               </div>
-            </Field>
-            <Field label={t('settings.theme')}>
+              <p className="text-xs text-muted-foreground">{t('settings.languageNote')}</p>
+            </fieldset>
+            <fieldset className="grid gap-1.5">
+              <legend className="text-sm font-medium">{t('settings.theme')}</legend>
               <div className="flex flex-wrap gap-2">
-                {themes.map((x) => (
-                  <Button key={x.value} variant={theme === x.value ? 'default' : 'outline'} size="sm" aria-pressed={theme === x.value} onClick={() => setTheme(x.value)}>
-                    {x.label}
+                {themes.map((option) => (
+                  <Button key={option.value} type="button" variant={theme === option.value ? 'default' : 'outline'} size="sm" aria-pressed={theme === option.value} onClick={() => setTheme(option.value)}>
+                    {option.label}
                   </Button>
                 ))}
               </div>
-            </Field>
+            </fieldset>
           </div>
         </SectionCard>
       )}
