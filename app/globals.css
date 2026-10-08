@@ -127,6 +127,28 @@
   --sidebar-ring: oklch(0.66 0.17 258);
 }
 
+.app-nav-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--sidebar-muted) 45%, transparent) transparent;
+}
+
+.app-nav-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.app-nav-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-nav-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--sidebar-muted) 45%, transparent);
+}
+
+.app-nav-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--sidebar-primary);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

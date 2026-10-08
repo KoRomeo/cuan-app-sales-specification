@@ -3,8 +3,9 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
-import { Bell, Building2, Check, ChevronsUpDown, LogOut, Menu, Moon, Search, Settings, Sun, User } from 'lucide-react'
+import { Bell, Building2, Check, ChevronsUpDown, LogIn, Menu, Moon, Search, Settings, Sun, User, UserPlus } from 'lucide-react'
 import { useState } from 'react'
+import { LocaleSwitcher } from '@/components/common/locale-switcher'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,15 +21,15 @@ import { isOverdue, orderOutstanding, orders, products, purchaseOutstanding, pur
 import { cn } from '@/lib/utils'
 
 const businesses = [
-  { id: 'BUS-0001', name: 'CV Cuan Sejahtera', type: 'Sales / Distribution' },
-  { id: 'BUS-0002', name: 'Toko Grosir Makmur', type: 'Sales / Distribution' },
-]
+  { id: 'BUS-0001', name: 'CV Cuan Sejahtera', typeKey: 'onboarding.salesType' },
+  { id: 'BUS-0002', name: 'Toko Grosir Makmur', typeKey: 'onboarding.salesType' },
+] as const
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
-  const { t, locale, setLocale } = useApp()
+  const { t } = useApp()
   const { resolvedTheme, setTheme } = useTheme()
   const router = useRouter()
-  const [business, setBusiness] = useState(businesses[0])
+  const [business, setBusiness] = useState<(typeof businesses)[number]>(businesses[0])
 
   const negativeCount = products.filter((p) => p.stock < 0).length
   const overdueCount = orders.filter((o) => isOverdue(o.dueDate, orderOutstanding(o))).length
@@ -59,13 +60,16 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           </span>
           <span className="hidden flex-col leading-tight sm:flex">
             <span className="text-sm font-medium">{business.name}</span>
-            <span className="text-[11px] text-muted-foreground">{business.type}</span>
+            <span className="text-[11px] text-muted-foreground">{t(business.typeKey)}</span>
           </span>
           <ChevronsUpDown className="size-3.5 text-muted-foreground" />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-64">
           <DropdownMenuGroup>
             <DropdownMenuLabel>{t('top.switchBusiness')}</DropdownMenuLabel>
+            <DropdownMenuLabel className="whitespace-normal text-xs font-normal normal-case leading-5 text-muted-foreground">
+              {t('top.businessPreview')}
+            </DropdownMenuLabel>
             {businesses.map((b) => (
               <DropdownMenuItem key={b.id} onClick={() => setBusiness(b)}>
                 <Building2 />
@@ -91,22 +95,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
       </div>
 
       <div className="ml-auto flex items-center gap-1.5 md:ml-0">
-        <div role="group" aria-label={t('top.language')} className="flex items-center rounded-lg border bg-card p-0.5">
-          {(['en', 'id'] as const).map((l) => (
-            <button
-              key={l}
-              type="button"
-              onClick={() => setLocale(l)}
-              aria-pressed={locale === l}
-              className={cn(
-                'rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-wide transition-colors',
-                locale === l ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
+        <LocaleSwitcher />
 
         <Button
           variant="ghost"
@@ -126,6 +115,9 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           <DropdownMenuContent align="end" className="w-80">
             <DropdownMenuGroup>
               <DropdownMenuLabel>{t('top.notifications')}</DropdownMenuLabel>
+              <DropdownMenuLabel className="whitespace-normal text-xs font-normal normal-case leading-5 text-muted-foreground">
+                {t('common.demoDataNotice')}
+              </DropdownMenuLabel>
               {notifications.map((n) => (
                 <DropdownMenuItem key={n.href} onClick={() => router.push(n.href)} className="items-start py-2">
                   <span
@@ -160,6 +152,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
               <DropdownMenuLabel>
                 <span className="block text-sm font-medium text-foreground">Shane Emanuel</span>
                 <span className="block text-xs font-normal">shane@cuanapp.id</span>
+                <span className="mt-1 block whitespace-normal text-xs font-normal text-muted-foreground">{t('top.profilePreview')}</span>
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
@@ -172,9 +165,14 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
               {t('nav.settings')}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive">
-              <LogOut />
-              {t('top.signOut')}
+            <DropdownMenuLabel>{t('top.accessPreview')}</DropdownMenuLabel>
+            <DropdownMenuItem render={<Link href="/login" />}>
+              <LogIn />
+              {t('auth.loginAction')}
+            </DropdownMenuItem>
+            <DropdownMenuItem render={<Link href="/register" />}>
+              <UserPlus />
+              {t('auth.registerAction')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

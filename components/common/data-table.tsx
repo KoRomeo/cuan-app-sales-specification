@@ -1,8 +1,10 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Columns3, Eye, MoreHorizontal, Pencil, Plus, Search, Trash2, type LucideIcon } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Columns3, Eye, MoreHorizontal, Pencil, Plus, Search, Trash2, type LucideIcon } from 'lucide-react'
+import { Children, isValidElement, useMemo, useState, type ReactNode } from 'react'
+import { appToast as toast } from '@/lib/toast'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
@@ -24,6 +26,51 @@ export interface Column<T> {
   cell: (row: T) => React.ReactNode
   align?: 'left' | 'right' | 'center'
   className?: string
+  sortable?: boolean
+  sortValue?: (row: T) => string | number | null | undefined
+}
+
+type SortKey = number | string
+type SortState = { key: string; dir: 'asc' | 'desc' } | null
+
+function nodeText(node: ReactNode): string | number {
+  if (node === null || node === undefined || typeof node === 'boolean') return ''
+  if (typeof node === 'string' || typeof node === 'number') return node
+  if (Array.isArray(node)) return node.map(nodeText).join(' ').trim()
+  if (isValidElement(node)) {
+    const props = node.props as { value?: unknown; children?: ReactNode }
+    if (typeof props.value === 'number') return props.value
+    return Children.toArray(props.children).map(nodeText).join(' ').trim()
+  }
+  return ''
+}
+
+function toSortKey(raw: string | number | null | undefined): SortKey | null {
+  if (raw === null || raw === undefined) return null
+  if (typeof raw === 'number') return raw
+  const text = raw.trim()
+  if (text === '' || text === '—') return null
+  const date = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text)
+  if (date) return Number(`${date[3]}${date[2]}${date[1]}`)
+  const amount = text.replace(/^(-?)\s*Rp\s*/i, '$1')
+  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(amount)) return Number(amount.replace(/\./g, '').replace(',', '.'))
+  if (/^-?\d+(\.\d+)?$/.test(amount)) return Number(amount)
+  return text
+}
+
+function compareKeys(a: SortKey | null, b: SortKey | null, dir: 'asc' | 'desc') {
+  if (a === null && b === null) return 0
+  if (a === null) return 1
+  if (b === null) return -1
+  const result =
+    typeof a === 'number' && typeof b === 'number'
+      ? a - b
+      : typeof a === 'number'
+        ? -1
+        : typeof b === 'number'
+          ? 1
+          : a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+  return dir === 'asc' ? result : -result
 }
 
 export interface FilterOption<T> {
@@ -42,6 +89,8 @@ export interface RowAction {
 interface DataTableProps<T> {
   rows: T[]
   columns: Column<T>[]
+  loading?: boolean
+  error?: string
   getRowId: (row: T) => string
   searchText: (row: T) => string
   filters?: FilterOption<T>[]
@@ -52,15 +101,17 @@ interface DataTableProps<T> {
   contextActions?: (row: T) => RowAction[]
   editable?: boolean
   deletable?: boolean
-  onDelete?: (row: T) => void
   pageSize?: number
   toolbarExtra?: React.ReactNode
   footer?: React.ReactNode
+  scrollable?: boolean
 }
 
 export function DataTable<T>({
   rows,
   columns,
+  loading = false,
+  error,
   getRowId,
   searchText,
   filters,
@@ -71,10 +122,10 @@ export function DataTable<T>({
   contextActions,
   editable = true,
   deletable = true,
-  onDelete,
   pageSize = 10,
   toolbarExtra,
   footer,
+  scrollable = true,
 }: DataTableProps<T>) {
   const { t } = useApp()
   const router = useRouter()
@@ -82,24 +133,42 @@ export function DataTable<T>({
   const [filter, setFilter] = useState(initialFilter)
   const [page, setPage] = useState(1)
   const [hidden, setHidden] = useState<Set<string>>(new Set())
-  const [deleteTarget, setDeleteTarget] = useState<T | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [sort, setSort] = useState<SortState>(null)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     const activeFilter = filters?.find((f) => f.value === filter)
-    return rows.filter((r) => {
+    const matched = rows.filter((r) => {
       if (activeFilter && !activeFilter.predicate(r)) return false
       if (q && !searchText(r).toLowerCase().includes(q)) return false
       return true
     })
-  }, [rows, query, filter, filters, searchText])
+    const sortColumn = sort ? columns.find((c) => c.key === sort.key) : undefined
+    if (!sort || !sortColumn) return matched
+    const keyOf = (row: T) => toSortKey(sortColumn.sortValue ? sortColumn.sortValue(row) : nodeText(sortColumn.cell(row)))
+    return matched
+      .map((row) => ({ row, key: keyOf(row) }))
+      .sort((a, b) => compareKeys(a.key, b.key, sort.dir))
+      .map((entry) => entry.row)
+  }, [rows, query, filter, filters, searchText, sort, columns])
+
+  function toggleSort(key: string) {
+    setSort((prev) => {
+      if (!prev || prev.key !== key) return { key, dir: 'asc' }
+      if (prev.dir === 'asc') return { key, dir: 'desc' }
+      return null
+    })
+    setPage(1)
+  }
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
   const current = Math.min(page, pageCount)
   const start = (current - 1) * pageSize
   const visibleRows = filtered.slice(start, start + pageSize)
   const visibleColumns = columns.filter((c) => !hidden.has(c.key))
-  const hasActions = rowHref || contextActions || editable || deletable
+  const visibleColumnCount = visibleColumns.length
+  const hasActions = Boolean(rowHref || contextActions || editable || deletable)
 
   return (
     <div className="rounded-xl border bg-card shadow-xs">
@@ -120,7 +189,7 @@ export function DataTable<T>({
         </div>
 
         {filters && filters.length > 0 && (
-          <div role="tablist" aria-label={t('common.filter')} className="flex flex-wrap items-center gap-1 rounded-lg bg-muted p-0.5">
+          <div role="group" aria-label={t('common.filter')} className="flex flex-wrap items-center gap-1 rounded-lg bg-muted p-0.5">
             {filters.map((f) => {
               const count = rows.filter(f.predicate).length
               const active = filter === f.value
@@ -128,8 +197,7 @@ export function DataTable<T>({
                 <button
                   key={f.value}
                   type="button"
-                  role="tab"
-                  aria-selected={active}
+                  aria-pressed={active}
                   onClick={() => {
                     setFilter(f.value)
                     setPage(1)
@@ -161,6 +229,7 @@ export function DataTable<T>({
                   <DropdownMenuCheckboxItem
                     key={c.key}
                     checked={!hidden.has(c.key)}
+                    disabled={!hidden.has(c.key) && visibleColumnCount <= 1}
                     onCheckedChange={(checked) => {
                       setHidden((prev) => {
                         const next = new Set(prev)
@@ -177,7 +246,7 @@ export function DataTable<T>({
             </DropdownMenuContent>
           </DropdownMenu>
           {addLabel && (
-            <Button size="sm" onClick={onAdd}>
+            <Button type="button" size="sm" disabled={!onAdd} onClick={onAdd}>
               <Plus />
               {addLabel}
             </Button>
@@ -185,22 +254,42 @@ export function DataTable<T>({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-sm">
+      <div className={scrollable ? 'overflow-x-auto' : 'overflow-x-hidden'}>
+        <table aria-label={t('common.dataTable')} aria-busy={loading} className={cn('w-full text-sm', scrollable ? 'min-w-[720px]' : 'table-fixed')}>
           <thead>
             <tr className="border-b bg-muted/40">
-              {visibleColumns.map((c) => (
-                <th
-                  key={c.key}
-                  scope="col"
-                  className={cn(
-                    'h-10 whitespace-nowrap px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground',
-                    c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
-                  )}
-                >
-                  {c.header}
-                </th>
-              ))}
+              {visibleColumns.map((c) => {
+                const sortable = c.sortable !== false
+                const direction = sort?.key === c.key ? sort.dir : null
+                const SortIcon = direction === 'asc' ? ArrowUp : direction === 'desc' ? ArrowDown : ArrowUpDown
+                return (
+                  <th
+                    key={c.key}
+                    scope="col"
+                    aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : sortable ? 'none' : undefined}
+                    className={cn(
+                      'h-10 whitespace-nowrap px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground',
+                      c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
+                    )}
+                  >
+                    {sortable ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleSort(c.key)}
+                        className={cn(
+                          'group/sort -mx-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-1 uppercase tracking-wider transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40',
+                          direction && 'text-foreground',
+                        )}
+                      >
+                        {c.header}
+                        <SortIcon className={cn('size-3 shrink-0', direction ? 'text-primary' : 'opacity-40 group-hover/sort:opacity-100')} aria-hidden="true" />
+                      </button>
+                    ) : (
+                      c.header
+                    )}
+                  </th>
+                )
+              })}
               {hasActions && (
                 <th scope="col" className="h-10 w-12 px-4">
                   <span className="sr-only">{t('common.actions')}</span>
@@ -209,10 +298,31 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {visibleRows.length === 0 && (
+            {error && (
               <tr>
-                <td colSpan={visibleColumns.length + 1} className="px-4 py-14 text-center text-sm text-muted-foreground">
-                  {t('common.noResults')}
+                <td colSpan={Math.max(1, visibleColumns.length + (hasActions ? 1 : 0))} className="px-4 py-12 text-center text-sm text-destructive">
+                  <p role="alert">{error}</p>
+                </td>
+              </tr>
+            )}
+            {!error && loading && (
+              <tr>
+                <td colSpan={Math.max(1, visibleColumns.length + (hasActions ? 1 : 0))} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                  <p role="status" aria-live="polite">{t('common.loading')}</p>
+                </td>
+              </tr>
+            )}
+            {!error && !loading && visibleRows.length === 0 && (
+              <tr>
+                <td colSpan={Math.max(1, visibleColumns.length + (hasActions ? 1 : 0))} className="px-4 py-12 text-center text-sm">
+                  {rows.length === 0 && query.trim() === '' && filter === initialFilter ? (
+                    <div className="mx-auto grid max-w-sm gap-1">
+                      <p className="font-medium text-foreground">{t('common.emptyTitle')}</p>
+                      <p className="text-muted-foreground">{t('common.emptyDescription')}</p>
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">{t('common.noResults')}</p>
+                  )}
                 </td>
               </tr>
             )}
@@ -225,21 +335,33 @@ export function DataTable<T>({
                   onClick={href ? () => router.push(href) : undefined}
                   className={cn('border-b transition-colors last:border-0 hover:bg-muted/40', href && 'cursor-pointer')}
                 >
-                  {visibleColumns.map((c) => (
-                    <td
-                      key={c.key}
-                      className={cn(
-                        'h-12 whitespace-nowrap px-4',
-                        c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
-                        c.className,
-                      )}
-                    >
-                      {c.cell(row)}
-                    </td>
-                  ))}
+                  {visibleColumns.map((c, index) => {
+                    const content = c.cell(row)
+                    return (
+                      <td
+                        key={c.key}
+                        className={cn(
+                          'h-12 whitespace-nowrap px-4',
+                          c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
+                          c.className,
+                        )}
+                      >
+                        {href && index === 0 ? (
+                          <Link
+                            href={href}
+                            aria-label={`${t('common.view')} ${getRowId(row)}`}
+                            onClick={(event) => event.stopPropagation()}
+                            className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          >
+                            {content}
+                          </Link>
+                        ) : content}
+                      </td>
+                    )
+                  })}
                   {hasActions && (
                     <td className="px-2 text-right" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
+                      {(href || extra.length > 0 || editable || deletable) && <DropdownMenu>
                         <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t('common.actions')} />}>
                           <MoreHorizontal />
                         </DropdownMenuTrigger>
@@ -251,7 +373,7 @@ export function DataTable<T>({
                             </DropdownMenuItem>
                           )}
                           {editable && (
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => toast.info(t('form.editUnavailable'))}>
                               <Pencil />
                               {t('common.edit')}
                             </DropdownMenuItem>
@@ -275,14 +397,14 @@ export function DataTable<T>({
                           {deletable && (
                             <>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(row)}>
+                              <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
                                 <Trash2 />
                                 {t('common.delete')}
                               </DropdownMenuItem>
                             </>
                           )}
                         </DropdownMenuContent>
-                      </DropdownMenu>
+                      </DropdownMenu>}
                     </td>
                   )}
                 </tr>
@@ -301,7 +423,7 @@ export function DataTable<T>({
           </span>{' '}
           {t('common.of')} <span className="font-mono font-medium text-foreground tabular-nums">{filtered.length}</span>
         </p>
-        <div className="flex items-center gap-1">
+        <nav aria-label={t('common.pagination')} className="flex items-center gap-1">
           <Button variant="ghost" size="icon-sm" disabled={current === 1} onClick={() => setPage(current - 1)} aria-label={t('common.previous')}>
             <ChevronLeft />
           </Button>
@@ -320,16 +442,18 @@ export function DataTable<T>({
           <Button variant="ghost" size="icon-sm" disabled={current === pageCount} onClick={() => setPage(current + 1)} aria-label={t('common.next')}>
             <ChevronRight />
           </Button>
-        </div>
+        </nav>
       </div>
+      <p role="note" className="border-t px-4 py-2 text-xs text-muted-foreground">{t('common.demoDataNotice')}</p>
 
       <ConfirmDialog
-        open={deleteTarget !== null}
-        onOpenChange={(next) => !next && setDeleteTarget(null)}
-        onConfirm={() => deleteTarget && onDelete?.(deleteTarget)}
-        title={t('deleteDialog.title')}
-        description={t('deleteDialog.body')}
-        confirmLabel={t('common.delete')}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={t('deleteDialog.previewTitle')}
+        description={t('deleteDialog.previewBody')}
+        confirmLabel={t('common.previewAction')}
+        previewOnly
+        onConfirm={() => toast.info(t('form.deleteUnavailable'))}
       />
     </div>
   )

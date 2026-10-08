@@ -1,12 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { AlertTriangle, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { appToast as toast } from '@/lib/toast'
 import { selectClass } from '@/components/common/form-dialog'
 import { PageHeader } from '@/components/common/page-header'
 import { SectionCard } from '@/components/common/section-card'
+import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,9 +26,10 @@ interface Line {
 
 export function NewOrderView() {
   const { t } = useApp()
-  const router = useRouter()
   const [lines, setLines] = useState<Line[]>([{ key: 1, productId: 'P-0001', qty: 100, price: 16000, discount: 0 }])
   const [paid, setPaid] = useState(0)
+  const [previewed, setPreviewed] = useState(false)
+  const [lineToRemove, setLineToRemove] = useState<number | null>(null)
 
   const update = (key: number, patch: Partial<Line>) =>
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)))
@@ -43,9 +45,10 @@ export function NewOrderView() {
         description={t('common.prototypeNote')}
       />
       <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          router.push('/orders/ORD-202610-0010')
+        onSubmit={(event) => {
+          event.preventDefault()
+          setPreviewed(true)
+          toast.info(t('form.previewFeedback'))
         }}
         className="grid gap-4 lg:grid-cols-3"
       >
@@ -54,7 +57,7 @@ export function NewOrderView() {
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <Label htmlFor="customer">{t('common.customer')}</Label>
-                <select id="customer" className={selectClass} defaultValue="C-0001">
+                <select id="customer" name="customerId" className={selectClass} defaultValue="C-0001" required>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
@@ -62,7 +65,7 @@ export function NewOrderView() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="date">{t('orders.orderDate')}</Label>
-                <Input id="date" type="date" defaultValue={TODAY} />
+                <Input id="date" name="orderDate" type="date" defaultValue={TODAY} required />
               </div>
             </div>
           </SectionCard>
@@ -92,7 +95,9 @@ export function NewOrderView() {
                         <Label htmlFor={`p-${l.key}`}>{t('common.product')}</Label>
                         <select
                           id={`p-${l.key}`}
+                          name={`product-${l.key}`}
                           className={selectClass}
+                          required
                           value={l.productId}
                           onChange={(e) => update(l.key, { productId: e.target.value, price: productById(e.target.value)?.sellingPrice ?? 0 })}
                         >
@@ -105,11 +110,11 @@ export function NewOrderView() {
                       </div>
                       <div className="flex flex-col gap-1.5 sm:col-span-2">
                         <Label htmlFor={`q-${l.key}`}>{t('common.qty')}</Label>
-                        <Input id={`q-${l.key}`} type="number" min={1} className="font-mono" value={l.qty} onChange={(e) => update(l.key, { qty: Number(e.target.value) })} />
+                        <Input id={`q-${l.key}`} name={`quantity-${l.key}`} type="number" min={1} required className="font-mono" value={l.qty} onChange={(e) => update(l.key, { qty: Number(e.target.value) })} />
                       </div>
                       <div className="flex flex-col gap-1.5 sm:col-span-3">
                         <Label htmlFor={`pr-${l.key}`}>{t('orders.sellingPrice')}</Label>
-                        <Input id={`pr-${l.key}`} type="number" min={0} className="font-mono" value={l.price} onChange={(e) => update(l.key, { price: Number(e.target.value) })} />
+                        <Input id={`pr-${l.key}`} name={`price-${l.key}`} type="number" min={0} required className="font-mono" value={l.price} onChange={(e) => update(l.key, { price: Number(e.target.value) })} />
                       </div>
                       <div className="flex items-end justify-end sm:col-span-2">
                         <Button
@@ -118,7 +123,7 @@ export function NewOrderView() {
                           size="icon-sm"
                           aria-label={t('common.delete')}
                           disabled={lines.length === 1}
-                          onClick={() => setLines((prev) => prev.filter((x) => x.key !== l.key))}
+                          onClick={() => setLineToRemove(l.key)}
                         >
                           <Trash2 />
                         </Button>
@@ -167,7 +172,7 @@ export function NewOrderView() {
             <div className="mt-4 flex flex-col gap-3 border-t pt-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="paid">{t('common.paid')}</Label>
-                <Input id="paid" type="number" min={0} className="font-mono" value={paid} onChange={(e) => setPaid(Number(e.target.value))} />
+                <Input id="paid" name="paidAmount" type="number" min={0} max={Math.max(total, 0)} className="font-mono" value={paid} onChange={(e) => setPaid(Number(e.target.value))} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="due">{t('common.dueDate')}</Label>
@@ -179,14 +184,31 @@ export function NewOrderView() {
               </div>
             </div>
             <div className="mt-5 flex gap-2">
-              <Button type="button" variant="outline" className="flex-1" render={<Link href="/orders" />}>
+              <Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/orders" />}>
                 {t('common.cancel')}
               </Button>
-              <Button type="submit" className="flex-1">{t('common.save')}</Button>
+              <Button type="submit" className="flex-1">{t('form.validateAction')}</Button>
             </div>
+            {previewed && <p role="status" aria-live="polite" className="mt-3 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-xs leading-5 text-muted-foreground">{t('form.previewFeedback')}</p>}
           </SectionCard>
         </div>
       </form>
+      <ConfirmDialog
+        open={lineToRemove !== null}
+        onOpenChange={(open) => {
+          if (!open) setLineToRemove(null)
+        }}
+        title={t('orders.removeLineTitle')}
+        description={t('orders.removeLineDescription')}
+        confirmLabel={t('orders.removeLineAction')}
+        previewOnly
+        onConfirm={() => {
+          if (lineToRemove === null) return
+          setLines((previous) => previous.filter((line) => line.key !== lineToRemove))
+          setPreviewed(false)
+          toast.info(t('form.previewFeedback'))
+        }}
+      />
     </>
   )
 }

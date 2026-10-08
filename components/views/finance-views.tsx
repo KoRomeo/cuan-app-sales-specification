@@ -34,10 +34,9 @@ import {
 } from '@/lib/data'
 import { profitAndLoss } from '@/lib/accounting'
 import { formatDate, formatIDR, formatPercent } from '@/lib/format'
-import { addPurchasePayment, createExpense, deleteExpense, receiveCustomerPayment, restoreExpense } from '@/lib/services'
-import { DomainError } from '@/lib/store'
+import { translateAccountName, translateExpenseCategory } from '@/lib/i18n'
 
-const accounts = ['Cash', 'Bank BCA', 'Bank Mandiri'].map((v) => ({ value: v, label: v }))
+const accountValues = ['Cash', 'Bank BCA', 'Bank Mandiri'] as const
 const in7Days = '2026-10-13'
 
 function DueCell({ due, outstanding }: { due: string | null; outstanding: number }) {
@@ -64,7 +63,7 @@ export function ReceivablesView() {
     { key: 'id', header: t('orders.id'), cell: (o) => <IdCell>{o.id}</IdCell> },
     { key: 'date', header: t('common.date'), cell: (o) => <span className="font-mono text-xs text-muted-foreground">{formatDate(o.date)}</span> },
     { key: 'customer', header: t('common.customer'), cell: (o) => <span className="font-medium">{customerById(o.customerId)?.name}</span> },
-    { key: 'due', header: t('common.dueDate'), cell: (o) => <DueCell due={o.dueDate} outstanding={orderOutstanding(o)} /> },
+    { key: 'due', header: t('common.dueDate'), sortValue: (o) => o.dueDate, cell: (o) => <DueCell due={o.dueDate} outstanding={orderOutstanding(o)} /> },
     { key: 'total', header: t('common.total'), align: 'right', cell: (o) => <Money value={orderTotal(o)} className="text-muted-foreground" /> },
     { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (o) => <Money value={orderOutstanding(o)} className="font-semibold text-warning" /> },
   ]
@@ -108,12 +107,11 @@ export function ReceivablesView() {
         onOpenChange={setOpen}
         title={t('orders.addPayment')}
         description={t('receivables.allocationHint')}
-        onSubmit={(v) => receiveCustomerPayment(v.customer, { date: v.date, account: v.account, amount: Number(v.amount) })}
         fields={[
           { name: 'customer', label: t('common.customer'), type: 'select', options: customers.filter((c) => rows.some((o) => o.customerId === c.id)).map((c) => ({ value: c.id, label: c.name })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'account', label: t('receivables.receiveTo'), type: 'select', options: accounts, half: true },
-          { name: 'amount', label: t('receivables.paymentAmount'), type: 'number', prefix: 'Rp' },
+          { name: 'account', label: t('receivables.receiveTo'), type: 'select', options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })), half: true },
+          { name: 'amount', label: t('receivables.paymentAmount'), type: 'number', prefix: 'Rp', min: 1 },
         ]}
       />
     </>
@@ -131,7 +129,7 @@ export function PayablesView() {
     { key: 'id', header: t('purchases.id'), cell: (p) => <IdCell>{p.id}</IdCell> },
     { key: 'date', header: t('common.date'), cell: (p) => <span className="font-mono text-xs text-muted-foreground">{formatDate(p.date)}</span> },
     { key: 'supplier', header: t('common.supplier'), cell: (p) => <span className="font-medium">{supplierById(p.supplierId)?.name}</span> },
-    { key: 'due', header: t('common.dueDate'), cell: (p) => <DueCell due={p.dueDate} outstanding={purchaseOutstanding(p)} /> },
+    { key: 'due', header: t('common.dueDate'), sortValue: (p) => p.dueDate, cell: (p) => <DueCell due={p.dueDate} outstanding={purchaseOutstanding(p)} /> },
     { key: 'total', header: t('common.total'), align: 'right', cell: (p) => <Money value={purchaseTotal(p)} className="text-muted-foreground" /> },
     { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (p) => <Money value={purchaseOutstanding(p)} className="font-semibold text-warning" /> },
   ]
@@ -173,12 +171,11 @@ export function PayablesView() {
         open={open}
         onOpenChange={setOpen}
         title={t('orders.addPayment')}
-        onSubmit={(v) => addPurchasePayment(v.purchase, { date: v.date, account: v.account, amount: Number(v.amount) })}
         fields={[
           { name: 'purchase', label: t('purchases.id'), type: 'select', options: rows.map((p) => ({ value: p.id, label: `${p.id} · ${supplierById(p.supplierId)?.name}` })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'account', label: t('payables.payFrom'), type: 'select', options: accounts, half: true },
-          { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp' },
+          { name: 'account', label: t('payables.payFrom'), type: 'select', options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })), half: true },
+          { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', min: 1 },
         ]}
       />
     </>
@@ -189,24 +186,19 @@ export function ExpensesView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
   const [catOpen, setCatOpen] = useState(false)
-  const active = expenses.filter((e) => !e.deletedAt)
-  const total = active.reduce((s, e) => s + e.amount, 0)
+  const total = expenses.reduce((s, e) => s + e.amount, 0)
   const byCat = expenseCategories
-    .map((c) => [c, active.filter((e) => e.category === c).reduce((s, e) => s + e.amount, 0)] as const)
+    .map((c) => [c, expenses.filter((e) => e.category === c).reduce((s, e) => s + e.amount, 0)] as const)
     .filter(([, v]) => v > 0)
     .sort((a, b) => b[1] - a[1])
 
   const columns: Column<Expense>[] = [
     { key: 'id', header: 'ID', cell: (e) => <IdCell>{e.id}</IdCell> },
     { key: 'date', header: t('common.date'), cell: (e) => <span className="font-mono text-xs text-muted-foreground">{formatDate(e.date)}</span> },
-    { key: 'category', header: t('common.category'), cell: (e) => <Pill tone="neutral">{e.category}</Pill> },
-    { key: 'description', header: t('common.description'), cell: (e) => (
-      <span className={`flex items-center gap-2 font-medium ${e.deletedAt ? 'text-muted-foreground line-through' : ''}`}>
-        {e.description}
-        {e.deletedAt && <Pill tone="destructive">{t('common.deleted')}</Pill>}
-      </span>
-    ) },
-    { key: 'account', header: t('common.account'), cell: (e) => <span className="text-muted-foreground">{e.account}</span> },
+    { key: 'category', header: t('common.category'), cell: (e) => <Pill tone="neutral">{translateExpenseCategory(e.category, t)}</Pill> },
+    { key: 'description', header: t('common.description'), cell: (e) => <span className="font-medium">{e.description}</span> },
+    { key: 'account', header: t('common.account'), cell: (e) => <span className="text-muted-foreground">{translateAccountName(e.account, t)}</span> },
+    { key: 'status', header: t('common.status'), cell: () => <Pill tone="success">{t('expenses.statusPosted')}</Pill> },
     { key: 'amount', header: t('common.amount'), align: 'right', cell: (e) => <Money value={e.amount} /> },
   ]
 
@@ -225,9 +217,9 @@ export function ExpensesView() {
       />
       <KpiGrid>
         <KpiCard label={t('expenses.total')} value={formatIDR(total)} icon={Receipt} />
-        <KpiCard label={t('expenses.largest')} value={byCat[0]?.[0] ?? '—'} hint={byCat[0] ? formatIDR(byCat[0][1]) : undefined} icon={Tags} tone="warning" />
-        <KpiCard label={t('expenses.count')} value={active.length} icon={Plus} tone="neutral" />
-        <KpiCard label={t('period.thisMonth')} value={formatIDR(active.filter((e) => inRange(e.date, periodRange('thisMonth'))).reduce((s, e) => s + e.amount, 0))} icon={CalendarClock} />
+        <KpiCard label={t('expenses.largest')} value={byCat[0] ? translateExpenseCategory(byCat[0][0], t) : '—'} hint={byCat[0] ? formatIDR(byCat[0][1]) : undefined} icon={Tags} tone="warning" />
+        <KpiCard label={t('expenses.count')} value={expenses.length} icon={Plus} tone="neutral" />
+        <KpiCard label={t('period.thisMonth')} value={formatIDR(expenses.filter((e) => inRange(e.date, periodRange('thisMonth'))).reduce((s, e) => s + e.amount, 0))} icon={CalendarClock} />
       </KpiGrid>
 
       <div className="grid gap-4 xl:grid-cols-4">
@@ -237,12 +229,9 @@ export function ExpensesView() {
             columns={columns}
             getRowId={(e) => e.id}
             searchText={(e) => `${e.id} ${e.category} ${e.description}`}
-            filters={[{ value: 'all', label: t('common.all'), predicate: () => true }, ...byCat.slice(0, 4).map(([c]) => ({ value: c, label: c, predicate: (e: Expense) => e.category === c }))]}
+            filters={[{ value: 'all', label: t('common.all'), predicate: () => true }, ...byCat.slice(0, 4).map(([c]) => ({ value: c, label: translateExpenseCategory(c, t), predicate: (e: Expense) => e.category === c }))]}
             addLabel={t('expenses.add')}
             onAdd={() => setOpen(true)}
-            editable={false}
-            onDelete={(e) => deleteExpense(e.id)}
-            contextActions={(e) => (e.deletedAt ? [{ label: t('common.restore'), icon: RotateCcw, onSelect: () => restoreExpense(e.id) }] : [])}
           />
         </div>
         <SectionCard title={t('common.category')}>
@@ -250,7 +239,7 @@ export function ExpensesView() {
             {byCat.map(([c, v]) => (
               <li key={c}>
                 <div className="flex justify-between text-sm">
-                  <span>{c}</span>
+                  <span>{translateExpenseCategory(c, t)}</span>
                   <span className="font-mono text-xs tabular-nums text-muted-foreground">{formatPercent((v / total) * 100)}</span>
                 </div>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
@@ -259,6 +248,7 @@ export function ExpensesView() {
                 <p className="mt-1 font-mono text-[11px] tabular-nums text-muted-foreground">{formatIDR(v)}</p>
               </li>
             ))}
+            {byCat.length === 0 && <li className="text-sm text-muted-foreground">{t('expenses.noCategoryBreakdown')}</li>}
           </ul>
         </SectionCard>
       </div>
@@ -267,22 +257,15 @@ export function ExpensesView() {
         open={open}
         onOpenChange={setOpen}
         title={t('expenses.add')}
-        onSubmit={(v) => createExpense({ date: v.date, category: v.category, amount: Number(v.amount), account: v.account, description: v.description })}
         fields={[
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'category', label: t('common.category'), type: 'select', half: true, options: expenseCategories.map((c) => ({ value: c, label: c })) },
-          { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', half: true },
-          { name: 'account', label: t('common.account'), type: 'select', half: true, options: accounts },
+          { name: 'category', label: t('common.category'), type: 'select', half: true, options: expenseCategories.map((c) => ({ value: c, label: translateExpenseCategory(c, t) })) },
+          { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', min: 1, half: true },
+          { name: 'account', label: t('common.account'), type: 'select', half: true, options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })) },
           { name: 'description', label: t('common.description'), type: 'textarea' },
         ]}
       />
-      <FormDialog open={catOpen} onOpenChange={setCatOpen} title={t('expenses.addCategory')}
-        onSubmit={(v) => {
-          const name = v.name.trim()
-          if (!name || expenseCategories.includes(name)) throw new DomainError('err.invalidCategory')
-          expenseCategories.push(name)
-        }}
-        fields={[{ name: 'name', label: t('expenses.categoryName') }]} />
+      <FormDialog open={catOpen} onOpenChange={setCatOpen} title={t('expenses.addCategory')} fields={[{ name: 'name', label: t('expenses.categoryName') }]} />
     </>
   )
 }

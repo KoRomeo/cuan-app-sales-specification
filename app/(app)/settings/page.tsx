@@ -3,6 +3,6 @@ import { SettingsView } from '@/components/views/settings-view'
 
 export const metadata: Metadata = { title: 'Settings' }
 
-export default function Page() {
+export default function SettingsPage() {
   return <SettingsView />
 }

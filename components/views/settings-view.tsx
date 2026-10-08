@@ -1,205 +1,219 @@
 'use client'
 
 import { useTheme } from 'next-themes'
-import { Lock, Monitor, Moon, Sun } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { useState, type FormEvent } from 'react'
+import { appToast as toast } from '@/lib/toast'
 import { PageHeader } from '@/components/common/page-header'
+import { SectionCard } from '@/components/common/section-card'
 import { type FeatureKey, useApp } from '@/components/providers'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import type { TranslationKey } from '@/lib/i18n'
-import { cn } from '@/lib/utils'
+import type { Locale } from '@/lib/i18n'
 
-type Tab = 'business' | 'profile' | 'features' | 'preferences'
+type Tab = 'business' | 'features' | 'profile' | 'preferences'
 
-const tabs: { value: Tab; label: TranslationKey }[] = [
-  { value: 'business', label: 'settings.business' },
-  { value: 'profile', label: 'settings.profile' },
-  { value: 'features', label: 'settings.features' },
-  { value: 'preferences', label: 'settings.preferences' },
-]
+const featureKeys: FeatureKey[] = ['inventory', 'purchasing', 'customerCredit', 'supplierCredit', 'ownDelivery', 'expedition', 'employees', 'accounting', 'tax']
 
-const featureList: { key: FeatureKey; label: TranslationKey; desc: TranslationKey }[] = [
-  { key: 'inventory', label: 'feature.inventory', desc: 'feature.inventoryDesc' },
-  { key: 'negativeStock', label: 'feature.negativeStock', desc: 'feature.negativeStockDesc' },
-  { key: 'purchasing', label: 'feature.purchasing', desc: 'feature.purchasingDesc' },
-  { key: 'customerCredit', label: 'feature.customerCredit', desc: 'feature.customerCreditDesc' },
-  { key: 'supplierCredit', label: 'feature.supplierCredit', desc: 'feature.supplierCreditDesc' },
-  { key: 'ownDelivery', label: 'feature.ownDelivery', desc: 'feature.ownDeliveryDesc' },
-  { key: 'expedition', label: 'feature.expedition', desc: 'feature.expeditionDesc' },
-  { key: 'employees', label: 'feature.employees', desc: 'feature.employeesDesc' },
-  { key: 'accounting', label: 'feature.accounting', desc: 'feature.accountingDesc' },
-  { key: 'tax', label: 'feature.tax', desc: 'feature.taxDesc' },
-]
-
-function Field({ id, label, hint, children }: { id: string; label: string; hint?: string; children: React.ReactNode }) {
+function Field({ id, label, hint, error, required, children }: { id: string; label: string; hint?: string; error?: string; required?: boolean; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
+    <div className="grid gap-1.5">
+      <Label htmlFor={id}>
+        {label}
+        {required && <span aria-hidden="true" className="ml-1 text-destructive">*</span>}
+      </Label>
       {children}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p id={`${id}-hint`} className="text-xs text-muted-foreground">{hint}</p>}
+      {error && <p id={`${id}-error`} role="alert" className="text-xs text-destructive">{error}</p>}
     </div>
   )
 }
 
-function Panel({ children }: { children: React.ReactNode }) {
-  return <div className="max-w-2xl rounded-xl border bg-card p-4 shadow-xs md:p-6">{children}</div>
-}
-
 export function SettingsView() {
-  const { t, features, setFeature, locale, setLocale } = useApp()
+  const { t, locale, setLocale, features, setFeature } = useApp()
   const { theme, setTheme } = useTheme()
-  const [tab, setTab] = useState<Tab>('business')
-  const [mounted, setMounted] = useState(false)
+  const params = useSearchParams()
+  const requested = params.get('tab')
+  const [tab, setTab] = useState<Tab>(
+    requested === 'features' || requested === 'profile' || requested === 'preferences' ? requested : 'business',
+  )
+  const [businessName, setBusinessName] = useState('CuanApp Sales')
+  const [businessError, setBusinessError] = useState('')
+  const [profileName, setProfileName] = useState('Shane')
+  const [profileEmail, setProfileEmail] = useState('shane@cuanapp.id')
+  const [profileNameError, setProfileNameError] = useState('')
+  const [profileEmailError, setProfileEmailError] = useState('')
 
-  useEffect(() => setMounted(true), [])
+  const validateBusiness = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!businessName.trim()) {
+      const message = t('settings.businessNameRequired')
+      setBusinessError(message)
+      toast.error(message)
+      return
+    }
+    setBusinessError('')
+    toast.success(t('settings.draftValidated'))
+  }
 
+  const validateProfile = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const nameError = profileName.trim() ? '' : t('settings.nameRequired')
+    const emailError = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileEmail.trim()) ? '' : t('settings.emailInvalid')
+    setProfileNameError(nameError)
+    setProfileEmailError(emailError)
+    if (nameError || emailError) {
+      toast.error(t('settings.profileInvalid'))
+      return
+    }
+    toast.success(t('settings.draftValidated'))
+  }
+
+  const tabs: { value: Tab; label: string }[] = [
+    { value: 'business', label: t('settings.business') },
+    { value: 'features', label: t('settings.features') },
+    { value: 'profile', label: t('settings.profile') },
+    { value: 'preferences', label: t('settings.preferences') },
+  ]
+  const languages: { value: Locale; label: string }[] = [
+    { value: 'en', label: 'English' },
+    { value: 'id', label: 'Bahasa Indonesia' },
+  ]
   const themes = [
-    { value: 'light', label: t('settings.light'), icon: Sun },
-    { value: 'dark', label: t('settings.dark'), icon: Moon },
-    { value: 'system', label: t('settings.system'), icon: Monitor },
+    { value: 'light', label: t('settings.light') },
+    { value: 'dark', label: t('settings.dark') },
+    { value: 'system', label: t('settings.system') },
   ]
 
   return (
     <>
       <PageHeader breadcrumbs={[{ label: t('nav.settings') }]} title={t('settings.title')} description={t('settings.desc')} />
 
-      <div role="tablist" aria-label={t('settings.title')} className="mb-6 flex w-fit flex-wrap gap-1 rounded-lg bg-muted p-0.5">
+      <div role="group" aria-label={t('settings.title')} className="mb-6 flex flex-wrap gap-2">
         {tabs.map((x) => (
-          <button
-            key={x.value}
-            type="button"
-            role="tab"
-            aria-selected={tab === x.value}
-            onClick={() => setTab(x.value)}
-            className={cn(
-              'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-              tab === x.value ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {t(x.label)}
-          </button>
+          <Button key={x.value} type="button" aria-pressed={tab === x.value} variant={tab === x.value ? 'default' : 'outline'} size="sm" onClick={() => setTab(x.value)}>
+            {x.label}
+          </Button>
         ))}
       </div>
 
       {tab === 'business' && (
-        <Panel>
-          <div className="flex flex-col gap-5">
-            <Field id="business-name" label={t('settings.businessName')}>
-              <Input id="business-name" defaultValue="Toko Sembako Maju" />
+        <SectionCard title={t('settings.business')} description={t('settings.businessDesc')} className="max-w-2xl">
+          <form onSubmit={validateBusiness} noValidate className="grid gap-4">
+            <Field id="settings-business-name" label={t('settings.businessName')} error={businessError} required>
+              <Input
+                id="settings-business-name"
+                value={businessName}
+                required
+                aria-invalid={Boolean(businessError)}
+                aria-describedby={businessError ? 'settings-business-name-error' : undefined}
+                onChange={(event) => {
+                  setBusinessName(event.target.value)
+                  setBusinessError('')
+                }}
+              />
             </Field>
-            <Field id="business-type" label={t('settings.businessType')}>
-              <Input id="business-type" defaultValue="Wholesale / Distribution" />
+            <Field id="settings-business-type" label={t('settings.businessType')}>
+              <Input id="settings-business-type" value={t('onboarding.salesType')} disabled readOnly />
             </Field>
-            <Field id="currency" label={t('settings.currency')} hint={t('settings.currencyLocked')}>
-              <div className="relative">
-                <Input id="currency" value="IDR — Indonesian Rupiah" disabled readOnly />
-                <Lock className="absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              </div>
+            <Field id="settings-currency" label={t('settings.currency')} hint={t('settings.currencyLocked')}>
+              <Input id="settings-currency" value="IDR (Rp)" disabled readOnly aria-describedby="settings-currency-hint" />
             </Field>
-            <Field id="costing" label={t('settings.costing')}>
-              <Input id="costing" value={t('settings.costingValue')} disabled readOnly />
+            <Field id="settings-costing" label={t('settings.costing')}>
+              <Input id="settings-costing" value={t('settings.costingValue')} disabled readOnly />
             </Field>
-            <Field id="timezone" label={t('settings.timezone')}>
-              <Input id="timezone" defaultValue="Asia/Jakarta (WIB, UTC+7)" />
-            </Field>
-          </div>
-          <p className="mt-5 text-xs text-muted-foreground">{t('common.prototypeNote')}</p>
-        </Panel>
-      )}
-
-      {tab === 'profile' && (
-        <Panel>
-          <div className="flex flex-col gap-5">
-            <Field id="profile-name" label={t('settings.name')}>
-              <Input id="profile-name" defaultValue="Shane" />
-            </Field>
-            <Field id="profile-email" label={t('settings.email')}>
-              <Input id="profile-email" type="email" defaultValue="shane@example.com" />
-            </Field>
-            <Field id="profile-role" label={t('settings.role')} hint={t('settings.ownerOnly')}>
-              <Input id="profile-role" value={t('settings.owner')} disabled readOnly />
-            </Field>
-          </div>
-          <p className="mt-5 text-xs text-muted-foreground">{t('common.prototypeNote')}</p>
-        </Panel>
+            <Button type="submit" className="w-fit">{t('settings.savePreview')}</Button>
+          </form>
+        </SectionCard>
       )}
 
       {tab === 'features' && (
-        <div className="max-w-2xl">
-          <p className="mb-4 text-sm text-muted-foreground">{t('settings.featuresHint')}</p>
-          <ul className="divide-y rounded-xl border bg-card shadow-xs">
-            {featureList.map((f) => (
-              <li key={f.key} className="flex items-center justify-between gap-4 p-4 md:px-5">
-                <div className="min-w-0">
-                  <Label htmlFor={`feature-${f.key}`} className="text-sm font-medium">
-                    {t(f.label)}
+        <SectionCard title={t('settings.features')} description={t('settings.featuresHint')} className="max-w-2xl">
+          <p role="note" className="mb-2 text-xs text-muted-foreground">{t('settings.featureSessionOnly')}</p>
+          <ul className="divide-y">
+            {featureKeys.map((key) => (
+              <li key={key} className="flex items-center justify-between gap-4 py-3">
+                <div>
+                  <Label htmlFor={`feature-${key}`} className="text-sm font-medium">
+                    {t(`feature.${key}`)}
                   </Label>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{t(f.desc)}</p>
+                  <p className="text-xs text-muted-foreground">{t(`feature.${key}Desc`)}</p>
                 </div>
-                <Switch
-                  id={`feature-${f.key}`}
-                  checked={features[f.key]}
-                  onCheckedChange={(v) => setFeature(f.key, v)}
-                  aria-label={t(f.label)}
-                />
+                <Switch id={`feature-${key}`} checked={features[key]} onCheckedChange={(v) => setFeature(key, v)} />
               </li>
             ))}
           </ul>
-        </div>
+        </SectionCard>
+      )}
+
+      {tab === 'profile' && (
+        <SectionCard title={t('settings.profile')} description={t('settings.accountDesc')} className="max-w-2xl">
+          <form onSubmit={validateProfile} noValidate className="grid gap-4">
+            <Field id="settings-profile-name" label={t('settings.name')} error={profileNameError} required>
+              <Input
+                id="settings-profile-name"
+                value={profileName}
+                required
+                autoComplete="name"
+                aria-invalid={Boolean(profileNameError)}
+                aria-describedby={profileNameError ? 'settings-profile-name-error' : undefined}
+                onChange={(event) => {
+                  setProfileName(event.target.value)
+                  setProfileNameError('')
+                }}
+              />
+            </Field>
+            <Field id="settings-profile-email" label={t('settings.email')} error={profileEmailError} required>
+              <Input
+                id="settings-profile-email"
+                type="email"
+                value={profileEmail}
+                required
+                autoComplete="email"
+                aria-invalid={Boolean(profileEmailError)}
+                aria-describedby={profileEmailError ? 'settings-profile-email-error' : undefined}
+                onChange={(event) => {
+                  setProfileEmail(event.target.value)
+                  setProfileEmailError('')
+                }}
+              />
+            </Field>
+            <Field id="settings-profile-role" label={t('settings.role')}>
+              <Input id="settings-profile-role" value={t('settings.owner')} disabled readOnly />
+            </Field>
+            <Button type="submit" className="w-fit">{t('settings.savePreview')}</Button>
+          </form>
+        </SectionCard>
       )}
 
       {tab === 'preferences' && (
-        <Panel>
-          <div className="flex flex-col gap-6">
-            <fieldset>
-              <legend className="mb-2 text-sm font-medium">{t('settings.theme')}</legend>
-              <div className="grid grid-cols-3 gap-2">
-                {themes.map((x) => {
-                  const active = mounted && theme === x.value
-                  return (
-                    <button
-                      key={x.value}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => setTheme(x.value)}
-                      className={cn(
-                        'flex flex-col items-center gap-2 rounded-lg border p-3 text-sm transition-colors',
-                        active ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-muted',
-                      )}
-                    >
-                      <x.icon className="size-4" />
-                      {x.label}
-                    </button>
-                  )
-                })}
+        <SectionCard title={t('settings.preferences')} description={t('settings.preferencesDesc')} className="max-w-2xl">
+          <div className="grid gap-6">
+            <fieldset className="grid gap-1.5">
+              <legend className="text-sm font-medium">{t('top.language')}</legend>
+              <div className="flex flex-wrap gap-2">
+                {languages.map((language) => (
+                  <Button key={language.value} type="button" variant={locale === language.value ? 'default' : 'outline'} size="sm" aria-pressed={locale === language.value} onClick={() => setLocale(language.value)}>
+                    {language.label}
+                  </Button>
+                ))}
               </div>
+              <p className="text-xs text-muted-foreground">{t('settings.languageNote')}</p>
             </fieldset>
-            <fieldset>
-              <legend className="mb-2 text-sm font-medium">{t('settings.language')}</legend>
-              <div className="grid grid-cols-2 gap-2">
-                {([
-                  ['en', 'English'],
-                  ['id', 'Bahasa Indonesia'],
-                ] as const).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    aria-pressed={locale === value}
-                    onClick={() => setLocale(value)}
-                    className={cn(
-                      'rounded-lg border p-3 text-sm transition-colors',
-                      locale === value ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-muted',
-                    )}
-                  >
-                    {label}
-                  </button>
+            <fieldset className="grid gap-1.5">
+              <legend className="text-sm font-medium">{t('settings.theme')}</legend>
+              <div className="flex flex-wrap gap-2">
+                {themes.map((option) => (
+                  <Button key={option.value} type="button" variant={theme === option.value ? 'default' : 'outline'} size="sm" aria-pressed={theme === option.value} onClick={() => setTheme(option.value)}>
+                    {option.label}
+                  </Button>
                 ))}
               </div>
             </fieldset>
           </div>
-        </Panel>
+        </SectionCard>
       )}
     </>
   )

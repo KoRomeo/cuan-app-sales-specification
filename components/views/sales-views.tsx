@@ -115,7 +115,7 @@ export function InvoicesView() {
           <span className="text-xs text-muted-foreground">—</span>
         ),
     },
-    { key: 'status', header: t('common.status'), cell: (o) => <PaymentStatusBadge status={orderPaymentStatus(o)} /> },
+    { key: 'status', header: t('common.status'), sortValue: (o) => orderPaymentStatus(o), cell: (o) => <PaymentStatusBadge status={orderPaymentStatus(o)} /> },
     { key: 'total', header: t('common.total'), align: 'right', cell: (o) => <Money value={orderTotal(o)} /> },
     { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (o) => <Money value={orderOutstanding(o)} className={orderOutstanding(o) > 0 ? 'text-warning' : 'text-muted-foreground'} /> },
   ]
@@ -240,7 +240,7 @@ export function ReturnsView() {
           { name: 'order', label: t('returns.order'), type: 'select', half: true, options: orders.filter((o) => o.status === 'delivered').map((o) => ({ value: o.id, label: o.id })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
           { name: 'product', label: t('common.product'), type: 'select', half: true, options: products.map((p) => ({ value: p.id, label: p.name })) },
-          { name: 'qty', label: t('common.qty'), type: 'number', defaultValue: '1', half: true },
+          { name: 'qty', label: t('common.qty'), type: 'number', min: 1, defaultValue: '1', half: true },
           { name: 'reason', label: t('returns.reason'), type: 'textarea' },
         ]}
       />
