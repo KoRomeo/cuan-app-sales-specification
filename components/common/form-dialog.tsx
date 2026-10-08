@@ -1,7 +1,8 @@
 'use client'
 
-import { AlertTriangle } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { LoaderCircle } from 'lucide-react'
+import { appToast as toast } from '@/lib/toast'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
 import {
@@ -15,7 +16,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { useDomainError } from '@/lib/use-domain-error'
 import { cn } from '@/lib/utils'
 
 export interface FormField {
@@ -28,6 +28,9 @@ export interface FormField {
   hint?: string
   half?: boolean
   prefix?: string
+  required?: boolean
+  min?: number
+  max?: number
 }
 
 export const selectClass =
@@ -41,8 +44,6 @@ export function FormDialog({
   fields,
   submitLabel,
   children,
-  onSubmit,
-  submitDisabled,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -51,74 +52,143 @@ export function FormDialog({
   fields: FormField[]
   submitLabel?: string
   children?: React.ReactNode
-  /** Receives every field value as a string. Throwing a DomainError keeps the dialog open and shows the message. */
-  onSubmit?: (values: Record<string, string>) => void
-  submitDisabled?: boolean
 }) {
   const { t } = useApp()
-  const { error, run, clear } = useDomainError()
-  const [submitting, setSubmitting] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [validated, setValidated] = useState(false)
+  const [isChecking, setIsChecking] = useState(false)
+  const timerRef = useRef<number | null>(null)
+
+  useEffect(() => () => {
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current)
+  }, [])
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
+      setIsChecking(false)
+      setErrors({})
+      setValidated(false)
+    }
+    onOpenChange(nextOpen)
+  }
+
+  const clearFieldError = (name: string) => {
+    setValidated(false)
+    setErrors((current) => {
+      if (!current[name]) return current
+      const next = { ...current }
+      delete next[name]
+      return next
+    })
+  }
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (isChecking) return
+    const controls = Array.from(event.currentTarget.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('[name]'))
+    const invalid = controls.filter((control) => !control.validity.valid)
+    const nextErrors = Object.fromEntries(
+      invalid.map((control) => [control.name, control.validity.valueMissing ? t('form.fieldRequired') : t('form.invalidValue')]),
+    )
+
+    setErrors(nextErrors)
+    if (invalid.length > 0) {
+      setValidated(false)
+      toast.error(t('form.validationError'))
+      invalid[0]?.focus()
+      return
+    }
+
+    setValidated(false)
+    setIsChecking(true)
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null
+      setIsChecking(false)
+      setValidated(true)
+      toast.info(t('form.previewFeedback'))
+    }, 350)
+  }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        clear()
-        onOpenChange(next)
-      }}
-    >
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (submitting) return
-            const values = Object.fromEntries([...new FormData(e.currentTarget)].map(([k, v]) => [k, String(v)]))
-            setSubmitting(true)
-            const ok = run(() => onSubmit?.(values))
-            setSubmitting(false)
-            if (ok) onOpenChange(false)
-          }}
-          className="flex flex-col gap-4"
-        >
+        <form noValidate onSubmit={handleSubmit} aria-busy={isChecking} className="flex flex-col gap-4">
           <DialogHeader>
             <DialogTitle className="text-base">{title}</DialogTitle>
-            <DialogDescription>{description ?? t('common.savedNote')}</DialogDescription>
+            <DialogDescription>{description ?? t('common.prototypeNote')}</DialogDescription>
+            <p role="note" className="rounded-md border bg-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground">{t('form.previewFeedback')}</p>
           </DialogHeader>
 
           <div className="grid grid-cols-2 gap-3">
-            {fields.map((f) => {
-              const id = `field-${f.name}`
+            {fields.map((field) => {
+              const id = `field-${field.name}`
+              const required = field.required ?? field.type !== 'textarea'
+              const describedBy = [field.hint ? `${id}-hint` : null, errors[field.name] ? `${id}-error` : null].filter(Boolean).join(' ') || undefined
               return (
-                <div key={f.name} className={cn('flex flex-col gap-1.5', f.half ? 'col-span-2 sm:col-span-1' : 'col-span-2')}>
-                  <Label htmlFor={id}>{f.label}</Label>
-                  {f.type === 'select' ? (
-                    <select id={id} name={f.name} defaultValue={f.defaultValue} className={selectClass}>
-                      {f.options?.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
+                <div key={field.name} className={cn('flex flex-col gap-1.5', field.half ? 'col-span-2 sm:col-span-1' : 'col-span-2')}>
+                  <Label htmlFor={id}>
+                    {field.label}
+                    {required && <span aria-hidden="true" className="ml-1 text-destructive">*</span>}
+                  </Label>
+                  {field.type === 'select' ? (
+                    <select
+                      id={id}
+                      name={field.name}
+                      defaultValue={field.defaultValue}
+                      required={required}
+                      disabled={isChecking}
+                      aria-invalid={Boolean(errors[field.name])}
+                      aria-describedby={describedBy}
+                      className={selectClass}
+                      onChange={() => clearFieldError(field.name)}
+                    >
+                      {field.options?.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
                       ))}
                     </select>
-                  ) : f.type === 'textarea' ? (
-                    <Textarea id={id} name={f.name} defaultValue={f.defaultValue} placeholder={f.placeholder} rows={3} />
+                  ) : field.type === 'textarea' ? (
+                    <Textarea
+                      id={id}
+                      name={field.name}
+                      defaultValue={field.defaultValue}
+                      placeholder={field.placeholder}
+                      rows={3}
+                      required={required}
+                      disabled={isChecking}
+                      aria-invalid={Boolean(errors[field.name])}
+                      aria-describedby={describedBy}
+                      onChange={() => clearFieldError(field.name)}
+                    />
                   ) : (
                     <div className="relative">
-                      {f.prefix && (
+                      {field.prefix && (
                         <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                          {f.prefix}
+                          {field.prefix}
                         </span>
                       )}
                       <Input
                         id={id}
-                        name={f.name}
-                        type={f.type ?? 'text'}
-                        defaultValue={f.defaultValue}
-                        placeholder={f.placeholder}
-                        className={cn(f.prefix && 'pl-8', f.type === 'number' && 'font-mono tabular-nums')}
+                        name={field.name}
+                        type={field.type ?? 'text'}
+                        defaultValue={field.defaultValue}
+                        placeholder={field.placeholder}
+                        required={required}
+                        disabled={isChecking}
+                        min={field.min}
+                        max={field.max}
+                        aria-invalid={Boolean(errors[field.name])}
+                        aria-describedby={describedBy}
+                        onChange={() => clearFieldError(field.name)}
+                        className={cn(field.prefix && 'pl-8', field.type === 'number' && 'font-mono tabular-nums')}
                       />
                     </div>
                   )}
-                  {f.hint && <p className="text-xs text-muted-foreground">{f.hint}</p>}
+                  {field.hint && <p id={`${id}-hint`} className="text-xs text-muted-foreground">{field.hint}</p>}
+                  {errors[field.name] && <p id={`${id}-error`} role="alert" className="text-xs text-destructive">{errors[field.name]}</p>}
                 </div>
               )
             })}
@@ -126,18 +196,22 @@ export function FormDialog({
 
           {children}
 
-          {error && (
-            <p role="alert" className="flex items-start gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-              {error}
-            </p>
+          {validated && (
+            <div role="status" aria-live="polite" className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2">
+              <p className="text-sm font-medium">{t('form.validated')}</p>
+              <p className="text-xs leading-5 text-muted-foreground">{t('form.previewFeedback')}</p>
+            </div>
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={submitting || submitDisabled}>{submitLabel ?? t('common.save')}</Button>
+            <Button type="submit" disabled={isChecking} aria-label={isChecking ? t('form.checking') : submitLabel ?? t('form.validateAction')}>
+              {isChecking && <LoaderCircle data-icon="inline-start" className="animate-spin" aria-hidden="true" />}
+              {isChecking ? t('form.checking') : submitLabel ?? t('form.validateAction')}
+            </Button>
+
           </DialogFooter>
         </form>
       </DialogContent>

@@ -3,6 +3,6 @@ import { PayablesView } from '@/components/views/finance-views'
 
 export const metadata: Metadata = { title: 'Payables' }
 
-export default function Page() {
+export default function PayablesPage() {
   return <PayablesView />
 }

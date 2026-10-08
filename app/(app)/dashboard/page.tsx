@@ -3,6 +3,6 @@ import { DashboardView } from '@/components/views/dashboard-view'
 
 export const metadata: Metadata = { title: 'Dashboard' }
 
-export default function Page() {
+export default function DashboardPage() {
   return <DashboardView />
 }

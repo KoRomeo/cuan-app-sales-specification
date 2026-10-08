@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { AlertTriangle, Ban, FileText, History, Pencil, Plus, Printer, Truck, User, Wallet } from 'lucide-react'
 import { useState } from 'react'
+import { appToast as toast } from '@/lib/toast'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { DocumentPreview } from '@/components/common/document-preview'
 import { FormDialog } from '@/components/common/form-dialog'
@@ -25,6 +26,7 @@ import {
   TODAY,
 } from '@/lib/data'
 import { formatDate, formatIDR, formatPercent } from '@/lib/format'
+import { translateAccountName } from '@/lib/i18n'
 
 export function OrderDetailView({ order }: { order: Order }) {
   const { t, features } = useApp()
@@ -78,7 +80,7 @@ export function OrderDetailView({ order }: { order: Order }) {
             )}
             {!cancelled && (
               <>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => toast.info(t('form.editUnavailable'))}>
                   <Pencil />
                   {t('common.edit')}
                 </Button>
@@ -101,7 +103,7 @@ export function OrderDetailView({ order }: { order: Order }) {
             ))}
           </div>
           {features.purchasing && (
-            <Button size="sm" render={<Link href="/purchases" />}>
+            <Button size="sm" nativeButton={false} render={<Link href="/purchases" />}>
               <Plus />
               {t('orders.createPurchase')}
             </Button>
@@ -173,7 +175,7 @@ export function OrderDetailView({ order }: { order: Order }) {
                     <div>
                       <p className="font-mono text-xs font-medium text-primary">{p.id}</p>
                       <p className="text-xs text-muted-foreground">
-                        {formatDate(p.date)} · {p.account}
+                        {formatDate(p.date)} · {translateAccountName(p.account, t)}
                       </p>
                     </div>
                     <span className="font-mono text-sm font-medium tabular-nums text-success">+{formatIDR(p.amount)}</span>
@@ -257,17 +259,17 @@ export function OrderDetailView({ order }: { order: Order }) {
               </div>
             )}
             <div className="mt-4 flex flex-col gap-2">
-              <Button variant="outline" size="sm" className="justify-start" render={<Link href="/customers" />}>
+              <Button variant="outline" size="sm" className="justify-start" nativeButton={false} render={<Link href="/customers" />}>
                 <User />
                 {t('orders.viewCustomer')}
               </Button>
               {features.customerCredit && (
-                <Button variant="outline" size="sm" className="justify-start" render={<Link href="/receivables" />}>
+                <Button variant="outline" size="sm" className="justify-start" nativeButton={false} render={<Link href="/receivables" />}>
                   <Wallet />
                   {t('orders.viewReceivables')}
                 </Button>
               )}
-              <Button variant="outline" size="sm" className="justify-start" render={<Link href="/history" />}>
+              <Button variant="outline" size="sm" className="justify-start" nativeButton={false} render={<Link href="/history" />}>
                 <History />
                 {t('orders.viewHistory')}
               </Button>
@@ -282,7 +284,9 @@ export function OrderDetailView({ order }: { order: Order }) {
         onOpenChange={setCancelOpen}
         title={t('orders.cancelTitle')}
         description={t('orders.cancelBody')}
-        confirmLabel={t('orders.cancelOrder')}
+        confirmLabel={t('common.previewAction')}
+        previewOnly
+        onConfirm={() => toast.info(t('form.previewFeedback'))}
       />
       <FormDialog
         open={payOpen}
@@ -290,8 +294,8 @@ export function OrderDetailView({ order }: { order: Order }) {
         title={t('orders.addPayment')}
         fields={[
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'account', label: t('receivables.receiveTo'), type: 'select', half: true, options: ['Cash', 'Bank BCA', 'Bank Mandiri'].map((v) => ({ value: v, label: v })) },
-          { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', defaultValue: String(outstanding), hint: `${t('common.outstanding')}: ${formatIDR(outstanding)}` },
+          { name: 'account', label: t('receivables.receiveTo'), type: 'select', half: true, options: ['Cash', 'Bank BCA', 'Bank Mandiri'].map((value) => ({ value, label: translateAccountName(value, t) })) },
+          { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', min: 1, defaultValue: String(outstanding), hint: `${t('common.outstanding')}: ${formatIDR(outstanding)}` },
         ]}
       />
       <FormDialog
@@ -302,7 +306,7 @@ export function OrderDetailView({ order }: { order: Order }) {
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
           { name: 'method', label: t('orders.method'), type: 'select', half: true, options: methodOptions },
           { name: 'recipient', label: t('orders.recipient'), defaultValue: customer?.name, half: true },
-          { name: 'transport', label: t('orders.transportCost'), type: 'number', prefix: 'Rp', defaultValue: '0', half: true },
+          { name: 'transport', label: t('orders.transportCost'), type: 'number', prefix: 'Rp', defaultValue: '0', min: 0, half: true },
           { name: 'address', label: t('common.address'), type: 'textarea', defaultValue: customer?.address },
         ]}
       />

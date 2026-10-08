@@ -42,7 +42,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           </button>
         </div>
 
-        <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 pb-6">
+        <nav aria-label="Main" className="app-nav-scroll flex-1 overflow-y-auto px-3 pb-6">
           {navigation.map((section) => {
             const items = section.items.filter((item) => !item.feature || features[item.feature])
             if (items.length === 0) return null

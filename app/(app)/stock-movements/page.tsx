@@ -3,6 +3,6 @@ import { StockMovementsView } from '@/components/views/inventory-views'
 
 export const metadata: Metadata = { title: 'Stock Movements' }
 
-export default function Page() {
+export default function StockMovementsPage() {
   return <StockMovementsView />
 }

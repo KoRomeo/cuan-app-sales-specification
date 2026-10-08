@@ -98,8 +98,6 @@ export interface Expense {
   amount: number
   account: string
   description: string
-  /** Soft delete: the row stays in the table and its journal is reversed, never removed. */
-  deletedAt?: string | null
 }
 
 export interface StockMovement {
@@ -406,7 +404,7 @@ export const history: HistoryRecord[] = [
     ],
   },
   {
-    id: 'RECORD-0013', date: '2026-10-06', time: '08:47', page: 'Replacements', action: 'Create Replacement', user: 'Shane', reference: 'RPL-202610-0001',
+    id: 'RECORD-0013', date: '2026-10-06', time: '08:47', page: 'Returns', action: 'Create Replacement', user: 'Shane', reference: 'RPL-202610-0001',
     changes: [
       { property: 'Order', previous: '—', current: 'ORD-202610-0008' },
       { property: 'Product', previous: '—', current: 'Aqua 600ml (Dus)' },
@@ -575,4 +573,3 @@ export function periodRange(period: Period): [string, string] {
 }
 
 export const inRange = (date: string, [from, to]: [string, string]) => date >= from && date <= to
-

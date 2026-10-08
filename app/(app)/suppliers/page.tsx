@@ -3,6 +3,6 @@ import { SuppliersView } from '@/components/views/purchasing-views'
 
 export const metadata: Metadata = { title: 'Suppliers' }
 
-export default function Page() {
+export default function SuppliersPage() {
   return <SuppliersView />
 }

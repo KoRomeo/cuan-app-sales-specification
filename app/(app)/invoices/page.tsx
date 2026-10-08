@@ -3,6 +3,6 @@ import { InvoicesView } from '@/components/views/sales-views'
 
 export const metadata: Metadata = { title: 'Invoices' }
 
-export default function Page() {
+export default function InvoicesPage() {
   return <InvoicesView />
 }

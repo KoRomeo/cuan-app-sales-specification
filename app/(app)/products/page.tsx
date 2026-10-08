@@ -3,6 +3,6 @@ import { ProductsView } from '@/components/views/inventory-views'
 
 export const metadata: Metadata = { title: 'Products' }
 
-export default function Page() {
+export default function ProductsPage() {
   return <ProductsView />
 }
