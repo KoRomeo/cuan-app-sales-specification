@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { AlertTriangle, Ban, FileText, History, Pencil, Plus, Printer, Truck, User, Wallet } from 'lucide-react'
 import { useState } from 'react'
+import { appToast as toast } from '@/lib/toast'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { DocumentPreview } from '@/components/common/document-preview'
 import { FormDialog } from '@/components/common/form-dialog'
@@ -281,8 +282,10 @@ export function OrderDetailView({ order }: { order: Order }) {
         open={cancelOpen}
         onOpenChange={setCancelOpen}
         title={t('orders.cancelTitle')}
-        description={t('orders.cancelBody')}
-        confirmLabel={t('orders.cancelOrder')}
+        description={t('form.previewFeedback')}
+        confirmLabel={t('common.previewAction')}
+        previewOnly
+        onConfirm={() => toast.info(t('form.previewFeedback'))}
       />
       <FormDialog
         open={payOpen}

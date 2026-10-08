@@ -1,6 +1,7 @@
 'use client'
 
-import { ThemeProvider } from 'next-themes'
+import { ThemeProvider, useTheme } from 'next-themes'
+import { Toaster as SonnerToaster } from 'sonner'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { dictionaries, type Locale, type TranslationKey } from '@/lib/i18n'
 
@@ -40,6 +41,20 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null)
 
 const LOCALE_KEY = 'cuanapp-locale'
+
+function ThemeAwareToaster() {
+  const { resolvedTheme } = useTheme()
+
+  return (
+    <SonnerToaster
+      theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
+      position="top-right"
+      closeButton
+      richColors
+      visibleToasts={3}
+    />
+  )
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('en')
@@ -81,7 +96,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-      <AppContext.Provider value={value}>{children}</AppContext.Provider>
+      <AppContext.Provider value={value}>
+        {children}
+        <ThemeAwareToaster />
+      </AppContext.Provider>
     </ThemeProvider>
   )
 }
