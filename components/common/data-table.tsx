@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Columns3, Eye, MoreHorizontal, Pencil, Plus, Search, Trash2, type LucideIcon } from 'lucide-react'
 import { Children, isValidElement, useMemo, useState, type ReactNode } from 'react'
@@ -51,8 +52,9 @@ function toSortKey(raw: string | number | null | undefined): SortKey | null {
   if (text === '' || text === '—') return null
   const date = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text)
   if (date) return Number(`${date[3]}${date[2]}${date[1]}`)
-  if (/^-?\d+(\.\d+)?$/.test(text)) return Number(text)
-  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(text)) return Number(text.replace(/\./g, '').replace(',', '.'))
+  const amount = text.replace(/^(-?)\s*Rp\s*/i, '$1')
+  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(amount)) return Number(amount.replace(/\./g, '').replace(',', '.'))
+  if (/^-?\d+(\.\d+)?$/.test(amount)) return Number(amount)
   return text
 }
 
@@ -165,7 +167,8 @@ export function DataTable<T>({
   const start = (current - 1) * pageSize
   const visibleRows = filtered.slice(start, start + pageSize)
   const visibleColumns = columns.filter((c) => !hidden.has(c.key))
-  const hasActions = rowHref || contextActions || editable || deletable
+  const visibleColumnCount = visibleColumns.length
+  const hasActions = Boolean(rowHref || contextActions || editable || deletable)
 
   return (
     <div className="rounded-xl border bg-card shadow-xs">
@@ -186,7 +189,7 @@ export function DataTable<T>({
         </div>
 
         {filters && filters.length > 0 && (
-          <div role="tablist" aria-label={t('common.filter')} className="flex flex-wrap items-center gap-1 rounded-lg bg-muted p-0.5">
+          <div role="group" aria-label={t('common.filter')} className="flex flex-wrap items-center gap-1 rounded-lg bg-muted p-0.5">
             {filters.map((f) => {
               const count = rows.filter(f.predicate).length
               const active = filter === f.value
@@ -194,8 +197,7 @@ export function DataTable<T>({
                 <button
                   key={f.value}
                   type="button"
-                  role="tab"
-                  aria-selected={active}
+                  aria-pressed={active}
                   onClick={() => {
                     setFilter(f.value)
                     setPage(1)
@@ -227,6 +229,7 @@ export function DataTable<T>({
                   <DropdownMenuCheckboxItem
                     key={c.key}
                     checked={!hidden.has(c.key)}
+                    disabled={!hidden.has(c.key) && visibleColumnCount <= 1}
                     onCheckedChange={(checked) => {
                       setHidden((prev) => {
                         const next = new Set(prev)
@@ -243,7 +246,7 @@ export function DataTable<T>({
             </DropdownMenuContent>
           </DropdownMenu>
           {addLabel && (
-            <Button size="sm" onClick={onAdd}>
+            <Button type="button" size="sm" disabled={!onAdd} onClick={onAdd}>
               <Plus />
               {addLabel}
             </Button>
@@ -252,7 +255,7 @@ export function DataTable<T>({
       </div>
 
       <div className={scrollable ? 'overflow-x-auto' : 'overflow-x-hidden'}>
-        <table aria-busy={loading} className={cn('w-full text-sm', scrollable ? 'min-w-[720px]' : 'table-fixed')}>
+        <table aria-label={t('common.dataTable')} aria-busy={loading} className={cn('w-full text-sm', scrollable ? 'min-w-[720px]' : 'table-fixed')}>
           <thead>
             <tr className="border-b bg-muted/40">
               {visibleColumns.map((c) => {
@@ -332,21 +335,33 @@ export function DataTable<T>({
                   onClick={href ? () => router.push(href) : undefined}
                   className={cn('border-b transition-colors last:border-0 hover:bg-muted/40', href && 'cursor-pointer')}
                 >
-                  {visibleColumns.map((c) => (
-                    <td
-                      key={c.key}
-                      className={cn(
-                        'h-12 whitespace-nowrap px-4',
-                        c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
-                        c.className,
-                      )}
-                    >
-                      {c.cell(row)}
-                    </td>
-                  ))}
+                  {visibleColumns.map((c, index) => {
+                    const content = c.cell(row)
+                    return (
+                      <td
+                        key={c.key}
+                        className={cn(
+                          'h-12 whitespace-nowrap px-4',
+                          c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
+                          c.className,
+                        )}
+                      >
+                        {href && index === 0 ? (
+                          <Link
+                            href={href}
+                            aria-label={`${t('common.view')} ${getRowId(row)}`}
+                            onClick={(event) => event.stopPropagation()}
+                            className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          >
+                            {content}
+                          </Link>
+                        ) : content}
+                      </td>
+                    )
+                  })}
                   {hasActions && (
                     <td className="px-2 text-right" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
+                      {(href || extra.length > 0 || editable || deletable) && <DropdownMenu>
                         <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t('common.actions')} />}>
                           <MoreHorizontal />
                         </DropdownMenuTrigger>
@@ -389,7 +404,7 @@ export function DataTable<T>({
                             </>
                           )}
                         </DropdownMenuContent>
-                      </DropdownMenu>
+                      </DropdownMenu>}
                     </td>
                   )}
                 </tr>
@@ -408,7 +423,7 @@ export function DataTable<T>({
           </span>{' '}
           {t('common.of')} <span className="font-mono font-medium text-foreground tabular-nums">{filtered.length}</span>
         </p>
-        <div className="flex items-center gap-1">
+        <nav aria-label={t('common.pagination')} className="flex items-center gap-1">
           <Button variant="ghost" size="icon-sm" disabled={current === 1} onClick={() => setPage(current - 1)} aria-label={t('common.previous')}>
             <ChevronLeft />
           </Button>
@@ -427,7 +442,7 @@ export function DataTable<T>({
           <Button variant="ghost" size="icon-sm" disabled={current === pageCount} onClick={() => setPage(current + 1)} aria-label={t('common.next')}>
             <ChevronRight />
           </Button>
-        </div>
+        </nav>
       </div>
       <p role="note" className="border-t px-4 py-2 text-xs text-muted-foreground">{t('common.demoDataNotice')}</p>
 

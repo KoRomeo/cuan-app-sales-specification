@@ -40,8 +40,6 @@ interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | null>(null)
 
-const LOCALE_KEY = 'cuanapp-locale'
-
 function ThemeAwareToaster() {
   const { resolvedTheme } = useTheme()
 
@@ -61,17 +59,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [features, setFeatures] = useState<Features>(defaultFeatures)
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(LOCALE_KEY)
-    if (saved === 'en' || saved === 'id') setLocaleState(saved)
-  }, [])
-
-  useEffect(() => {
     document.documentElement.lang = locale
   }, [locale])
 
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next)
-    window.localStorage.setItem(LOCALE_KEY, next)
   }, [])
 
   const t = useCallback(

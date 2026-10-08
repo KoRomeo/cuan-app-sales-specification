@@ -240,7 +240,7 @@ export function ReturnsView() {
           { name: 'order', label: t('returns.order'), type: 'select', half: true, options: orders.filter((o) => o.status === 'delivered').map((o) => ({ value: o.id, label: o.id })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
           { name: 'product', label: t('common.product'), type: 'select', half: true, options: products.map((p) => ({ value: p.id, label: p.name })) },
-          { name: 'qty', label: t('common.qty'), type: 'number', defaultValue: '1', half: true },
+          { name: 'qty', label: t('common.qty'), type: 'number', min: 1, defaultValue: '1', half: true },
           { name: 'reason', label: t('returns.reason'), type: 'textarea' },
         ]}
       />

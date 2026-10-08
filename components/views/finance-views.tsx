@@ -34,8 +34,9 @@ import {
 } from '@/lib/data'
 import { profitAndLoss } from '@/lib/accounting'
 import { formatDate, formatIDR, formatPercent } from '@/lib/format'
+import { translateAccountName, translateExpenseCategory } from '@/lib/i18n'
 
-const accounts = ['Cash', 'Bank BCA', 'Bank Mandiri'].map((v) => ({ value: v, label: v }))
+const accountValues = ['Cash', 'Bank BCA', 'Bank Mandiri'] as const
 const in7Days = '2026-10-13'
 
 function DueCell({ due, outstanding }: { due: string | null; outstanding: number }) {
@@ -109,8 +110,8 @@ export function ReceivablesView() {
         fields={[
           { name: 'customer', label: t('common.customer'), type: 'select', options: customers.filter((c) => rows.some((o) => o.customerId === c.id)).map((c) => ({ value: c.id, label: c.name })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'account', label: t('receivables.receiveTo'), type: 'select', options: accounts, half: true },
-          { name: 'amount', label: t('receivables.paymentAmount'), type: 'number', prefix: 'Rp' },
+          { name: 'account', label: t('receivables.receiveTo'), type: 'select', options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })), half: true },
+          { name: 'amount', label: t('receivables.paymentAmount'), type: 'number', prefix: 'Rp', min: 1 },
         ]}
       />
     </>
@@ -173,8 +174,8 @@ export function PayablesView() {
         fields={[
           { name: 'purchase', label: t('purchases.id'), type: 'select', options: rows.map((p) => ({ value: p.id, label: `${p.id} · ${supplierById(p.supplierId)?.name}` })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'account', label: t('payables.payFrom'), type: 'select', options: accounts, half: true },
-          { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp' },
+          { name: 'account', label: t('payables.payFrom'), type: 'select', options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })), half: true },
+          { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', min: 1 },
         ]}
       />
     </>
@@ -194,10 +195,10 @@ export function ExpensesView() {
   const columns: Column<Expense>[] = [
     { key: 'id', header: 'ID', cell: (e) => <IdCell>{e.id}</IdCell> },
     { key: 'date', header: t('common.date'), cell: (e) => <span className="font-mono text-xs text-muted-foreground">{formatDate(e.date)}</span> },
-    { key: 'category', header: t('common.category'), cell: (e) => <Pill tone="neutral">{e.category}</Pill> },
+    { key: 'category', header: t('common.category'), cell: (e) => <Pill tone="neutral">{translateExpenseCategory(e.category, t)}</Pill> },
     { key: 'description', header: t('common.description'), cell: (e) => <span className="font-medium">{e.description}</span> },
-    { key: 'account', header: t('common.account'), cell: (e) => <span className="text-muted-foreground">{e.account}</span> },
-    { key: 'status', header: t('common.status'), cell: () => <Pill tone="success">Posted</Pill> },
+    { key: 'account', header: t('common.account'), cell: (e) => <span className="text-muted-foreground">{translateAccountName(e.account, t)}</span> },
+    { key: 'status', header: t('common.status'), cell: () => <Pill tone="success">{t('expenses.statusPosted')}</Pill> },
     { key: 'amount', header: t('common.amount'), align: 'right', cell: (e) => <Money value={e.amount} /> },
   ]
 
@@ -216,7 +217,7 @@ export function ExpensesView() {
       />
       <KpiGrid>
         <KpiCard label={t('expenses.total')} value={formatIDR(total)} icon={Receipt} />
-        <KpiCard label={t('expenses.largest')} value={byCat[0]?.[0] ?? '—'} hint={byCat[0] ? formatIDR(byCat[0][1]) : undefined} icon={Tags} tone="warning" />
+        <KpiCard label={t('expenses.largest')} value={byCat[0] ? translateExpenseCategory(byCat[0][0], t) : '—'} hint={byCat[0] ? formatIDR(byCat[0][1]) : undefined} icon={Tags} tone="warning" />
         <KpiCard label={t('expenses.count')} value={expenses.length} icon={Plus} tone="neutral" />
         <KpiCard label={t('period.thisMonth')} value={formatIDR(expenses.filter((e) => inRange(e.date, periodRange('thisMonth'))).reduce((s, e) => s + e.amount, 0))} icon={CalendarClock} />
       </KpiGrid>
@@ -228,7 +229,7 @@ export function ExpensesView() {
             columns={columns}
             getRowId={(e) => e.id}
             searchText={(e) => `${e.id} ${e.category} ${e.description}`}
-            filters={[{ value: 'all', label: t('common.all'), predicate: () => true }, ...byCat.slice(0, 4).map(([c]) => ({ value: c, label: c, predicate: (e: Expense) => e.category === c }))]}
+            filters={[{ value: 'all', label: t('common.all'), predicate: () => true }, ...byCat.slice(0, 4).map(([c]) => ({ value: c, label: translateExpenseCategory(c, t), predicate: (e: Expense) => e.category === c }))]}
             addLabel={t('expenses.add')}
             onAdd={() => setOpen(true)}
           />
@@ -238,7 +239,7 @@ export function ExpensesView() {
             {byCat.map(([c, v]) => (
               <li key={c}>
                 <div className="flex justify-between text-sm">
-                  <span>{c}</span>
+                  <span>{translateExpenseCategory(c, t)}</span>
                   <span className="font-mono text-xs tabular-nums text-muted-foreground">{formatPercent((v / total) * 100)}</span>
                 </div>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
@@ -247,6 +248,7 @@ export function ExpensesView() {
                 <p className="mt-1 font-mono text-[11px] tabular-nums text-muted-foreground">{formatIDR(v)}</p>
               </li>
             ))}
+            {byCat.length === 0 && <li className="text-sm text-muted-foreground">{t('expenses.noCategoryBreakdown')}</li>}
           </ul>
         </SectionCard>
       </div>
@@ -257,9 +259,9 @@ export function ExpensesView() {
         title={t('expenses.add')}
         fields={[
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'category', label: t('common.category'), type: 'select', half: true, options: expenseCategories.map((c) => ({ value: c, label: c })) },
-          { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', half: true },
-          { name: 'account', label: t('common.account'), type: 'select', half: true, options: accounts },
+          { name: 'category', label: t('common.category'), type: 'select', half: true, options: expenseCategories.map((c) => ({ value: c, label: translateExpenseCategory(c, t) })) },
+          { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', min: 1, half: true },
+          { name: 'account', label: t('common.account'), type: 'select', half: true, options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })) },
           { name: 'description', label: t('common.description'), type: 'textarea' },
         ]}
       />

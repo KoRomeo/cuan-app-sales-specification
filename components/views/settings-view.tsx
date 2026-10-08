@@ -60,8 +60,8 @@ export function SettingsView() {
 
   const validateProfile = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const nameError = profileName.trim() ? '' : t('settings.profileInvalid')
-    const emailError = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileEmail.trim()) ? '' : t('settings.profileInvalid')
+    const nameError = profileName.trim() ? '' : t('settings.nameRequired')
+    const emailError = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileEmail.trim()) ? '' : t('settings.emailInvalid')
     setProfileNameError(nameError)
     setProfileEmailError(emailError)
     if (nameError || emailError) {
@@ -116,7 +116,7 @@ export function SettingsView() {
               />
             </Field>
             <Field id="settings-business-type" label={t('settings.businessType')}>
-              <Input id="settings-business-type" value="CuanApp Sales" disabled readOnly />
+              <Input id="settings-business-type" value={t('onboarding.salesType')} disabled readOnly />
             </Field>
             <Field id="settings-currency" label={t('settings.currency')} hint={t('settings.currencyLocked')}>
               <Input id="settings-currency" value="IDR (Rp)" disabled readOnly aria-describedby="settings-currency-hint" />

@@ -79,10 +79,10 @@ export function PurchasesView() {
           { name: 'supplier', label: t('common.supplier'), type: 'select', half: true, options: suppliers.map((s) => ({ value: s.id, label: s.name })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
           { name: 'product', label: t('common.product'), type: 'select', options: products.map((p) => ({ value: p.id, label: `${p.name} (${p.stock})` })) },
-          { name: 'qty', label: t('common.qty'), type: 'number', defaultValue: '100', half: true },
-          { name: 'price', label: t('purchases.purchasePrice'), type: 'number', prefix: 'Rp', defaultValue: '11000', half: true },
-          { name: 'paid', label: t('common.paid'), type: 'number', prefix: 'Rp', defaultValue: '0', half: true },
-          { name: 'due', label: t('common.dueDate'), type: 'date', half: true },
+          { name: 'qty', label: t('common.qty'), type: 'number', min: 1, defaultValue: '100', half: true },
+          { name: 'price', label: t('purchases.purchasePrice'), type: 'number', prefix: 'Rp', min: 0, defaultValue: '11000', half: true },
+          { name: 'paid', label: t('common.paid'), type: 'number', prefix: 'Rp', min: 0, defaultValue: '0', half: true },
+          { name: 'due', label: t('common.dueDate'), type: 'date', required: false, half: true },
         ]}
       />
     </>
