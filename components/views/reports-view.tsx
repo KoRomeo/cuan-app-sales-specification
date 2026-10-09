@@ -8,7 +8,7 @@ import { PeriodSelect } from '@/components/common/period-select'
 import { SectionCard } from '@/components/common/section-card'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
-import { balanceSheet, cashFlow, chartOfAccounts, journalEntries, profitAndLoss } from '@/lib/accounting'
+import { balanceSheet, cashFlow, chartOfAccounts, generalLedger, profitAndLoss } from '@/lib/accounting'
 import {
   activeOrders,
   customerById,
@@ -86,20 +86,7 @@ export function ReportsView() {
   const pl = profitAndLoss(range)
   const bs = balanceSheet(range[1] > TODAY ? TODAY : range[1])
   const cf = cashFlow(range)
-  let ledgerBalance = 0
-  const ledger = journalEntries
-    .filter((entry) => inRange(entry.date, range))
-    .flatMap((entry) => entry.lines.filter((line) => line.accountCode === ledgerAccount).map((line) => {
-      ledgerBalance += line.debit - line.credit
-      return {
-        date: entry.date,
-        entryId: entry.id,
-        memo: `${entry.description} · ${line.description}`,
-        debit: line.debit,
-        credit: line.credit,
-        balance: ledgerBalance,
-      }
-    }))
+  const ledger = generalLedger(ledgerAccount, range)
 
   const tabs: { value: ReportTab; label: string }[] = [
     { value: 'sales', label: t('reports.sales') },
