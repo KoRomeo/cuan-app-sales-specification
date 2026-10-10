@@ -1,3 +1,4 @@
+
 import {
   type Expense,
   expenses,
@@ -15,14 +16,14 @@ import {
   replacements,
   stockMovements,
   TODAY,
-  purchases,
-  purchaseTotal,
-  replacements,
-  stockMovements,
-  TODAY,
 } from '@/lib/data'
 
-export type AccountType = 'asset' | 'liability' | 'equity' | 'revenue' | 'expense'
+export type AccountType =
+  | 'asset'
+  | 'liability'
+  | 'equity'
+  | 'revenue'
+  | 'expense'
 
 export type EntryKind =
   | 'opening'
@@ -36,10 +37,7 @@ export type EntryKind =
   | 'replacement'
   | 'adjustment'
   | 'reversal'
-export interface LedgerAccount {
-  code: string
-  name: string
-  type: AccountType
+
 export interface LedgerAccount {
   code: string
   name: string
@@ -55,11 +53,7 @@ export interface JournalLine {
   credit: number
   description: string
 }
-}
 
-export interface JournalEntry {
-  id: string
-  date: string
 export interface JournalEntry {
   id: string
   date: string
