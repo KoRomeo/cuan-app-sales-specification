@@ -2,6 +2,7 @@
 
 import { AlertTriangle, CalendarClock, HandCoins, Plus, Receipt, Tags, Users, Wallet } from 'lucide-react'
 import { useState } from 'react'
+import useSWR from 'swr'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
 import { FormDialog } from '@/components/common/form-dialog'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
@@ -38,6 +39,25 @@ import { translateAccountName, translateExpenseCategory } from '@/lib/i18n'
 
 const accountValues = ['Cash', 'Bank BCA', 'Bank Mandiri'] as const
 const in7Days = '2026-10-13'
+const fetcher = (url: string) => fetch(url).then((response) => { if (!response.ok) throw new Error('Unable to load finance data'); return response.json() })
+
+type PersistedPayment = { id: string; date: string; amount: string; account: string; orderId: string | null; purchaseId: string | null }
+
+function PersistedPaymentHistory({ businessId, kind }: { businessId: string | undefined; kind: 'receivable' | 'payable' }) {
+  const { t } = useApp()
+  const { data, error, mutate } = useSWR<PersistedPayment[]>(businessId ? `/api/payments?businessId=${encodeURIComponent(businessId)}` : null, fetcher)
+  const payments = (data ?? []).filter((payment) => kind === 'receivable' ? payment.orderId : payment.purchaseId)
+  return (
+    <SectionCard title={t('finance.paymentHistory')} description={t('finance.persistedData')}>
+      {error ? <p className="text-sm text-destructive">{error.message}</p> : payments.length === 0 ? <p className="text-sm text-muted-foreground">{t('finance.noPayments')}</p> : (
+        <div className="divide-y">
+          {payments.map((payment) => <div key={payment.id} className="flex items-center justify-between gap-3 py-2 text-sm"><span><span className="font-mono text-xs">{payment.id}</span><span className="ml-2 text-muted-foreground">{formatDate(payment.date)}</span></span><span className="font-mono tabular-nums">{formatIDR(Number(payment.amount))}</span></div>)}
+        </div>
+      )}
+      <button type="button" className="sr-only" onClick={() => mutate()}>Refresh payment history</button>
+    </SectionCard>
+  )
+}
 
 function DueCell({ due, outstanding }: { due: string | null; outstanding: number }) {
   const { t } = useApp()
@@ -55,6 +75,8 @@ function DueCell({ due, outstanding }: { due: string | null; outstanding: number
 export function ReceivablesView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
+  const { data: business } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { mutate: refreshPayments } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const rows = orders.filter((o) => orderOutstanding(o) > 0).sort((a, b) => (a.date < b.date ? -1 : 1))
   const total = rows.reduce((s, o) => s + orderOutstanding(o), 0)
   const overdue = rows.filter((o) => isOverdue(o.dueDate, orderOutstanding(o)))
@@ -102,11 +124,22 @@ export function ReceivablesView() {
         deletable={false}
         contextActions={() => [{ label: t('orders.addPayment'), icon: Wallet, onSelect: () => setOpen(true) }]}
       />
+      <PersistedPaymentHistory businessId={business?.id} kind="receivable" />
       <FormDialog
         open={open}
         onOpenChange={setOpen}
         title={t('orders.addPayment')}
         description={t('receivables.allocationHint')}
+        persisted
+        onSubmit={async (values) => {
+          if (!business?.id) throw new Error('Business access required')
+          const order = rows.find((item) => item.customerId === values.customer)
+          if (!order) throw new Error('Select a customer with an outstanding order')
+          const response = await fetch('/api/payments', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: `PAY-${crypto.randomUUID()}`, businessId: business.id, orderId: order.id, date: values.date, amount: Number(values.amount), account: values.account }) })
+          if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to record payment')
+          await refreshPayments()
+          setOpen(false)
+        }}
         fields={[
           { name: 'customer', label: t('common.customer'), type: 'select', options: customers.filter((c) => rows.some((o) => o.customerId === c.id)).map((c) => ({ value: c.id, label: c.name })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
@@ -121,6 +154,8 @@ export function ReceivablesView() {
 export function PayablesView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
+  const { data: business } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { mutate: refreshPayments } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const rows = purchases.filter((p) => purchaseOutstanding(p) > 0)
   const total = rows.reduce((s, p) => s + purchaseOutstanding(p), 0)
   const overdue = rows.filter((p) => isOverdue(p.dueDate, purchaseOutstanding(p)))
@@ -167,10 +202,21 @@ export function PayablesView() {
         deletable={false}
         contextActions={() => [{ label: t('orders.addPayment'), icon: Wallet, onSelect: () => setOpen(true) }]}
       />
+      <PersistedPaymentHistory businessId={business?.id} kind="payable" />
       <FormDialog
         open={open}
         onOpenChange={setOpen}
         title={t('orders.addPayment')}
+        persisted
+        onSubmit={async (values) => {
+          if (!business?.id) throw new Error('Business access required')
+          const purchase = rows.find((item) => item.id === values.purchase)
+          if (!purchase) throw new Error('Select a purchase with an outstanding balance')
+          const response = await fetch('/api/payments', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: `PAY-${crypto.randomUUID()}`, businessId: business.id, purchaseId: purchase.id, date: values.date, amount: Number(values.amount), account: values.account }) })
+          if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to record payment')
+          await refreshPayments()
+          setOpen(false)
+        }}
         fields={[
           { name: 'purchase', label: t('purchases.id'), type: 'select', options: rows.map((p) => ({ value: p.id, label: `${p.id} · ${supplierById(p.supplierId)?.name}` })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
@@ -287,6 +333,9 @@ export function ProfitLossView() {
   const pl = profitAndLoss(periodRange(period))
   const pct = (v: number) => (pl.revenue ? formatPercent((v / pl.revenue) * 100) : '—')
 
+  const { data: business } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { data: accounting } = useSWR<{ ledger?: Record<string, { debit: number; credit: number }>; ledgerBalanced?: boolean; note?: string }>(business?.id ? `/api/accounting?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+
   return (
     <>
       <PageHeader
@@ -320,6 +369,16 @@ export function ProfitLossView() {
           <div className={`rounded-md px-3 ${pl.netProfit < 0 ? 'bg-destructive/8' : 'bg-primary/8'}`}>
             <PlRow label={t('pl.netProfit')} value={pl.netProfit} strong />
           </div>
+        </div>
+      </SectionCard>
+      <SectionCard title={t('finance.persistedLedger')} description={accounting?.note ?? t('finance.persistedData')} className="mx-auto mt-4 max-w-3xl">
+        <div className="flex items-center justify-between border-b pb-3 text-sm">
+          <span>{t('finance.ledgerStatus')}</span>
+          <Pill tone={accounting?.ledgerBalanced ? 'success' : 'destructive'}>{accounting?.ledgerBalanced ? t('finance.balanced') : t('finance.unavailable')}</Pill>
+        </div>
+        <div className="divide-y">
+          {Object.entries(accounting?.ledger ?? {}).map(([account, values]) => <div key={account} className="flex items-center justify-between py-2 text-sm"><span>{translateAccountName(account, t)}</span><span className="font-mono text-xs tabular-nums">D {formatIDR(values.debit)} · K {formatIDR(values.credit)}</span></div>)}
+          {!accounting && <p className="py-3 text-sm text-muted-foreground">{t('finance.noLedger')}</p>}
         </div>
       </SectionCard>
     </>
