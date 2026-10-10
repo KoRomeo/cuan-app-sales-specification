@@ -2,6 +2,7 @@
 
 import { Building2, HandCoins, Package, ShoppingBag } from 'lucide-react'
 import { useState } from 'react'
+import useSWR from 'swr'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
 import { FormDialog } from '@/components/common/form-dialog'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
@@ -11,35 +12,54 @@ import { useApp } from '@/components/providers'
 import { appToast as toast } from '@/lib/toast'
 import {
   type Party,
-  productById,
-  products,
   type Purchase,
   purchaseOutstanding,
   purchasePaid,
   purchasePaymentStatus,
   purchases,
   purchaseTotal,
-  supplierById,
   suppliers,
   TODAY,
 } from '@/lib/data'
 import { formatDate, formatIDR } from '@/lib/format'
 
+const fetcher = (url: string) => fetch(url).then(async (response) => {
+  if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load purchases')
+  return response.json()
+})
+type PersistedPurchase = { id: string; date: string; supplierId: string; dueDate: string | null; notes: string | null; items: Array<{ productId: string; qty: number; unitCost: string | number }> }
+type PersistedPayment = { id: string; date: string; amount: string | number; account: string; purchaseId: string | null }
+type PersistedParty = { id: string; name: string; phone?: string | null; address?: string | null }
+function mapPurchase(row: PersistedPurchase, payments: PersistedPayment[]): Purchase {
+  return { ...row, notes: row.notes ?? '', items: row.items.map((item) => ({ productId: item.productId, qty: item.qty, price: Number(item.unitCost) })), payments: payments.filter((payment) => payment.purchaseId === row.id).map((payment) => ({ id: payment.id, date: payment.date, amount: Number(payment.amount), account: payment.account })) }
+}
+
 export function PurchasesView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
-  const sorted = [...purchases].sort((a, b) => (a.id < b.id ? 1 : -1))
+  const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { data: persistedPurchases, error: purchasesError } = useSWR<PersistedPurchase[]>(business?.id ? `/api/purchases?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: payments, error: paymentsError } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: persistedSuppliers, error: suppliersError } = useSWR<PersistedParty[]>(business?.id ? `/api/suppliers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: persistedProducts, error: productsError } = useSWR<Array<{ id: string; name: string; stock?: number }>>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const error = businessError || purchasesError || paymentsError || suppliersError || productsError
+  if (error) return <p role="alert" className="text-sm text-destructive">{error.message}</p>
+  if (!business || !persistedPurchases || !payments || !persistedSuppliers || !persistedProducts) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+  const purchaseRows = persistedPurchases.map((purchase) => mapPurchase(purchase, payments))
+  const supplierByIdMap = new Map(persistedSuppliers.map((supplier) => [supplier.id, supplier]))
+  const productByIdMap = new Map(persistedProducts.map((product) => [product.id, product]))
+  const sorted = [...purchaseRows].sort((a, b) => (a.id < b.id ? 1 : -1))
 
   const columns: Column<Purchase>[] = [
     { key: 'id', header: t('purchases.id'), cell: (p) => <IdCell>{p.id}</IdCell> },
     { key: 'date', header: t('common.date'), cell: (p) => <span className="font-mono text-xs text-muted-foreground">{formatDate(p.date)}</span> },
-    { key: 'supplier', header: t('common.supplier'), cell: (p) => <span className="font-medium">{supplierById(p.supplierId)?.name}</span> },
+    { key: 'supplier', header: t('common.supplier'), cell: (p) => <span className="font-medium">{supplierByIdMap.get(p.supplierId)?.name}</span> },
     {
       key: 'items',
       header: t('common.items'),
       cell: (p) => (
         <span className="block max-w-60 truncate text-muted-foreground">
-          {p.items.map((it) => `${productById(it.productId)?.name} ×${it.qty}`).join(', ')}
+          {p.items.map((it) => `${productByIdMap.get(it.productId)?.name} ×${it.qty}`).join(', ')}
         </span>
       ),
     },
@@ -53,16 +73,16 @@ export function PurchasesView() {
     <>
       <PageHeader breadcrumbs={[{ label: t('nav.purchasing') }, { label: t('nav.purchases') }]} title={t('purchases.title')} description={t('purchases.desc')} />
       <KpiGrid>
-        <KpiCard label={t('purchases.count')} value={purchases.length} icon={ShoppingBag} />
-        <KpiCard label={t('purchases.totalPurchased')} value={formatIDR(purchases.reduce((s, p) => s + purchaseTotal(p), 0))} icon={Package} />
-        <KpiCard label={t('common.paid')} value={formatIDR(purchases.reduce((s, p) => s + purchasePaid(p), 0))} icon={HandCoins} tone="success" />
-        <KpiCard label={t('purchases.outstandingPayables')} value={formatIDR(purchases.reduce((s, p) => s + purchaseOutstanding(p), 0))} icon={HandCoins} tone="warning" href="/payables" />
+        <KpiCard label={t('purchases.count')} value={purchaseRows.length} icon={ShoppingBag} />
+        <KpiCard label={t('purchases.totalPurchased')} value={formatIDR(purchaseRows.reduce((s, p) => s + purchaseTotal(p), 0))} icon={Package} />
+        <KpiCard label={t('common.paid')} value={formatIDR(purchaseRows.reduce((s, p) => s + purchasePaid(p), 0))} icon={HandCoins} tone="success" />
+        <KpiCard label={t('purchases.outstandingPayables')} value={formatIDR(purchaseRows.reduce((s, p) => s + purchaseOutstanding(p), 0))} icon={HandCoins} tone="warning" href="/payables" />
       </KpiGrid>
       <DataTable
         rows={sorted}
         columns={columns}
         getRowId={(p) => p.id}
-        searchText={(p) => `${p.id} ${supplierById(p.supplierId)?.name} ${p.items.map((i) => productById(i.productId)?.name).join(' ')}`}
+        searchText={(p) => `${p.id} ${supplierByIdMap.get(p.supplierId)?.name} ${p.items.map((i) => productByIdMap.get(i.productId)?.name).join(' ')}`}
         filters={[
           { value: 'all', label: t('common.all'), predicate: () => true },
           { value: 'unpaid', label: t('pay.unpaid'), predicate: (p) => purchasePaymentStatus(p) === 'unpaid' },
@@ -87,9 +107,9 @@ export function PurchasesView() {
           toast.success(t('form.savedFeedback'))
         }}
         fields={[
-          { name: 'supplier', label: t('common.supplier'), type: 'select', half: true, options: suppliers.map((s) => ({ value: s.id, label: s.name })) },
+          { name: 'supplier', label: t('common.supplier'), type: 'select', half: true, options: persistedSuppliers.map((s) => ({ value: s.id, label: s.name })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'product', label: t('common.product'), type: 'select', options: products.map((p) => ({ value: p.id, label: `${p.name} (${p.stock})` })) },
+          { name: 'product', label: t('common.product'), type: 'select', options: persistedProducts.map((p) => ({ value: p.id, label: `${p.name}${p.stock === undefined ? '' : ` (${p.stock})`}` })) },
           { name: 'qty', label: t('common.qty'), type: 'number', min: 1, defaultValue: '100', half: true },
           { name: 'price', label: t('purchases.purchasePrice'), type: 'number', prefix: 'Rp', min: 0, defaultValue: '11000', half: true },
           { name: 'paid', label: t('common.paid'), type: 'number', prefix: 'Rp', min: 0, defaultValue: '0', half: true },

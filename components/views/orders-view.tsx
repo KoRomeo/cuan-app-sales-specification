@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import useSWR from 'swr'
 import { AlertTriangle, CircleDollarSign, Clock, FileText, ShoppingCart, Truck } from 'lucide-react'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
@@ -8,24 +9,44 @@ import { PageHeader } from '@/components/common/page-header'
 import { OrderStatusBadge, PaymentStatusBadge } from '@/components/common/status-badge'
 import { useApp } from '@/components/providers'
 import {
-  customerById,
   type Order,
   orderOutstanding,
   orderPaid,
   orderPaymentStatus,
-  orders,
   orderTotal,
-  productById,
 } from '@/lib/data'
 import { formatDate, formatIDR } from '@/lib/format'
 
-const hasNegativeImpact = (o: Order) =>
-  o.status !== 'cancelled' && o.items.some((it) => (productById(it.productId)?.stock ?? 0) < 0)
+const fetcher = (url: string) => fetch(url).then(async (response) => {
+  if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load orders')
+  return response.json()
+})
+type PersistedOrder = { id: string; date: string; customerId: string; status: Order['status']; dueDate: string | null; notes: string | null; items: Array<{ productId: string; qty: number; price: string | number; discount?: string | number; unitCost: string | number }> }
+type PersistedPayment = { id: string; date: string; amount: string | number; account: string; orderId: string | null }
+type PersistedParty = { id: string; name: string; phone?: string | null; address?: string | null }
+function mapOrder(row: PersistedOrder, payments: PersistedPayment[]): Order {
+  return { ...row, notes: row.notes ?? '', items: row.items.map((item) => ({ ...item, price: Number(item.price), discount: Number(item.discount ?? 0), unitCost: Number(item.unitCost) })), payments: payments.filter((payment) => payment.orderId === row.id).map((payment) => ({ id: payment.id, date: payment.date, amount: Number(payment.amount), account: payment.account })), delivery: null }
+}
+
+const hasNegativeImpact = (o: Order, productStock: Map<string, number>) =>
+  o.status !== 'cancelled' && o.items.some((it) => (productStock.get(it.productId) ?? 0) < 0)
 
 export function OrdersView() {
   const { t } = useApp()
   const router = useRouter()
-  const sorted = [...orders].sort((a, b) => (a.id < b.id ? 1 : -1))
+  const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { data: persistedOrders, error: ordersError } = useSWR<PersistedOrder[]>(business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: payments, error: paymentsError } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: customers, error: customersError } = useSWR<PersistedParty[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: products, error: productsError } = useSWR<Array<{ id: string; name: string; stock?: number }>>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const error = businessError || ordersError || paymentsError || customersError || productsError
+  if (error) return <p role="alert" className="text-sm text-destructive">{error.message}</p>
+  if (!business || !persistedOrders || !payments || !customers || !products) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+  const orderRows = persistedOrders.map((order) => mapOrder(order, payments))
+  const customerByIdMap = new Map(customers.map((customer) => [customer.id, customer]))
+  const productByIdMap = new Map(products.map((product) => [product.id, product]))
+  const productStock = new Map(products.map((product) => [product.id, product.stock ?? 0]))
+  const sorted = [...orderRows].sort((a, b) => (a.id < b.id ? 1 : -1))
   const active = sorted.filter((o) => o.status !== 'cancelled')
 
   const columns: Column<Order>[] = [
@@ -35,14 +56,14 @@ export function OrdersView() {
       cell: (o) => (
         <span className="flex items-center gap-2">
           <IdCell>{o.id}</IdCell>
-          {hasNegativeImpact(o) && (
+          {hasNegativeImpact(o, productStock) && (
             <AlertTriangle className="size-3.5 text-destructive" aria-label={t('orders.negativeImpact')} />
           )}
         </span>
       ),
     },
     { key: 'date', header: t('common.date'), cell: (o) => <span className="font-mono text-xs text-muted-foreground">{formatDate(o.date)}</span> },
-    { key: 'customer', header: t('common.customer'), cell: (o) => <span className="font-medium">{customerById(o.customerId)?.name}</span> },
+    { key: 'customer', header: t('common.customer'), cell: (o) => <span className="font-medium">{customerByIdMap.get(o.customerId)?.name}</span> },
     { key: 'status', header: t('common.status'), sortValue: (o) => o.status, cell: (o) => <OrderStatusBadge status={o.status} /> },
     { key: 'payment', header: t('orders.paymentStatus'), sortValue: (o) => (o.status === 'cancelled' ? null : orderPaymentStatus(o)), cell: (o) => (o.status === 'cancelled' ? <span className="text-muted-foreground">—</span> : <PaymentStatusBadge status={orderPaymentStatus(o)} />) },
     { key: 'total', header: t('common.total'), align: 'right', cell: (o) => <Money value={orderTotal(o)} className={o.status === 'cancelled' ? 'text-muted-foreground line-through' : ''} /> },
@@ -81,7 +102,7 @@ export function OrdersView() {
         rows={sorted}
         columns={columns}
         getRowId={(o) => o.id}
-        searchText={(o) => `${o.id} ${customerById(o.customerId)?.name} ${o.items.map((i) => productById(i.productId)?.name).join(' ')}`}
+        searchText={(o) => `${o.id} ${customerByIdMap.get(o.customerId)?.name} ${o.items.map((i) => productByIdMap.get(i.productId)?.name).join(' ')}`}
         filters={[
           { value: 'all', label: t('common.all'), predicate: () => true },
           { value: 'requested', label: t('status.requested'), predicate: (o) => o.status === 'requested' },
