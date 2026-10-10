@@ -1,7 +1,8 @@
 'use client'
 
 import { AlertTriangle, ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Boxes, Package, SlidersHorizontal, TrendingDown } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { appToast as toast } from '@/lib/toast'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
 import { FormDialog } from '@/components/common/form-dialog'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
@@ -10,14 +11,45 @@ import { Pill, StockStatusBadge } from '@/components/common/status-badge'
 import type { Tone } from '@/components/common/tone'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
-import { type MovementType, type Product, productById, products, type StockMovement, stockMovements, stockStatusOf, TODAY } from '@/lib/data'
+import { type MovementType, type Product, type StockMovement, stockStatusOf, TODAY } from '@/lib/data'
 import { formatIDR, formatDate, formatPercent } from '@/lib/format'
 
-const inventoryValue = () => products.reduce((s, p) => s + Math.max(p.stock, 0) * p.averageCost, 0)
+const toProduct = (row: Record<string, unknown>, stock = 0): Product => ({
+  id: String(row.id),
+  name: String(row.name),
+  sellingPrice: Number(row.sellingPrice ?? 0),
+  costReference: Number(row.costReference ?? 0),
+  averageCost: Number(row.averageCost ?? 0),
+  minimumStock: Number(row.minimumStock ?? 0),
+  stock,
+})
 
 export function ProductsView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
+  const [businessId, setBusinessId] = useState<string | null>(null)
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const inventoryValue = useMemo(() => products.reduce((s, p) => s + Math.max(p.stock, 0) * p.averageCost, 0), [products])
+  const loadProducts = async () => {
+    const business = await fetch('/api/businesses/current').then(async (response) => {
+      if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load business')
+      return response.json()
+    })
+    setBusinessId(business.id)
+    const [productRows, stockRows] = await Promise.all([
+      fetch(`/api/products?businessId=${encodeURIComponent(business.id)}`).then((response) => response.json()),
+      fetch(`/api/stock?businessId=${encodeURIComponent(business.id)}`).then((response) => response.json()),
+    ])
+    if (!Array.isArray(productRows) || !Array.isArray(stockRows)) throw new Error('Unable to load products')
+    const stockByProduct = new Map<string, number>(stockRows.map((row: { productId: string; stock: number }) => [row.productId, Number(row.stock)] as [string, number]))
+    setProducts(productRows.map((row: Record<string, unknown>) => toProduct(row, stockByProduct.get(String(row.id)) ?? 0)))
+  }
+
+  useEffect(() => {
+    loadProducts().catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to load products')).finally(() => setLoading(false))
+  }, [])
 
   const columns: Column<Product>[] = [
     { key: 'id', header: t('products.id'), cell: (p) => <IdCell>{p.id}</IdCell> },
@@ -41,7 +73,7 @@ export function ProductsView() {
       <PageHeader breadcrumbs={[{ label: t('nav.inventory') }, { label: t('nav.products') }]} title={t('products.title')} description={t('products.desc')} />
       <KpiGrid>
         <KpiCard label={t('products.total')} value={products.length} icon={Package} />
-        <KpiCard label={t('products.inventoryValue')} value={formatIDR(inventoryValue())} icon={Boxes} tone="success" />
+        <KpiCard label={t('products.inventoryValue')} value={loading ? '—' : formatIDR(inventoryValue)} icon={Boxes} tone="success" />
         <KpiCard label={t('stock.low')} value={products.filter((p) => stockStatusOf(p) === 'low').length} icon={TrendingDown} tone="warning" href="/stock" />
         <KpiCard label={t('stock.negative')} value={products.filter((p) => p.stock < 0).length} icon={AlertTriangle} tone="destructive" href="/stock" />
       </KpiGrid>
@@ -69,6 +101,26 @@ export function ProductsView() {
           { name: 'opening', label: t('mov.opening'), type: 'number', min: 0, defaultValue: '0', half: true },
           { name: 'min', label: t('products.minimumStock'), type: 'number', min: 0, defaultValue: '0', half: true },
         ]}
+        onSubmit={async (values) => {
+          if (!businessId) throw new Error('No business membership found')
+          const response = await fetch('/api/products', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              id: `P-${Date.now()}`,
+              businessId,
+              name: values.name,
+              sellingPrice: Number(values.price),
+              costReference: Number(values.cost),
+              averageCost: Number(values.cost),
+              minimumStock: Number(values.min || 0),
+            }),
+          })
+          if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to create product')
+          await loadProducts()
+          setOpen(false)
+          toast.success('Product saved')
+        }}
       />
     </>
   )
@@ -77,6 +129,23 @@ export function ProductsView() {
 export function StockView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
+  const [products, setProducts] = useState<Product[]>([])
+  const [businessId, setBusinessId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const loadStock = async () => {
+    const business = await fetch('/api/businesses/current').then(async (response) => {
+      if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load business')
+      return response.json()
+    })
+    setBusinessId(business.id)
+    const [productRows, stockRows] = await Promise.all([
+      fetch(`/api/products?businessId=${encodeURIComponent(business.id)}`).then((response) => response.json()),
+      fetch(`/api/stock?businessId=${encodeURIComponent(business.id)}`).then((response) => response.json()),
+    ])
+    const stockByProduct = new Map<string, number>(stockRows.map((row: { productId: string; stock: number }) => [row.productId, Number(row.stock)] as [string, number]))
+    setProducts(productRows.map((row: Record<string, unknown>) => toProduct(row, stockByProduct.get(String(row.id)) ?? 0)))
+  }
+  useEffect(() => { loadStock().catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to load stock')) }, [])
   const sorted = [...products].sort((a, b) => a.stock - b.stock)
 
   const columns: Column<Product>[] = [
@@ -121,7 +190,7 @@ export function StockView() {
         }
       />
       <KpiGrid>
-        <KpiCard label={t('stock.value')} value={formatIDR(inventoryValue())} icon={Boxes} tone="success" />
+        <KpiCard label={t('stock.value')} value={formatIDR(products.reduce((sum, product) => sum + Math.max(product.stock, 0) * product.averageCost, 0))} icon={Boxes} tone="success" />
         <KpiCard label={t('reports.units')} value={products.reduce((s, p) => s + Math.max(p.stock, 0), 0)} icon={Package} />
         <KpiCard label={t('stock.low')} value={products.filter((p) => stockStatusOf(p) === 'low').length} icon={TrendingDown} tone="warning" />
         <KpiCard label={t('stock.negative')} value={products.filter((p) => p.stock < 0).length} icon={AlertTriangle} tone="destructive" />
@@ -151,6 +220,26 @@ export function StockView() {
           { name: 'qty', label: t('stock.newQty'), type: 'number', defaultValue: '-1', half: true },
           { name: 'reason', label: t('stock.reason'), type: 'textarea' },
         ]}
+        onSubmit={async (values) => {
+          if (!businessId) throw new Error('No business membership found')
+          const response = await fetch('/api/stock-movements', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              id: `MOV-${Date.now()}`,
+              businessId,
+              productId: values.product,
+              date: values.date,
+              type: 'adjustment',
+              qty: Number(values.qty),
+              reference: values.reason || 'Manual adjustment',
+            }),
+          })
+          if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to save stock adjustment')
+          await loadStock()
+          setOpen(false)
+          toast.success('Stock adjustment saved')
+        }}
       />
     </>
   )
@@ -168,26 +257,34 @@ const movementTone: Record<MovementType, Tone> = {
 export function StockMovementsView() {
   const { t } = useApp()
   const [movements, setMovements] = useState<StockMovement[]>([])
+  const [productNames, setProductNames] = useState<Record<string, string>>({})
+  const [error, setError] = useState<string | null>(null)
   useEffect(() => {
-  async function loadMovements() {
-    try {
-      const response = await fetch('/api/stock-movements?businessId=BUS-0001')
-      if (!response.ok) throw new Error('Failed to fetch stock movements')
-      const data: StockMovement[] = await response.json()
-      console.log('Stock movements API data:', data)
-      setMovements(data)
-    } catch (error) {
-      console.error('Failed to load stock movements:', error)
+    async function loadMovements() {
+      try {
+        const business = await fetch('/api/businesses/current').then(async (response) => {
+          if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load business')
+          return response.json()
+        })
+        const [movementResponse, productResponse] = await Promise.all([
+          fetch(`/api/stock-movements?businessId=${encodeURIComponent(business.id)}`),
+          fetch(`/api/products?businessId=${encodeURIComponent(business.id)}`),
+        ])
+        if (!movementResponse.ok || !productResponse.ok) throw new Error('Failed to fetch inventory data')
+        const [data, productRows] = await Promise.all([movementResponse.json(), productResponse.json()])
+        setMovements(data)
+        setProductNames(Object.fromEntries(productRows.map((product: { id: string; name: string }) => [product.id, product.name])))
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : 'Failed to load inventory data')
+      }
     }
-  }
-
-  loadMovements()
-}, [])
+    loadMovements()
+  }, [])
 
   const columns: Column<StockMovement>[] = [
     { key: 'id', header: t('movements.id'), cell: (m) => <IdCell>{m.id}</IdCell> },
     { key: 'date', header: t('common.date'), cell: (m) => <span className="font-mono text-xs text-muted-foreground">{formatDate(m.date)}</span> },
-    { key: 'product', header: t('common.product'), cell: (m) => <span className="font-medium">{productById(m.productId)?.name}</span> },
+    { key: 'product', header: t('common.product'), cell: (m) => <span className="font-medium">{productNames[m.productId] ?? m.productId}</span> },
     { key: 'type', header: t('movements.type'), cell: (m) => <Pill tone={movementTone[m.type]}>{t(`mov.${m.type}`)}</Pill> },
     { key: 'ref', header: t('common.reference'), cell: (m) => <span className="font-mono text-xs text-muted-foreground">{m.reference}</span> },
     {
@@ -220,7 +317,7 @@ export function StockMovementsView() {
         rows={movements}
         columns={columns}
         getRowId={(m) => m.id}
-        searchText={(m) => `${m.id} ${m.reference} ${productById(m.productId)?.name}`}
+        searchText={(m) => `${m.id} ${m.reference} ${productNames[m.productId] ?? m.productId}`}
         filters={[
           { value: 'all', label: t('common.all'), predicate: () => true },
           { value: 'purchase', label: t('mov.purchase'), predicate: (m) => m.type === 'purchase' },
