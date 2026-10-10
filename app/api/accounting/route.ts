@@ -9,7 +9,10 @@ payments,
 purchases,
 purchaseItems,
 expenses,
+  journalEntries,
+  journalEntryLines,
 } from "@/lib/db/schema";
+import { requireBusinessAccess } from "@/lib/api-auth";
 
 export async function GET(request: Request) {
 try {
@@ -24,6 +27,8 @@ try {
         { status: 400 },
     );
     }
+    const access = await requireBusinessAccess(businessId)
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     if (
     (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) ||
@@ -144,6 +149,19 @@ try {
     0,
     );
 
+    const ledgerRows = await transactionDb
+      .select({ account: journalEntryLines.account, debit: journalEntryLines.debit, credit: journalEntryLines.credit })
+      .from(journalEntryLines)
+      .innerJoin(journalEntries, eq(journalEntryLines.journalEntryId, journalEntries.id))
+      .where(and(eq(journalEntries.businessId, businessId), ...(startDate ? [gte(journalEntries.entryDate, startDate)] : []), ...(endDate ? [lte(journalEntries.entryDate, endDate)] : [])))
+    const ledger = ledgerRows.reduce<Record<string, { debit: number; credit: number }>>((result, row) => {
+      const current = result[row.account] ?? { debit: 0, credit: 0 }
+      current.debit += Number(row.debit)
+      current.credit += Number(row.credit)
+      result[row.account] = current
+      return result
+    }, {})
+
     return NextResponse.json({
     businessId,
     period: {
@@ -157,7 +175,9 @@ try {
     totalPaymentsReceived: Number(totalPaymentsReceived.toFixed(2)),
     totalPurchases: Number(totalPurchases.toFixed(2)),
     totalExpenses: Number(totalExpenses.toFixed(2)),
-    note: "Preliminary summary only; not a complete accounting statement.",
+    ledger,
+    ledgerBalanced: ledgerRows.reduce((sum, row) => sum + Number(row.debit) - Number(row.credit), 0) === 0,
+    note: "Summary is backed by persisted journal entries and operational transactions.",
     });
 } catch (error) {
     console.error("Failed to generate accounting summary:", error);
