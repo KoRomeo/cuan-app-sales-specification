@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
-import { businessMembers, customers, orderItems, orders, products, stockMovements } from "@/lib/db/schema"
+import { businessMembers, customers, journalEntries, journalEntryLines, orderItems, orders, payments, products, stockMovements } from "@/lib/db/schema"
 import { headers } from "next/headers"
 
 const STATUSES = ["requested", "ready", "delivered", "cancelled"] as const
@@ -27,7 +27,7 @@ function items(value: unknown): value is Item[] {
   })
 }
 function fail(error: unknown, fallback = "Order operation failed") {
-  const map: Record<string, [string, number]> = { CUSTOMER_NOT_FOUND: ["Customer not found for this business", 404], PRODUCT_NOT_FOUND: ["One or more products were not found for this business", 404], ORDER_NOT_FOUND: ["Order not found", 404], ORDER_ID_EXISTS: ["Order ID already exists", 409], INVALID_STATUS: ["Invalid order status transition", 409], DELIVERED_IMMUTABLE: ["Delivered orders cannot be edited or cancelled", 409], DELIVERY_ALREADY_PROCESSED: ["Stock deduction for this order was already recorded", 409], NEGATIVE_STOCK: ["Delivery would create negative stock", 409] }
+  const map: Record<string, [string, number]> = { CUSTOMER_NOT_FOUND: ["Customer not found for this business", 404], PRODUCT_NOT_FOUND: ["One or more products were not found for this business", 404], PAYMENT_EXCEEDS_TOTAL: ["Payment cannot exceed order total", 400], PAYMENT_ID_EXISTS: ["Payment ID already exists", 409], ORDER_NOT_FOUND: ["Order not found", 404], ORDER_ID_EXISTS: ["Order ID already exists", 409], INVALID_STATUS: ["Invalid order status transition", 409], DELIVERED_IMMUTABLE: ["Delivered orders cannot be edited or cancelled", 409], DELIVERY_ALREADY_PROCESSED: ["Stock deduction for this order was already recorded", 409], NEGATIVE_STOCK: ["Delivery would create negative stock", 409] }
   const known = error instanceof Error ? map[error.message] : undefined
   if (known) return NextResponse.json({ error: known[0] }, { status: known[1] })
   console.error(fallback, error)
@@ -54,14 +54,27 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json(); const { id, businessId, date: orderDate, customerId, status = "requested", dueDate, notes, items: lineItems } = body
-    if (![id, businessId, customerId].every((v) => typeof v === "string" && v.trim()) || !date(orderDate) || (dueDate && !date(dueDate)) || !STATUSES.includes(status) || !["requested", "ready"].includes(status) || !items(lineItems)) return NextResponse.json({ error: "Order fields or items are invalid" }, { status: 400 })
+    const body = await request.json(); const { id, businessId, date: orderDate, customerId, status = "requested", dueDate, notes, items: lineItems, paidAmount = 0, paymentAccount = "Cash", paymentDate = orderDate, paymentId } = body
+    if (![id, businessId, customerId].every((v) => typeof v === "string" && v.trim()) || !date(orderDate) || (dueDate && !date(dueDate)) || !STATUSES.includes(status) || !["requested", "ready"].includes(status) || !items(lineItems) || typeof paidAmount !== "number" || !Number.isFinite(paidAmount) || paidAmount < 0 || (paidAmount > 0 && (typeof paymentAccount !== "string" || !paymentAccount.trim())) || (paidAmount > 0 && !paymentId)) return NextResponse.json({ error: "Order fields, items, or payment are invalid" }, { status: 400 })
     const allowed = await access(businessId); if (!allowed.ok) return NextResponse.json({ error: allowed.error }, { status: allowed.status })
     await db.transaction(async (tx) => {
       const [existing] = await tx.select({ id: orders.id }).from(orders).where(eq(orders.id, id)).limit(1); if (existing) throw new Error("ORDER_ID_EXISTS")
       await verify(tx, businessId, customerId, lineItems)
+      const productRows = await tx.select({ id: products.id, sellingPrice: products.sellingPrice, averageCost: products.averageCost }).from(products).where(and(eq(products.businessId, businessId), inArray(products.id, [...new Set(lineItems.map((item) => item.productId))])))
+      const byProduct = new Map(productRows.map((product) => [product.id, product]))
+      const normalizedItems = lineItems.map((item) => ({ ...item, price: Number(byProduct.get(item.productId)?.sellingPrice), unitCost: Number(byProduct.get(item.productId)?.averageCost) }))
+      const total = normalizedItems.reduce((sum, item) => sum + item.qty * item.price - Number(item.discount ?? 0), 0)
+      if (paidAmount > total) throw new Error("PAYMENT_EXCEEDS_TOTAL")
       await tx.insert(orders).values({ id, businessId, date: orderDate, customerId, status, dueDate: dueDate || null, notes: notes || null })
-      await tx.insert(orderItems).values(lineItems.map((item) => ({ id: item.id, orderId: id, productId: item.productId, qty: Number(item.qty), price: String(item.price), discount: String(item.discount ?? 0), unitCost: String(item.unitCost) })))
+      await tx.insert(orderItems).values(normalizedItems.map((item) => ({ id: item.id, orderId: id, productId: item.productId, qty: Number(item.qty), price: String(item.price), discount: String(item.discount ?? 0), unitCost: String(item.unitCost) })))
+      if (paidAmount > 0) {
+        const [existingPayment] = await tx.select({ id: payments.id }).from(payments).where(eq(payments.id, paymentId)).limit(1)
+        if (existingPayment) throw new Error("PAYMENT_ID_EXISTS")
+        const entryId = `JE-PAY-${paymentId}`
+        await tx.insert(payments).values({ id: paymentId, businessId, orderId: id, purchaseId: null, date: paymentDate, amount: paidAmount.toFixed(2), account: paymentAccount.trim() })
+        await tx.insert(journalEntries).values({ id: entryId, businessId, entryDate: paymentDate, kind: "payment", reference: paymentId, description: `Customer payment for ${id}` })
+        await tx.insert(journalEntryLines).values([{ id: `${entryId}-debit`, journalEntryId: entryId, account: paymentAccount.trim(), debit: paidAmount.toFixed(2), credit: "0" }, { id: `${entryId}-credit`, journalEntryId: entryId, account: "Accounts Receivable", debit: "0", credit: paidAmount.toFixed(2) }])
+      }
     })
     return NextResponse.json({ message: "Order created successfully", id }, { status: 201 })
   } catch (error) { return fail(error) }
