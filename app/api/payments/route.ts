@@ -114,6 +114,8 @@ try {
         { status: 409 },
     );
     }
+    const journalReference = await transactionDb.select({ id: journalEntries.id }).from(journalEntries).where(and(eq(journalEntries.businessId, businessId), eq(journalEntries.kind, "payment"), eq(journalEntries.reference, id))).limit(1)
+    if (journalReference.length > 0) return NextResponse.json({ error: "Payment journal already exists" }, { status: 409 })
 
     if (orderId) {
     const [order] = await transactionDb

@@ -80,7 +80,7 @@ export function AuthView({ mode }: { mode: AuthMode }) {
 
     setIsLoading(true)
     setIsComplete(false)
-    const result = isRegister
+    const result = mode === 'register'
       ? await authClient.signUp.email({ name: fields.name.trim(), email: fields.email.trim(), password: fields.password })
       : await authClient.signIn.email({ email: fields.email.trim(), password: fields.password })
     setIsLoading(false)
