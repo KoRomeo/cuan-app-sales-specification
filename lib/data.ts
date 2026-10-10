@@ -98,6 +98,7 @@ export interface Expense {
   amount: number
   account: string
   description: string
+  deletedAt?: string | null
 }
 
 export interface StockMovement {

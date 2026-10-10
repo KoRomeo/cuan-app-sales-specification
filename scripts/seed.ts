@@ -1,4 +1,3 @@
-import dotenv from "dotenv"
 import { sql } from "drizzle-orm"
 import { db } from "../lib/db"
 import {
@@ -30,8 +29,6 @@ expenses as mockExpenses,
 stockMovements as mockStockMovements,
 history as mockHistory,
 } from "../lib/data"
-
-dotenv.config({ path: ".env.development.local" })
 
 const BUSINESS_ID = "BUS-0001"
 
