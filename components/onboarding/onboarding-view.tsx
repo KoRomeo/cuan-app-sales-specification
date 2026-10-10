@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, LoaderCircle, Store, Truck } from 'lucide-react'
 import { appToast as toast } from '@/lib/toast'
@@ -17,6 +18,7 @@ type Workflow = 'retail' | 'wholesale' | 'mixed' | 'fresh' | 'batch' | 'madeToOr
 
 export function OnboardingView() {
   const { t } = useApp()
+  const router = useRouter()
   const [step, setStep] = useState(0)
   const [businessType, setBusinessType] = useState<BusinessType>('sales')
   const [businessName, setBusinessName] = useState('')
@@ -64,14 +66,28 @@ export function OnboardingView() {
     setStep((current) => Math.max(current - 1, 0))
   }
 
-  const finishPreview = () => {
+  const finishPreview = async () => {
     setIsLoading(true)
-    timerRef.current = window.setTimeout(() => {
-      timerRef.current = null
-      setIsLoading(false)
+    setError('')
+    try {
+      const response = await fetch('/api/businesses', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: businessName.trim(), type: businessType }),
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        throw new Error(payload?.error ?? 'Unable to create business')
+      }
       setIsComplete(true)
-      toast.info(t('onboarding.completeTitle'))
-    }, 400)
+      toast.success(t('onboarding.completeTitle'))
+      router.refresh()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to create business')
+      toast.error(reason instanceof Error ? reason.message : 'Unable to create business')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const restart = () => {
