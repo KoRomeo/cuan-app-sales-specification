@@ -15,6 +15,13 @@
       "when": 1791384612174,
       "tag": "0001_handy_mantis",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791612226470,
+      "tag": "0002_app_schema_recovery",
+      "breakpoints": true
     }
   ]
 }
