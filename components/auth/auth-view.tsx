@@ -1,9 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
+import { useState, type FormEvent } from 'react'
 import { ArrowRight, Boxes, CheckCircle2, Eye, EyeOff, LoaderCircle, ShoppingCart, Wallet } from 'lucide-react'
 import { appToast as toast } from '@/lib/toast'
+import { authClient } from '@/lib/auth-client'
 import { LocaleSwitcher } from '@/components/common/locale-switcher'
 import { useApp } from '@/components/providers'
 import { Logo } from '@/components/shell/logo'
@@ -40,17 +42,13 @@ function AuthField({
 
 export function AuthView({ mode }: { mode: AuthMode }) {
   const { t } = useApp()
+  const router = useRouter()
   const [fields, setFields] = useState({ name: '', email: '', password: '', confirm: '' })
   const [errors, setErrors] = useState<Partial<Record<AuthField, string>>>({})
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const [showResetNotice, setShowResetNotice] = useState(false)
-  const timerRef = useRef<number | null>(null)
-
-  useEffect(() => () => {
-    if (timerRef.current !== null) window.clearTimeout(timerRef.current)
-  }, [])
 
   const updateField = (field: AuthField, value: string) => {
     setFields((current) => ({ ...current, [field]: value }))
@@ -65,7 +63,7 @@ export function AuthView({ mode }: { mode: AuthMode }) {
     setShowResetNotice(false)
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const nextErrors: Partial<Record<AuthField, string>> = {}
 
@@ -82,12 +80,17 @@ export function AuthView({ mode }: { mode: AuthMode }) {
 
     setIsLoading(true)
     setIsComplete(false)
-    timerRef.current = window.setTimeout(() => {
-      timerRef.current = null
-      setIsLoading(false)
-      setIsComplete(true)
-      toast.info(t(mode === 'register' ? 'auth.registerResult' : 'auth.loginResult'))
-    }, 400)
+    const result = isRegister
+      ? await authClient.signUp.email({ name: fields.name.trim(), email: fields.email.trim(), password: fields.password })
+      : await authClient.signIn.email({ email: fields.email.trim(), password: fields.password })
+    setIsLoading(false)
+    if (result.error) {
+      toast.error(t('auth.validationError'))
+      setErrors({ email: t('auth.validationError') })
+      return
+    }
+    router.push(isRegister ? '/onboarding' : '/dashboard')
+    router.refresh()
   }
 
   const isRegister = mode === 'register'
