@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { AlertTriangle, Ban, FileText, History, Pencil, Plus, Printer, Truck, User, Wallet } from 'lucide-react'
 import { useState } from 'react'
+import useSWR from 'swr'
 import { appToast as toast } from '@/lib/toast'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { DocumentPreview } from '@/components/common/document-preview'
@@ -13,7 +14,6 @@ import { OrderStatusBadge, PaymentStatusBadge, Pill } from '@/components/common/
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
 import {
-  customerById,
   lineSubtotal,
   type Order,
   orderCogs,
@@ -21,21 +21,38 @@ import {
   orderPaid,
   orderPaymentStatus,
   orderTotal,
-  productById,
-  replacements,
   TODAY,
 } from '@/lib/data'
 import { formatDate, formatIDR, formatPercent } from '@/lib/format'
 import { translateAccountName } from '@/lib/i18n'
 
-export function OrderDetailView({ order }: { order: Order }) {
+const fetcher = (url: string) => fetch(url).then(async (response) => {
+  if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load order')
+  return response.json()
+})
+type DetailResponse = {
+  id: string; date: string; customerId: string; status: Order['status']; dueDate: string | null; notes: string | null
+  customer: { id: string; name: string; phone: string | null; address: string | null } | null
+  items: Array<{ id: string; productId: string; qty: number; price: string | number; discount: string | number; unitCost: string | number }>
+  products: Array<{ id: string; name: string; averageCost: string | number; stock: string | number }>
+  payments: Array<{ id: string; date: string; amount: string | number; account: string }>
+  delivery: Order['delivery']; replacements: Array<{ id: string; orderId?: string; date: string; productId: string; qty: number; reason: string; delivered: boolean }>
+}
+
+export function OrderDetailView({ orderId }: { orderId: string }) {
   const { t, features } = useApp()
+  const { data, error, mutate } = useSWR<DetailResponse>(`/api/orders/${encodeURIComponent(orderId)}`, fetcher)
+  if (error) return <div role="alert" className="flex flex-col gap-3"><p className="text-sm text-destructive">{error.message}</p><Button variant="outline" size="sm" onClick={() => mutate()}>{t('common.retry')}</Button></div>
+  if (!data) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+  const productById = new Map(data.products.map((product) => [product.id, { ...product, averageCost: Number(product.averageCost), stock: Number(product.stock) }]))
+  const order: Order = { ...data, notes: data.notes ?? '', items: data.items.map((item) => ({ ...item, price: Number(item.price), discount: Number(item.discount), unitCost: Number(item.unitCost) })), payments: data.payments.map((payment) => ({ ...payment, amount: Number(payment.amount) })), delivery: data.delivery }
+  const customer = data.customer
+  const replacements = data.replacements
   const [doc, setDoc] = useState<'invoice' | 'delivery' | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
   const [deliveryOpen, setDeliveryOpen] = useState(false)
 
-  const customer = customerById(order.customerId)
   const total = orderTotal(order)
   const paid = orderPaid(order)
   const outstanding = orderOutstanding(order)
@@ -46,7 +63,7 @@ export function OrderDetailView({ order }: { order: Order }) {
   const pendingReplacements = replacements.filter((r) => r.orderId === order.id && !r.delivered)
   const negativeItems = cancelled
     ? []
-    : order.items.map((it) => productById(it.productId)!).filter((p) => p && p.stock < 0)
+    : order.items.map((it) => productById.get(it.productId)!).filter((p) => p && p.stock < 0)
 
   const methodOptions = [
     ...(features.ownDelivery ? [{ value: 'own', label: t('method.own') }] : []),
@@ -127,7 +144,7 @@ export function OrderDetailView({ order }: { order: Order }) {
                 </thead>
                 <tbody className="divide-y">
                   {order.items.map((it) => {
-                    const p = productById(it.productId)
+                    const p = productById.get(it.productId)
                     return (
                       <tr key={it.productId}>
                         <td className="px-4 py-3 md:px-5">
@@ -307,7 +324,7 @@ export function OrderDetailView({ order }: { order: Order }) {
           { name: 'method', label: t('orders.method'), type: 'select', half: true, options: methodOptions },
           { name: 'recipient', label: t('orders.recipient'), defaultValue: customer?.name, half: true },
           { name: 'transport', label: t('orders.transportCost'), type: 'number', prefix: 'Rp', defaultValue: '0', min: 0, half: true },
-          { name: 'address', label: t('common.address'), type: 'textarea', defaultValue: customer?.address },
+          { name: 'address', label: t('common.address'), type: 'textarea', defaultValue: customer?.address ?? undefined },
         ]}
       />
     </>
