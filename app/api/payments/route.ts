@@ -2,7 +2,8 @@
 import { NextResponse } from "next/server";
 import { and, eq, desc } from "drizzle-orm";
 import { transactionDb } from "@/lib/db/transaction";
-import { payments, orders, purchases } from "@/lib/db/schema";
+import { payments, orders, purchases, journalEntries, journalEntryLines } from "@/lib/db/schema";
+import { requireBusinessAccess } from "@/lib/api-auth";
 
 export async function GET(request: Request) {
 try {
@@ -15,6 +16,8 @@ try {
         { status: 400 },
     );
     }
+    const access = await requireBusinessAccess(businessId)
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     const rows = await transactionDb
     .select()
@@ -59,6 +62,9 @@ try {
         { status: 400 },
     );
     }
+
+    const access = await requireBusinessAccess(businessId)
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     if (
     (!orderId && !purchaseId) ||
@@ -149,15 +155,33 @@ try {
     }
     }
 
-    await transactionDb.insert(payments).values({
-    id,
-    businessId,
-    orderId: orderId || null,
-    purchaseId: purchaseId || null,
-    date,
-    amount: amount.toFixed(2),
-    account: account.trim(),
-    });
+    await transactionDb.transaction(async (tx) => {
+      await tx.insert(payments).values({
+        id,
+        businessId,
+        orderId: orderId || null,
+        purchaseId: purchaseId || null,
+        date,
+        amount: amount.toFixed(2),
+        account: account.trim(),
+      })
+      const entryId = `JE-PAY-${id}`
+      await tx.insert(journalEntries).values({
+        id: entryId,
+        businessId,
+        entryDate: date,
+        kind: "payment",
+        reference: id,
+        description: orderId ? `Customer payment for ${orderId}` : `Supplier payment for ${purchaseId}`,
+      })
+      await tx.insert(journalEntryLines).values(orderId ? [
+        { id: `${entryId}-debit`, journalEntryId: entryId, account: account.trim(), debit: amount.toFixed(2), credit: "0" },
+        { id: `${entryId}-credit`, journalEntryId: entryId, account: "Accounts Receivable", debit: "0", credit: amount.toFixed(2) },
+      ] : [
+        { id: `${entryId}-debit`, journalEntryId: entryId, account: "Accounts Payable", debit: amount.toFixed(2), credit: "0" },
+        { id: `${entryId}-credit`, journalEntryId: entryId, account: account.trim(), debit: "0", credit: amount.toFixed(2) },
+      ])
+    })
 
     return NextResponse.json(
     { message: "Payment recorded successfully", id },

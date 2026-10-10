@@ -279,6 +279,30 @@ account: text("account").notNull(),
 })
 
 // ============================================================
+// JOURNAL ENTRIES
+// ============================================================
+
+export const journalEntries = pgTable("journal_entries", {
+  id: text("id").primaryKey(),
+  businessId: text("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  entryDate: date("entry_date").notNull(),
+  kind: text("kind").notNull(),
+  reference: text("reference").notNull(),
+  description: text("description").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  businessKindReference: uniqueIndex("journal_entries_business_kind_reference_idx").on(table.businessId, table.kind, table.reference),
+}))
+
+export const journalEntryLines = pgTable("journal_entry_lines", {
+  id: text("id").primaryKey(),
+  journalEntryId: text("journal_entry_id").notNull().references(() => journalEntries.id, { onDelete: "cascade" }),
+  account: text("account").notNull(),
+  debit: decimal("debit", { precision: 14, scale: 2 }).notNull().default("0"),
+  credit: decimal("credit", { precision: 14, scale: 2 }).notNull().default("0"),
+})
+
+// ============================================================
 // REPLACEMENTS
 // ============================================================
 
