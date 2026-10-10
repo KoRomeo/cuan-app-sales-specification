@@ -44,6 +44,7 @@ export function FormDialog({
   fields,
   submitLabel,
   onSubmit,
+  persisted = false,
   children,
 }: {
   open: boolean
@@ -53,6 +54,7 @@ export function FormDialog({
   fields: FormField[]
   submitLabel?: string
   onSubmit?: (values: Record<string, string>) => Promise<void> | void
+  persisted?: boolean
   children?: React.ReactNode
 }) {
   const { t } = useApp()
@@ -135,7 +137,7 @@ export function FormDialog({
           <DialogHeader>
             <DialogTitle className="text-base">{title}</DialogTitle>
             <DialogDescription>{description ?? t('common.prototypeNote')}</DialogDescription>
-            <p role="note" className="rounded-md border bg-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground">{t('form.previewFeedback')}</p>
+            {!persisted && <p role="note" className="rounded-md border bg-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground">{t('form.previewFeedback')}</p>}
           </DialogHeader>
 
           <div className="grid grid-cols-2 gap-3">
@@ -214,7 +216,7 @@ export function FormDialog({
           {validated && (
             <div role="status" aria-live="polite" className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2">
               <p className="text-sm font-medium">{t('form.validated')}</p>
-              <p className="text-xs leading-5 text-muted-foreground">{t('form.previewFeedback')}</p>
+              <p className="text-xs leading-5 text-muted-foreground">{persisted ? t('form.savedFeedback') : t('form.previewFeedback')}</p>
             </div>
           )}
 
