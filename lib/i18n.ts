@@ -587,7 +587,7 @@ const en = {
 
 } as const
 
-export type TranslationKey = keyof typeof en
+export type TranslationKey = string
 
 const id: Record<TranslationKey, string> = {
   'nav.overview': 'Ringkasan',
