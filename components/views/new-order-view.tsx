@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { AlertTriangle, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { appToast as toast } from '@/lib/toast'
 import { selectClass } from '@/components/common/form-dialog'
 import { PageHeader } from '@/components/common/page-header'
@@ -13,8 +14,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { customers, productById, products, TODAY } from '@/lib/data'
+import { TODAY } from '@/lib/data'
 import { formatIDR } from '@/lib/format'
+
+const fetcher = (url: string) => fetch(url).then(async (response) => {
+  if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load order data')
+  return response.json()
+})
+type Party = { id: string; name: string }
+type Product = { id: string; name: string; sellingPrice: string | number; averageCost: string | number; stock?: string | number }
 
 interface Line {
   key: number
@@ -26,18 +34,29 @@ interface Line {
 
 export function NewOrderView() {
   const { t } = useApp()
-  const [lines, setLines] = useState<Line[]>([{ key: 1, productId: 'P-0001', qty: 100, price: 16000, discount: 0 }])
+  const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { data: customerRows, error: customersError } = useSWR<Party[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: productRows, error: productsError } = useSWR<Product[]>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const error = businessError || customersError || productsError
+  const productsById = new Map((productRows ?? []).map((product) => [product.id, { ...product, sellingPrice: Number(product.sellingPrice), averageCost: Number(product.averageCost), stock: Number(product.stock ?? 0) }]))
+  const [lines, setLines] = useState<Line[]>([])
+  const [customerId, setCustomerId] = useState('')
   const [paid, setPaid] = useState(0)
   const [previewed, setPreviewed] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [lineToRemove, setLineToRemove] = useState<number | null>(null)
 
+  useEffect(() => {
+    if (lines.length === 0 && productRows?.[0]) setLines([{ key: 1, productId: productRows[0].id, qty: 1, price: Number(productRows[0].sellingPrice), discount: 0 }])
+  }, [lines.length, productRows])
+
   const update = (key: number, patch: Partial<Line>) =>
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)))
 
   const total = lines.reduce((s, l) => s + l.qty * l.price - l.discount, 0)
-  const cogs = lines.reduce((s, l) => s + l.qty * (productById(l.productId)?.averageCost ?? 0), 0)
-
+  const cogs = lines.reduce((s, l) => s + l.qty * (productsById.get(l.productId)?.averageCost ?? 0), 0)
+  if (error) return <p role="alert" className="text-sm text-destructive">{error.message}</p>
+  if (!business || !customerRows || !productRows) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
   return (
     <>
       <PageHeader
@@ -54,8 +73,8 @@ export function NewOrderView() {
             const form = new FormData(event.currentTarget)
             const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
             const result = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-              id: `ORD-${Date.now()}`, businessId: business.id, date: form.get('orderDate'), customerId: form.get('customerId'), status: 'requested', dueDate: form.get('dueDate') || null, notes: form.get('notes') || null,
-              items: lines.map((line) => ({ id: `OI-${Date.now()}-${line.key}`, productId: line.productId, qty: line.qty, price: line.price, discount: line.discount, unitCost: productById(line.productId)?.averageCost ?? 0 })),
+              id: `ORD-${Date.now()}`, businessId: business.id, date: form.get('orderDate'), customerId: form.get('customerId'), status: 'requested', dueDate: form.get('dueDate') || null, notes: form.get('notes') || null, paidAmount: paid, paymentAccount: 'Cash', paymentDate: form.get('orderDate'), paymentId: paid > 0 ? `PAY-ORD-${Date.now()}` : undefined,
+              items: lines.map((line) => ({ id: `OI-${Date.now()}-${line.key}`, productId: line.productId, qty: line.qty, price: line.price, discount: line.discount, unitCost: productsById.get(line.productId)?.averageCost ?? 0 })),
             }) })
             if (!result.ok) throw new Error((await result.json()).error ?? 'Unable to save order')
             setPreviewed(true)
@@ -69,8 +88,9 @@ export function NewOrderView() {
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <Label htmlFor="customer">{t('common.customer')}</Label>
-                <select id="customer" name="customerId" className={selectClass} defaultValue="C-0001" required>
-                  {customers.map((c) => (
+                <select id="customer" name="customerId" className={selectClass} value={customerId} onChange={(event) => setCustomerId(event.target.value)} required>
+                  <option value="">Select</option>
+                  {customerRows.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
@@ -89,7 +109,7 @@ export function NewOrderView() {
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => setLines((prev) => [...prev, { key: Date.now(), productId: 'P-0002', qty: 1, price: 118000, discount: 0 }])}
+                onClick={() => setLines((prev) => [...prev, { key: Date.now(), productId: productRows[0]?.id ?? '', qty: 1, price: Number(productRows[0]?.sellingPrice ?? 0), discount: 0 }])}
               >
                 <Plus />
                 {t('common.add')}
@@ -98,7 +118,7 @@ export function NewOrderView() {
           >
             <ul className="flex flex-col gap-4">
               {lines.map((l) => {
-                const p = productById(l.productId)
+                const p = productsById.get(l.productId)
                 const after = (p?.stock ?? 0) - l.qty
                 return (
                   <li key={l.key} className="rounded-lg border p-3">
@@ -111,9 +131,9 @@ export function NewOrderView() {
                           className={selectClass}
                           required
                           value={l.productId}
-                          onChange={(e) => update(l.key, { productId: e.target.value, price: productById(e.target.value)?.sellingPrice ?? 0 })}
+                          onChange={(e) => update(l.key, { productId: e.target.value, price: productsById.get(e.target.value)?.sellingPrice ?? 0 })}
                         >
-                          {products.map((pr) => (
+                          {productRows.map((pr) => (
                             <option key={pr.id} value={pr.id}>
                               {pr.name} ({pr.stock})
                             </option>
