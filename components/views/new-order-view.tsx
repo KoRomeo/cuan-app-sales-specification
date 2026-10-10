@@ -29,6 +29,7 @@ export function NewOrderView() {
   const [lines, setLines] = useState<Line[]>([{ key: 1, productId: 'P-0001', qty: 100, price: 16000, discount: 0 }])
   const [paid, setPaid] = useState(0)
   const [previewed, setPreviewed] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [lineToRemove, setLineToRemove] = useState<number | null>(null)
 
   const update = (key: number, patch: Partial<Line>) =>
@@ -45,10 +46,21 @@ export function NewOrderView() {
         description={t('common.prototypeNote')}
       />
       <form
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault()
-          setPreviewed(true)
-          toast.info(t('form.previewFeedback'))
+          if (isSaving) return
+          setIsSaving(true)
+          try {
+            const form = new FormData(event.currentTarget)
+            const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
+            const result = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+              id: `ORD-${Date.now()}`, businessId: business.id, date: form.get('orderDate'), customerId: form.get('customerId'), status: 'requested', dueDate: form.get('dueDate') || null, notes: form.get('notes') || null,
+              items: lines.map((line) => ({ id: `OI-${Date.now()}-${line.key}`, productId: line.productId, qty: line.qty, price: line.price, discount: line.discount, unitCost: productById(line.productId)?.averageCost ?? 0 })),
+            }) })
+            if (!result.ok) throw new Error((await result.json()).error ?? 'Unable to save order')
+            setPreviewed(true)
+            toast.success(t('form.savedFeedback'))
+          } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to save order') } finally { setIsSaving(false) }
         }}
         className="grid gap-4 lg:grid-cols-3"
       >
@@ -149,7 +161,7 @@ export function NewOrderView() {
           </SectionCard>
 
           <SectionCard title={t('common.notes')}>
-            <Textarea rows={3} placeholder="…" />
+            <Textarea name="notes" rows={3} placeholder="…" />
           </SectionCard>
         </div>
 
@@ -176,7 +188,7 @@ export function NewOrderView() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="due">{t('common.dueDate')}</Label>
-                <Input id="due" type="date" />
+                <Input id="due" name="dueDate" type="date" />
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('common.outstanding')}</span>
@@ -187,7 +199,7 @@ export function NewOrderView() {
               <Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/orders" />}>
                 {t('common.cancel')}
               </Button>
-              <Button type="submit" className="flex-1">{t('form.validateAction')}</Button>
+              <Button type="submit" className="flex-1" disabled={isSaving}>{isSaving ? t('common.loading') : t('form.validateAction')}</Button>
             </div>
             {previewed && <p role="status" aria-live="polite" className="mt-3 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-xs leading-5 text-muted-foreground">{t('form.previewFeedback')}</p>}
           </SectionCard>
