@@ -50,7 +50,7 @@ export function PasswordResetView({ mode }: { mode: ResetMode }) {
   }
 
   return (
-    <main className="min-h-dvh bg-background">
+    <main className="auth-light min-h-dvh bg-background">
       <div className="mx-auto flex min-h-dvh max-w-[560px] flex-col px-5 sm:px-8">
         <header className="flex items-center justify-between gap-4 py-6">
           <Link href="/login" aria-label={t('auth.backToDashboard')} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">

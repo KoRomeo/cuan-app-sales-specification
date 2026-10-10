@@ -102,9 +102,9 @@ export function AuthView({ mode }: { mode: AuthMode }) {
   ]
 
   return (
-    <main className="min-h-dvh bg-background">
+    <main className="auth-light min-h-dvh bg-background">
       <div className="mx-auto grid min-h-dvh max-w-[1440px] lg:grid-cols-[1.02fr_0.98fr]">
-        <aside className="hidden flex-col justify-between border-r bg-sidebar/50 px-10 py-9 lg:flex xl:px-14">
+        <aside className="hidden flex-col justify-between border-r bg-muted/45 px-10 py-9 lg:flex xl:px-14">
           <Link href="/dashboard" aria-label={t('auth.backToDashboard')} className="w-fit rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Logo />
           </Link>

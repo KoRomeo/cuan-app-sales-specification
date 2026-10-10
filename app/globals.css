@@ -127,6 +127,12 @@
   --sidebar-ring: oklch(0.66 0.17 258);
 }
 
+.auth-light {
+  --sidebar-foreground: var(--foreground);
+  --sidebar-muted: var(--muted-foreground);
+  --sidebar-primary: var(--primary);
+}
+
 .app-nav-scroll {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in oklch, var(--sidebar-muted) 45%, transparent) transparent;
