@@ -43,6 +43,7 @@ export function FormDialog({
   description,
   fields,
   submitLabel,
+  onSubmit,
   children,
 }: {
   open: boolean
@@ -51,6 +52,7 @@ export function FormDialog({
   description?: string
   fields: FormField[]
   submitLabel?: string
+  onSubmit?: (values: Record<string, string>) => Promise<void> | void
   children?: React.ReactNode
 }) {
   const { t } = useApp()
@@ -105,6 +107,19 @@ export function FormDialog({
 
     setValidated(false)
     setIsChecking(true)
+    const values = Object.fromEntries(controls.map((control) => [control.name, control.value]))
+    if (onSubmit) {
+      Promise.resolve(onSubmit(values))
+        .then(() => {
+          setIsChecking(false)
+          setValidated(true)
+        })
+        .catch((error) => {
+          setIsChecking(false)
+          toast.error(error instanceof Error ? error.message : t('form.validationError'))
+        })
+      return
+    }
     timerRef.current = window.setTimeout(() => {
       timerRef.current = null
       setIsChecking(false)
