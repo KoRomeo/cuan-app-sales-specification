@@ -152,7 +152,7 @@ export function createOrder(input: NewOrderInput, features: Features) {
     })
 
     const projection = projectedStock(items)
-    if (features.inventory && !features.negativeStock) {
+    if (features.inventory) {
       const short = projection.find((p) => p.after < 0)
       if (short) throw new DomainError('err.insufficientStock', { product: short.name, stock: short.stock })
     }

@@ -182,20 +182,20 @@ export function ReportsView() {
           {financial === 'balanceSheet' && (
             <div className="mx-auto grid max-w-3xl gap-4">
               <KpiGrid>
-                <KpiCard label={t('reports.assets')} value={formatIDR(bs.assets)} />
-                <KpiCard label={t('reports.liabilities')} value={formatIDR(bs.liabilities)} tone="warning" />
-                <KpiCard label={t('reports.equity')} value={formatIDR(bs.equity)} tone="success" />
+                <KpiCard label={t('reports.assets')} value={formatIDR(bs.totalAssets)} />
+                <KpiCard label={t('reports.liabilities')} value={formatIDR(bs.totalLiabilities)} tone="warning" />
+                <KpiCard label={t('reports.equity')} value={formatIDR(bs.totalEquity)} tone="success" />
               </KpiGrid>
               <SectionCard title={t('reports.balanceSheet')} description={formatDate(range[1] > TODAY ? TODAY : range[1])}>
                 <div className="divide-y">
-                  <StatementRow label={t('reports.assets')} value={bs.assets} strong />
+                  <StatementRow label={t('reports.assets')} value={bs.totalAssets} strong />
                   <StatementRow label={t('reports.cash')} value={bs.cash} indent />
                   <StatementRow label={t('reports.inventoryAsset')} value={bs.inventory} indent />
                   <StatementRow label={t('reports.ar')} value={bs.receivables} indent />
-                  <StatementRow label={t('reports.liabilities')} value={bs.liabilities} strong />
+                  <StatementRow label={t('reports.liabilities')} value={bs.totalLiabilities} strong />
                   <StatementRow label={t('reports.ap')} value={bs.payables} indent />
-                  <StatementRow label={t('reports.equity')} value={bs.equity} strong />
-                  <StatementRow label={t('reports.retained')} value={bs.equity} indent />
+                  <StatementRow label={t('reports.equity')} value={bs.totalEquity} strong />
+                  <StatementRow label={t('reports.retained')} value={bs.totalEquity} indent />
                 </div>
               </SectionCard>
             </div>

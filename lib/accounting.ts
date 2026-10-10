@@ -10,6 +10,68 @@ export interface JournalLine { accountCode: string; account?: string; debit: num
 export interface JournalEntry { id: string; date: string; source?: string; memo?: string; kind: EntryKind; reference: string; description: string; lines: JournalLine[]; reverses?: string }
 export type JournalDraft = Omit<JournalEntry, 'id'>
 
+export class UnbalancedJournalError extends Error {
+  constructor() {
+    super('Journal entry is not balanced')
+    this.name = 'UnbalancedJournalError'
+  }
+}
+
+export const cashAccountNames: string[] = ['Cash', 'Bank BCA', 'Bank']
+
+const money = (value: number | string) => Number(value)
+const draftEntry = (draft: JournalDraft): JournalEntry => ({ ...draft, id: `JE-${draft.reference}-${journalEntries.length + 1}` })
+
+export function postJournal(draft: JournalDraft) {
+  const posted = draftEntry(draft)
+  if (!isBalanced(posted)) throw new UnbalancedJournalError()
+  journalEntries.push(posted)
+  return posted
+}
+
+export function saleJournals(order: (typeof orders)[number]): JournalDraft[] {
+  const total = orderTotal(order)
+  const cogs = orderCogs(order)
+  return [
+    { date: order.date, kind: 'sale', reference: order.id, description: 'Sales invoice', lines: [line('1200', total, 0, 'Accounts receivable'), line('4100', 0, total, 'Sales revenue')] },
+    { date: order.date, kind: 'cogs', reference: order.id, description: 'Cost of goods sold', lines: [line('5100', cogs, 0, 'Cost of goods sold'), line('1300', 0, cogs, 'Inventory')] },
+  ]
+}
+
+export function customerPaymentJournal(order: (typeof orders)[number], payment: (typeof order.payments)[number]): JournalDraft {
+  return { date: payment.date, kind: 'customer-payment', reference: order.id, description: 'Customer payment', lines: [line(cashCode(payment.account), payment.amount, 0, payment.account), line('1200', 0, payment.amount, 'Accounts receivable')] }
+}
+
+export function supplierPaymentJournal(purchase: (typeof purchases)[number], payment: (typeof purchase.payments)[number]): JournalDraft {
+  return { date: payment.date, kind: 'supplier-payment', reference: purchase.id, description: 'Supplier payment', lines: [line('2100', payment.amount, 0, 'Accounts payable'), line(cashCode(payment.account), 0, payment.amount, payment.account)] }
+}
+
+export function purchaseJournal(purchase: (typeof purchases)[number]): JournalDraft {
+  const total = purchaseTotal(purchase)
+  return { date: purchase.date, kind: 'purchase', reference: purchase.id, description: 'Inventory purchase', lines: [line('1300', total, 0, 'Inventory'), line('2100', 0, total, 'Accounts payable')] }
+}
+
+export function expenseJournal(expense: (typeof expenses)[number]): JournalDraft {
+  return { date: expense.date, kind: 'expense', reference: expense.id, description: expense.description, lines: [line(expenseCodeByCategory[expense.category] ?? '6900', expense.amount, 0, expense.category), line(cashCode(expense.account), 0, expense.amount, expense.account)] }
+}
+
+export function transportJournal(order: (typeof orders)[number]): JournalDraft | null {
+  if (!order.delivery || order.delivery.transportCost <= 0) return null
+  return { date: order.delivery.date, kind: 'transport', reference: order.id, description: 'Delivery transport', lines: [line('6100', order.delivery.transportCost, 0, 'Transport expense'), line('1100', 0, order.delivery.transportCost, 'Cash')] }
+}
+
+export function adjustmentJournal(date: string, reference: string, value: number, reason: string): JournalDraft {
+  const debit = value >= 0 ? '1300' : '5100'
+  const credit = value >= 0 ? '5100' : '1300'
+  const amount = Math.abs(value)
+  return { date, kind: 'adjustment', reference, description: reason, lines: [line(debit, amount, 0, reason), line(credit, 0, amount, reason)] }
+}
+
+export function reverseJournals(reference: string, kinds: EntryKind[], date: string, description: string) {
+  const originals = journalEntries.filter((entry) => entry.reference === reference && kinds.includes(entry.kind) && !entry.reverses)
+  return originals.map((original) => postJournal({ date, kind: 'reversal', reference, description, reverses: original.id, lines: original.lines.map((item) => line(item.accountCode, item.credit, item.debit, `Reversal of ${original.id}`)) }))
+}
+
 export const expenseCodeByCategory: Record<string, string> = { Transport: '6100', Fuel: '6200', Packaging: '6300', Telephone: '6400', Marketing: '6500', Office: '6600', Other: '6900' }
 export const chartOfAccounts: LedgerAccount[] = [
   { code: '1100', name: 'Cash', type: 'asset', isCash: true }, { code: '1110', name: 'Bank', type: 'asset', isCash: true },
