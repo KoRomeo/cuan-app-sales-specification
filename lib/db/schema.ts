@@ -47,13 +47,21 @@ export const movementTypeEnum = pgEnum("movement_type", [
 // ============================================================
 
 export const businesses = pgTable("businesses", {
-id: text("id").primaryKey(),
-name: text("name").notNull(),
-type: text("type").notNull(),
-createdAt: timestamp("created_at", { withTimezone: true })
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
 })
+
+export const businessMembers = pgTable("business_members", {
+  businessId: text("business_id").notNull(),
+  userId: text("user_id").notNull(),
+  role: text("role").notNull().default("owner"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+})
+
 
 // ============================================================
 // CUSTOMERS
