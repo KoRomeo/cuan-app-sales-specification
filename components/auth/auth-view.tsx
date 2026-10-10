@@ -242,6 +242,10 @@ export function AuthView({ mode }: { mode: AuthMode }) {
                         size="sm"
                         className="h-auto px-0"
                         nativeButton={false}
+                        onClick={() => {
+                          setShowResetNotice(true)
+                          toast.info(t('auth.passwordResetPreview'))
+                        }}
                         render={<Link href="/forgot-password" />}
                       >
                         {t('auth.forgotPassword')}
