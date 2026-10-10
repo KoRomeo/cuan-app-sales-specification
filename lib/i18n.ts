@@ -456,6 +456,7 @@ const en = {
   'form.invalidValue': 'Enter a valid value.',
   'form.validated': 'Fields look good',
   'form.previewFeedback': 'This frontend preview does not save changes.',
+  'form.savedFeedback': 'Saved successfully.',
   'form.editUnavailable': 'Editing is not connected here. No data changed.',
   'form.deleteUnavailable': 'Deletion is not connected here. No data changed.',
 
@@ -1045,6 +1046,7 @@ const id: Record<TranslationKey, string> = {
   'form.invalidValue': 'Masukkan nilai yang valid.',
   'form.validated': 'Kolom sudah sesuai',
   'form.previewFeedback': 'Pratinjau frontend ini tidak menyimpan perubahan.',
+  'form.savedFeedback': 'Berhasil disimpan.',
   'form.editUnavailable': 'Fitur ubah belum terhubung. Tidak ada data yang berubah.',
   'form.deleteUnavailable': 'Fitur hapus belum terhubung. Tidak ada data yang berubah.',
 

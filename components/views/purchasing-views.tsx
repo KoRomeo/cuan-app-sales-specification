@@ -8,6 +8,7 @@ import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
 import { PageHeader } from '@/components/common/page-header'
 import { PaymentStatusBadge } from '@/components/common/status-badge'
 import { useApp } from '@/components/providers'
+import { appToast as toast } from '@/lib/toast'
 import {
   type Party,
   productById,
@@ -75,6 +76,16 @@ export function PurchasesView() {
         open={open}
         onOpenChange={setOpen}
         title={t('purchases.add')}
+        onSubmit={async (values) => {
+          const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
+          const response = await fetch('/api/purchases', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+            id: `PUR-${Date.now()}`, businessId: business.id, date: values.date, supplierId: values.supplier, dueDate: values.due || null,
+            items: [{ id: `PI-${Date.now()}`, productId: values.product, qty: Number(values.qty), unitCost: Number(values.price) }],
+          }) })
+          if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to save purchase')
+          setOpen(false)
+          toast.success(t('form.savedFeedback'))
+        }}
         fields={[
           { name: 'supplier', label: t('common.supplier'), type: 'select', half: true, options: suppliers.map((s) => ({ value: s.id, label: s.name })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
