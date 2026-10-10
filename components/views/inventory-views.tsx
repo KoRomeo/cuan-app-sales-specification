@@ -1,7 +1,7 @@
 'use client'
 
 import { AlertTriangle, ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Boxes, Package, SlidersHorizontal, TrendingDown } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
 import { FormDialog } from '@/components/common/form-dialog'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
@@ -167,6 +167,22 @@ const movementTone: Record<MovementType, Tone> = {
 
 export function StockMovementsView() {
   const { t } = useApp()
+  const [movements, setMovements] = useState<StockMovement[]>([])
+  useEffect(() => {
+  async function loadMovements() {
+    try {
+      const response = await fetch('/api/stock-movements?businessId=BUS-0001')
+      if (!response.ok) throw new Error('Failed to fetch stock movements')
+      const data: StockMovement[] = await response.json()
+      console.log('Stock movements API data:', data)
+      setMovements(data)
+    } catch (error) {
+      console.error('Failed to load stock movements:', error)
+    }
+  }
+
+  loadMovements()
+}, [])
 
   const columns: Column<StockMovement>[] = [
     { key: 'id', header: t('movements.id'), cell: (m) => <IdCell>{m.id}</IdCell> },
@@ -188,20 +204,20 @@ export function StockMovementsView() {
     },
   ]
 
-  const inQty = stockMovements.filter((m) => m.qty > 0 && m.type !== 'opening').reduce((s, m) => s + m.qty, 0)
-  const outQty = stockMovements.filter((m) => m.qty < 0).reduce((s, m) => s + m.qty, 0)
+  const inQty = movements.filter((m) => m.qty > 0 && m.type !== 'opening').reduce((s, m) => s + m.qty, 0)
+  const outQty = movements.filter((m) => m.qty < 0).reduce((s, m) => s + m.qty, 0)
 
   return (
     <>
       <PageHeader breadcrumbs={[{ label: t('nav.inventory') }, { label: t('nav.stockMovements') }]} title={t('movements.title')} description={t('movements.desc')} />
       <KpiGrid>
-        <KpiCard label={t('movements.count')} value={stockMovements.length} icon={ArrowLeftRight} />
+        <KpiCard label={t('movements.count')} value={movements.length} icon={ArrowLeftRight} />
         <KpiCard label={t('movements.in')} value={`+${inQty}`} icon={ArrowDownLeft} tone="success" />
         <KpiCard label={t('movements.out')} value={outQty} icon={ArrowUpRight} tone="destructive" />
-        <KpiCard label={t('mov.adjustment')} value={stockMovements.filter((m) => m.type === 'adjustment').length} icon={SlidersHorizontal} tone="warning" />
+        <KpiCard label={t('mov.adjustment')} value={movements.filter((m) => m.type === 'adjustment').length} icon={SlidersHorizontal} tone="warning" />
       </KpiGrid>
       <DataTable
-        rows={stockMovements}
+        rows={movements}
         columns={columns}
         getRowId={(m) => m.id}
         searchText={(m) => `${m.id} ${m.reference} ${productById(m.productId)?.name}`}

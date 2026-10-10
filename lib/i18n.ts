@@ -562,6 +562,29 @@ const en = {
   'onboarding.restart': 'Start over',
   'onboarding.loading': 'Finishing preview…',
   'onboarding.requiredError': 'Enter a business name or choose Skip for now.',
+  
+  'err.invalidAccount': 'Select a valid cash or bank account.',
+  'err.unknownProduct': 'Product not found.',
+  'err.unknownCustomer': 'Customer not found.',
+  'err.unknownSupplier': 'Supplier not found.',
+  'err.invalidDate': 'Enter a valid date.',
+  'err.noItems': 'Add at least one item.',
+  'err.invalidQty': 'Enter a valid quantity.',
+  'err.insufficientStock': 'Insufficient stock for {product}. Current stock: {stock}.',
+  'err.paymentExceeds': 'Payment exceeds the outstanding amount.',
+  'err.customerCreditDisabled': 'Customer credit is disabled. Full payment is required.',
+  'err.supplierCreditDisabled': 'Supplier credit is disabled. Full payment is required.',
+  'err.notFound': 'Record not found.',
+  'err.invalidAmount': 'Enter a valid amount.',
+  'err.orderCancelled': 'This order has already been cancelled.',
+  'err.cancelDelivered': 'A delivered order cannot be cancelled.',
+  'err.cancelHasPayments': 'An order with recorded payments cannot be cancelled.',
+  'err.alreadyDelivered': 'This order has already been delivered.',
+  'err.featureDisabled': 'This feature is disabled in settings.',
+  'err.invalidCategory': 'Select a valid expense category.',
+  'err.alreadyDeleted': 'This expense has already been deleted.',
+  'err.notDeleted': 'This expense has not been deleted.',
+
 } as const
 
 export type TranslationKey = keyof typeof en
@@ -1128,6 +1151,29 @@ const id: Record<TranslationKey, string> = {
   'onboarding.restart': 'Mulai lagi',
   'onboarding.loading': 'Menyelesaikan pratinjau…',
   'onboarding.requiredError': 'Masukkan nama bisnis atau pilih Lewati dulu.',
+
+  
+  'err.invalidAccount': 'Pilih akun kas atau bank yang valid.',
+  'err.unknownProduct': 'Produk tidak ditemukan.',
+  'err.unknownCustomer': 'Pelanggan tidak ditemukan.',
+  'err.unknownSupplier': 'Supplier tidak ditemukan.',
+  'err.invalidDate': 'Masukkan tanggal yang valid.',
+  'err.noItems': 'Tambahkan minimal satu item.',
+  'err.invalidQty': 'Masukkan kuantitas yang valid.',
+  'err.insufficientStock': 'Stok {product} tidak mencukupi. Stok saat ini: {stock}.',
+  'err.paymentExceeds': 'Pembayaran melebihi jumlah yang masih harus dibayar.',
+  'err.customerCreditDisabled': 'Kredit pelanggan dinonaktifkan. Pembayaran harus lunas.',
+  'err.supplierCreditDisabled': 'Kredit supplier dinonaktifkan. Pembayaran harus lunas.',
+  'err.notFound': 'Data tidak ditemukan.',
+  'err.invalidAmount': 'Masukkan jumlah yang valid.',
+  'err.orderCancelled': 'Pesanan ini sudah dibatalkan.',
+  'err.cancelDelivered': 'Pesanan yang sudah terkirim tidak dapat dibatalkan.',
+  'err.cancelHasPayments': 'Pesanan yang sudah memiliki pembayaran tidak dapat dibatalkan.',
+  'err.alreadyDelivered': 'Pesanan ini sudah dikirim.',
+  'err.featureDisabled': 'Fitur ini dinonaktifkan di pengaturan.',
+  'err.invalidCategory': 'Pilih kategori biaya yang valid.',
+  'err.alreadyDeleted': 'Biaya ini sudah dihapus.',
+  'err.notDeleted': 'Biaya ini belum dihapus.',
 }
 
 export const dictionaries: Record<Locale, Record<TranslationKey, string>> = { en, id }

@@ -455,9 +455,6 @@ export function adjustStock(input: { productId: string; date: string; qty: numbe
     if (!product) throw new DomainError('err.unknownProduct')
     if (!isDate(input.date)) throw new DomainError('err.invalidDate')
     if (!Number.isInteger(input.qty) || input.qty === 0) throw new DomainError('err.invalidQty')
-    if (!features.negativeStock && product.stock + input.qty < 0) {
-      throw new DomainError('err.insufficientStock', { product: product.name, stock: product.stock })
-    }
 
     const reference = nextSeq(stockMovements.filter((m) => m.type === 'adjustment').map((m) => m.reference), 'ADJ-')
     const stockChange = moveStock(product.id, input.qty, 'adjustment', reference, input.date)
