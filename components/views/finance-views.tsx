@@ -42,6 +42,16 @@ const in7Days = '2026-10-13'
 const fetcher = (url: string) => fetch(url).then((response) => { if (!response.ok) throw new Error('Unable to load finance data'); return response.json() })
 
 type PersistedPayment = { id: string; date: string; amount: string; account: string; orderId: string | null; purchaseId: string | null }
+type PersistedParty = { id: string; name: string; phone?: string | null; address?: string | null }
+type PersistedOrder = { id: string; date: string; customerId: string; status: Order['status']; dueDate: string | null; notes: string | null; items: Array<{ productId: string; qty: number; price: string | number; discount?: string | number; unitCost: string | number }> }
+type PersistedPurchase = { id: string; date: string; supplierId: string; dueDate: string | null; notes: string | null; items: Array<{ productId: string; qty: number; price: string | number; unitCost?: string | number }> }
+
+function mapOrder(row: PersistedOrder, paymentRows: PersistedPayment[]): Order {
+  return { ...row, notes: row.notes ?? '', items: row.items.map((item) => ({ ...item, price: Number(item.price), discount: Number(item.discount ?? 0), unitCost: Number(item.unitCost) })), payments: paymentRows.filter((payment) => payment.orderId === row.id).map((payment) => ({ id: payment.id, date: payment.date, amount: Number(payment.amount), account: payment.account })), delivery: null }
+}
+function mapPurchase(row: PersistedPurchase, paymentRows: PersistedPayment[]): Purchase {
+  return { ...row, notes: row.notes ?? '', items: row.items.map((item) => ({ productId: item.productId, qty: item.qty, price: Number(item.price), unitCost: Number(item.unitCost ?? 0) })), payments: paymentRows.filter((payment) => payment.purchaseId === row.id).map((payment) => ({ id: payment.id, date: payment.date, amount: Number(payment.amount), account: payment.account })) }
+}
 
 function PersistedPaymentHistory({ businessId, kind }: { businessId: string | undefined; kind: 'receivable' | 'payable' }) {
   const { t } = useApp()
@@ -75,20 +85,28 @@ function DueCell({ due, outstanding }: { due: string | null; outstanding: number
 export function ReceivablesView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
-  const { data: business } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
-  const { mutate: refreshPayments } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
-  const rows = orders.filter((o) => orderOutstanding(o) > 0).sort((a, b) => (a.date < b.date ? -1 : 1))
+  const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { data: persistedOrders, error: ordersError } = useSWR<PersistedOrder[]>(business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: paymentRows, error: paymentsError, mutate: refreshPayments } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: persistedCustomers } = useSWR<PersistedParty[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const persisted = (persistedOrders ?? []).map((order) => mapOrder(order, paymentRows ?? []))
+  const rows = persisted.filter((o) => orderOutstanding(o) > 0).sort((a, b) => (a.date < b.date ? -1 : 1))
+  const partyById = new Map((persistedCustomers ?? []).map((customer) => [customer.id, customer]))
+  const financeError = businessError || ordersError || paymentsError
   const total = rows.reduce((s, o) => s + orderOutstanding(o), 0)
   const overdue = rows.filter((o) => isOverdue(o.dueDate, orderOutstanding(o)))
 
   const columns: Column<Order>[] = [
     { key: 'id', header: t('orders.id'), cell: (o) => <IdCell>{o.id}</IdCell> },
     { key: 'date', header: t('common.date'), cell: (o) => <span className="font-mono text-xs text-muted-foreground">{formatDate(o.date)}</span> },
-    { key: 'customer', header: t('common.customer'), cell: (o) => <span className="font-medium">{customerById(o.customerId)?.name}</span> },
+    { key: 'customer', header: t('common.customer'), cell: (o) => <span className="font-medium">{partyById.get(o.customerId)?.name}</span> },
     { key: 'due', header: t('common.dueDate'), sortValue: (o) => o.dueDate, cell: (o) => <DueCell due={o.dueDate} outstanding={orderOutstanding(o)} /> },
     { key: 'total', header: t('common.total'), align: 'right', cell: (o) => <Money value={orderTotal(o)} className="text-muted-foreground" /> },
     { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (o) => <Money value={orderOutstanding(o)} className="font-semibold text-warning" /> },
   ]
+
+  if (financeError) return <p role="alert" className="text-sm text-destructive">{financeError.message}</p>
+  if (!business || !persistedOrders || !paymentRows || !persistedCustomers) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
 
   return (
     <>
@@ -113,7 +131,7 @@ export function ReceivablesView() {
         rows={rows}
         columns={columns}
         getRowId={(o) => o.id}
-        searchText={(o) => `${o.id} ${customerById(o.customerId)?.name}`}
+        searchText={(o) => `${o.id} ${partyById.get(o.customerId)?.name}`}
         filters={[
           { value: 'all', label: t('common.all'), predicate: () => true },
           { value: 'overdue', label: t('common.overdue'), predicate: (o) => isOverdue(o.dueDate, orderOutstanding(o)) },
@@ -154,20 +172,28 @@ export function ReceivablesView() {
 export function PayablesView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
-  const { data: business } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
-  const { mutate: refreshPayments } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
-  const rows = purchases.filter((p) => purchaseOutstanding(p) > 0)
+  const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { data: persistedPurchases, error: purchasesError } = useSWR<PersistedPurchase[]>(business?.id ? `/api/purchases?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: paymentRows, error: paymentsError, mutate: refreshPayments } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: persistedSuppliers } = useSWR<PersistedParty[]>(business?.id ? `/api/suppliers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const persisted = (persistedPurchases ?? []).map((purchase) => mapPurchase(purchase, paymentRows ?? []))
+  const rows = persisted.filter((p) => purchaseOutstanding(p) > 0)
+  const partyById = new Map((persistedSuppliers ?? []).map((supplier) => [supplier.id, supplier]))
+  const financeError = businessError || purchasesError || paymentsError
   const total = rows.reduce((s, p) => s + purchaseOutstanding(p), 0)
   const overdue = rows.filter((p) => isOverdue(p.dueDate, purchaseOutstanding(p)))
 
   const columns: Column<Purchase>[] = [
     { key: 'id', header: t('purchases.id'), cell: (p) => <IdCell>{p.id}</IdCell> },
     { key: 'date', header: t('common.date'), cell: (p) => <span className="font-mono text-xs text-muted-foreground">{formatDate(p.date)}</span> },
-    { key: 'supplier', header: t('common.supplier'), cell: (p) => <span className="font-medium">{supplierById(p.supplierId)?.name}</span> },
+    { key: 'supplier', header: t('common.supplier'), cell: (p) => <span className="font-medium">{partyById.get(p.supplierId)?.name}</span> },
     { key: 'due', header: t('common.dueDate'), sortValue: (p) => p.dueDate, cell: (p) => <DueCell due={p.dueDate} outstanding={purchaseOutstanding(p)} /> },
     { key: 'total', header: t('common.total'), align: 'right', cell: (p) => <Money value={purchaseTotal(p)} className="text-muted-foreground" /> },
     { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (p) => <Money value={purchaseOutstanding(p)} className="font-semibold text-warning" /> },
   ]
+
+  if (financeError) return <p role="alert" className="text-sm text-destructive">{financeError.message}</p>
+  if (!business || !persistedPurchases || !paymentRows || !persistedSuppliers) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
 
   return (
     <>
@@ -192,7 +218,7 @@ export function PayablesView() {
         rows={rows}
         columns={columns}
         getRowId={(p) => p.id}
-        searchText={(p) => `${p.id} ${supplierById(p.supplierId)?.name}`}
+        searchText={(p) => `${p.id} ${partyById.get(p.supplierId)?.name}`}
         filters={[
           { value: 'all', label: t('common.all'), predicate: () => true },
           { value: 'overdue', label: t('common.overdue'), predicate: (p) => isOverdue(p.dueDate, purchaseOutstanding(p)) },
@@ -218,7 +244,7 @@ export function PayablesView() {
           setOpen(false)
         }}
         fields={[
-          { name: 'purchase', label: t('purchases.id'), type: 'select', options: rows.map((p) => ({ value: p.id, label: `${p.id} · ${supplierById(p.supplierId)?.name}` })) },
+          { name: 'purchase', label: t('purchases.id'), type: 'select', options: rows.map((p) => ({ value: p.id, label: `${p.id} · ${partyById.get(p.supplierId)?.name}` })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
           { name: 'account', label: t('payables.payFrom'), type: 'select', options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })), half: true },
           { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', min: 1 },
