@@ -1,10 +1,24 @@
 import { NextResponse } from "next/server"
+import { and, eq } from "drizzle-orm"
+import { headers } from "next/headers"
+import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { suppliers } from "@/lib/db/schema"
+import { businessMembers, suppliers } from "@/lib/db/schema"
 
-export async function GET() {
+async function getBusinessAccess(businessId: string) {
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) return { ok: false as const, status: 401, error: "Authentication required" }
+  const [member] = await db.select({ userId: businessMembers.userId }).from(businessMembers).where(and(eq(businessMembers.businessId, businessId), eq(businessMembers.userId, session.user.id))).limit(1)
+  return member ? { ok: true as const } : { ok: false as const, status: 403, error: "You do not have access to this business" }
+}
+
+export async function GET(request: Request) {
   try {
-    const suppliersList = await db.select().from(suppliers)
+    const businessId = new URL(request.url).searchParams.get("businessId")
+    if (!businessId) return NextResponse.json({ error: "businessId is required" }, { status: 400 })
+    const access = await getBusinessAccess(businessId)
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
+    const suppliersList = await db.select().from(suppliers).where(eq(suppliers.businessId, businessId))
 
     return NextResponse.json(suppliersList)
   } catch (error) {
@@ -39,6 +53,8 @@ export async function POST(request: Request) {
         { status: 400 },
       )
     }
+    const access = await getBusinessAccess(businessId)
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     const [supplier] = await db
       .insert(suppliers)
