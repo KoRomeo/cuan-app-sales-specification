@@ -130,8 +130,8 @@ export async function POST(request: Request) {
     }
 
     const customer = await db.transaction(async (tx) => {
-      // Serialize ID allocation per business and year to prevent duplicate IDs
-      // when two customers are created at the same time.
+      // Serialize ID allocation for the year globally because IDs are primary keys
+      // and must remain unique across every business.
       const year = new Date().toLocaleDateString("en-CA", {
         timeZone: "Asia/Jakarta",
         year: "numeric",
@@ -139,13 +139,13 @@ export async function POST(request: Request) {
       const prefix = `CUS-${year}-`;
 
       await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtext(${businessId}), hashtext(${prefix}))`,
+        sql`SELECT pg_advisory_xact_lock(0, hashtext(${prefix}))`,
       );
 
       const [latest] = await tx
         .select({ id: customers.id })
         .from(customers)
-        .where(and(eq(customers.businessId, businessId), like(customers.id, `${prefix}%`)))
+        .where(like(customers.id, `${prefix}%`))
         .orderBy(sql`${customers.id} DESC`)
         .limit(1);
 
