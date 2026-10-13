@@ -58,16 +58,16 @@ export async function POST(request: NextRequest) {
     if (![businessId, customerId].every((v) => typeof v === "string" && v.trim()) || !date(orderDate) || (dueDate && !date(dueDate)) || !STATUSES.includes(status) || !["requested", "ready"].includes(status) || !items(lineItems) || typeof paidAmount !== "number" || !Number.isFinite(paidAmount) || paidAmount < 0 || (paidAmount > 0 && (typeof paymentAccount !== "string" || !paymentAccount.trim())) || (paidAmount > 0 && !paymentId)) return NextResponse.json({ error: "Order fields, items, or payment are invalid" }, { status: 400 })
     const allowed = await access(businessId); if (!allowed.ok) return NextResponse.json({ error: allowed.error }, { status: allowed.status })
     const id = await db.transaction(async (tx) => {
-      // Allocate IDs on the server, serialized per business and calendar month.
+      // Allocate IDs on the server, serialized globally by calendar month because IDs are primary keys.
       const [year, month] = orderDate.split("-");
       const prefix = `ORD-${year}${month}-`;
       await tx.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtext(${businessId}), hashtext(${prefix}))`,
+        sql`SELECT pg_advisory_xact_lock(0, hashtext(${prefix}))`,
       );
       const [latest] = await tx
         .select({ id: orders.id })
         .from(orders)
-        .where(and(eq(orders.businessId, businessId), like(orders.id, `${prefix}%`)))
+        .where(like(orders.id, `${prefix}%`))
         .orderBy(sql`${orders.id} DESC`)
         .limit(1);
       const lastNumber = latest ? Number(latest.id.slice(prefix.length)) : 0;
