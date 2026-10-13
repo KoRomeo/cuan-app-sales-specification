@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { and, eq, inArray, sql } from "drizzle-orm"
+import { and, eq, inArray, like, sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import { businessMembers, customers, journalEntries, journalEntryLines, orderItems, orders, payments, products, stockMovements } from "@/lib/db/schema"
@@ -54,11 +54,28 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json(); const { id, businessId, date: orderDate, customerId, status = "requested", dueDate, notes, items: lineItems, paidAmount = 0, paymentAccount = "Cash", paymentDate = orderDate, paymentId } = body
-    if (![id, businessId, customerId].every((v) => typeof v === "string" && v.trim()) || !date(orderDate) || (dueDate && !date(dueDate)) || !STATUSES.includes(status) || !["requested", "ready"].includes(status) || !items(lineItems) || typeof paidAmount !== "number" || !Number.isFinite(paidAmount) || paidAmount < 0 || (paidAmount > 0 && (typeof paymentAccount !== "string" || !paymentAccount.trim())) || (paidAmount > 0 && !paymentId)) return NextResponse.json({ error: "Order fields, items, or payment are invalid" }, { status: 400 })
+    const body = await request.json(); const { businessId, date: orderDate, customerId, status = "requested", dueDate, notes, items: lineItems, paidAmount = 0, paymentAccount = "Cash", paymentDate = orderDate, paymentId } = body
+    if (![businessId, customerId].every((v) => typeof v === "string" && v.trim()) || !date(orderDate) || (dueDate && !date(dueDate)) || !STATUSES.includes(status) || !["requested", "ready"].includes(status) || !items(lineItems) || typeof paidAmount !== "number" || !Number.isFinite(paidAmount) || paidAmount < 0 || (paidAmount > 0 && (typeof paymentAccount !== "string" || !paymentAccount.trim())) || (paidAmount > 0 && !paymentId)) return NextResponse.json({ error: "Order fields, items, or payment are invalid" }, { status: 400 })
     const allowed = await access(businessId); if (!allowed.ok) return NextResponse.json({ error: allowed.error }, { status: allowed.status })
-    await db.transaction(async (tx) => {
-      const [existing] = await tx.select({ id: orders.id }).from(orders).where(eq(orders.id, id)).limit(1); if (existing) throw new Error("ORDER_ID_EXISTS")
+    const id = await db.transaction(async (tx) => {
+      // Allocate IDs on the server, serialized per business and calendar month.
+      const [year, month] = orderDate.split("-");
+      const prefix = `ORD-${year}${month}-`;
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${businessId}), hashtext(${prefix}))`,
+      );
+      const [latest] = await tx
+        .select({ id: orders.id })
+        .from(orders)
+        .where(and(eq(orders.businessId, businessId), like(orders.id, `${prefix}%`)))
+        .orderBy(sql`${orders.id} DESC`)
+        .limit(1);
+      const lastNumber = latest ? Number(latest.id.slice(prefix.length)) : 0;
+      if (!Number.isSafeInteger(lastNumber) || lastNumber < 0 || lastNumber >= 9999) {
+        throw new Error("ORDER_ID_SEQUENCE_EXHAUSTED");
+      }
+      const id = `${prefix}${String(lastNumber + 1).padStart(4, "0")}`;
+
       await verify(tx, businessId, customerId, lineItems)
       const productRows = await tx.select({ id: products.id, sellingPrice: products.sellingPrice, averageCost: products.averageCost }).from(products).where(and(eq(products.businessId, businessId), inArray(products.id, [...new Set(lineItems.map((item) => item.productId))])))
       const byProduct = new Map(productRows.map((product) => [product.id, product]))
@@ -75,6 +92,7 @@ export async function POST(request: NextRequest) {
         await tx.insert(journalEntries).values({ id: entryId, businessId, entryDate: paymentDate, kind: "payment", reference: paymentId, description: `Customer payment for ${id}` })
         await tx.insert(journalEntryLines).values([{ id: `${entryId}-debit`, journalEntryId: entryId, account: paymentAccount.trim(), debit: paidAmount.toFixed(2), credit: "0" }, { id: `${entryId}-credit`, journalEntryId: entryId, account: "Accounts Receivable", debit: "0", credit: paidAmount.toFixed(2) }])
       }
+      return id
     })
     return NextResponse.json({ message: "Order created successfully", id }, { status: 201 })
   } catch (error) { return fail(error) }
