@@ -1,5 +1,5 @@
 'use client'
-
+import useSWR from 'swr'
 import { CheckCircle2, FileText, HandCoins, Printer, RotateCcw, Truck, Users } from 'lucide-react'
 import { useState } from 'react'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
@@ -38,63 +38,189 @@ const custStats = (c: Party) => {
   }
 }
 
+type PersistedCustomer = {
+  id: string
+  businessId: string
+  name: string
+  phone: string | null
+  address: string | null
+  location: string | null
+}
+
+const customersFetcher = async (url: string) => {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error('Failed to fetch customers')
+  return response.json()
+}
+
 export function CustomersView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
-  const totalReceivable = customers.reduce((s, c) => s + custStats(c).outstanding, 0)
+  const [saving, setSaving] = useState(false)
 
-  const columns: Column<Party>[] = [
-    { key: 'id', header: 'ID', cell: (c) => <IdCell>{c.id}</IdCell> },
-    { key: 'name', header: t('common.customer'), cell: (c) => <span className="font-medium">{c.name}</span> },
-    { key: 'phone', header: t('common.phone'), cell: (c) => <span className="font-mono text-xs text-muted-foreground">{c.phone}</span> },
-    { key: 'address', header: t('common.address'), cell: (c) => <span className="block max-w-56 truncate text-muted-foreground">{c.address}</span> },
-    { key: 'orders', header: t('customers.totalOrders'), align: 'right', cell: (c) => <span className="font-mono tabular-nums">{custStats(c).count}</span> },
-    { key: 'lifetime', header: t('customers.lifetime'), align: 'right', cell: (c) => <Money value={custStats(c).lifetime} /> },
+  const { data: business, error: businessError } = useSWR<{ id: string }>(
+    '/api/businesses/current',
+    customersFetcher,
+  )
+
+  const {
+    data: customerRows,
+    error: customersError,
+    isLoading,
+    mutate,
+  } = useSWR<PersistedCustomer[]>(
+    business?.id
+      ? `/api/customers?businessId=${encodeURIComponent(business.id)}`
+      : null,
+    customersFetcher,
+  )
+
+  const rows = customerRows ?? []
+
+  const addCustomer = async (values: Record<string, string>) => {
+    if (!business?.id) {
+      throw new Error('Business not found')
+    }
+
+    const response = await fetch('/api/customers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        businessId: business.id,
+        name: values.name?.trim(),
+        phone: values.phone?.trim() || null,
+        address: values.address?.trim() || null,
+      }),
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to create customer')
+    }
+
+    await mutate()
+    setOpen(false)
+  }
+
+  const columns: Column<PersistedCustomer>[] = [
     {
-      key: 'outstanding',
-      header: t('common.outstanding'),
-      align: 'right',
-      cell: (c) => {
-        const v = custStats(c).outstanding
-        return <Money value={v} className={v > 0 ? 'font-medium text-warning' : 'text-muted-foreground'} />
-      },
+      key: 'id',
+      header: 'ID',
+      cell: (c) => <IdCell>{c.id}</IdCell>,
+    },
+    {
+      key: 'name',
+      header: t('common.customer'),
+      cell: (c) => <span className="font-medium">{c.name}</span>,
+    },
+    {
+      key: 'phone',
+      header: t('common.phone'),
+      cell: (c) => (
+        <span className="font-mono text-xs text-muted-foreground">
+          {c.phone || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'address',
+      header: t('common.address'),
+      cell: (c) => (
+        <span className="block max-w-56 truncate text-muted-foreground">
+          {c.address || '—'}
+        </span>
+      ),
     },
   ]
 
   return (
     <>
-      <PageHeader breadcrumbs={[{ label: t('nav.sales') }, { label: t('nav.customers') }]} title={t('customers.title')} description={t('customers.desc')} />
-      <KpiGrid>
-        <KpiCard label={t('customers.count')} value={customers.length} icon={Users} />
-        <KpiCard label={t('customers.withDebt')} value={customers.filter((c) => custStats(c).outstanding > 0).length} icon={HandCoins} tone="warning" />
-        <KpiCard label={t('customers.totalReceivable')} value={formatIDR(totalReceivable)} icon={HandCoins} tone="warning" href="/receivables" />
-        <KpiCard label={t('customers.lifetime')} value={formatIDR(customers.reduce((s, c) => s + custStats(c).lifetime, 0))} icon={FileText} tone="success" />
-      </KpiGrid>
-      <DataTable
-        rows={customers}
-        columns={columns}
-        getRowId={(c) => c.id}
-        searchText={(c) => `${c.id} ${c.name} ${c.phone} ${c.address}`}
-        filters={[
-          { value: 'all', label: t('common.all'), predicate: () => true },
-          { value: 'debt', label: t('customers.withDebt'), predicate: (c) => custStats(c).outstanding > 0 },
+      <PageHeader
+        breadcrumbs={[
+          { label: t('nav.sales') },
+          { label: t('nav.customers') },
         ]}
-        addLabel={t('customers.add')}
-        onAdd={() => setOpen(true)}
+        title={t('customers.title')}
+        description={t('customers.desc')}
       />
+
+      <KpiGrid>
+        <KpiCard
+          label={t('customers.count')}
+          value={rows.length}
+          icon={Users}
+        />
+        <KpiCard
+          label={t('customers.withDebt')}
+          value="—"
+          icon={HandCoins}
+          tone="warning"
+        />
+        <KpiCard
+          label={t('customers.totalReceivable')}
+          value="—"
+          icon={HandCoins}
+          tone="warning"
+          href="/receivables"
+        />
+        <KpiCard
+          label={t('customers.lifetime')}
+          value="—"
+          icon={FileText}
+          tone="success"
+        />
+      </KpiGrid>
+
+      {businessError || customersError ? (
+        <p className="py-4 text-sm text-destructive">
+          Failed to load customers. Please refresh and try again.
+        </p>
+      ) : isLoading || !business ? (
+        <p className="py-4 text-sm text-muted-foreground">
+          Loading customers...
+        </p>
+      ) : (
+        <DataTable
+          rows={rows}
+          columns={columns}
+          getRowId={(c) => c.id}
+          searchText={(c) =>
+            `${c.id} ${c.name} ${c.phone ?? ''} ${c.address ?? ''}`
+          }
+          addLabel={t('customers.add')}
+          onAdd={() => setOpen(true)}
+        />
+      )}
+
       <FormDialog
         open={open}
         onOpenChange={setOpen}
         title={t('customers.add')}
         fields={[
-          { name: 'name', label: t('common.customer'), placeholder: 'Toko …' },
-          { name: 'phone', label: t('common.phone'), placeholder: '08xx-xxxx-xxxx' },
-          { name: 'address', label: t('common.address'), type: 'textarea' },
+          {
+            name: 'name',
+            label: t('common.customer'),
+            placeholder: 'Toko …',
+          },
+          {
+            name: 'phone',
+            label: t('common.phone'),
+            placeholder: '08xx-xxxx-xxxx',
+          },
+          {
+            name: 'address',
+            label: t('common.address'),
+            type: 'textarea',
+          },
         ]}
+        onSubmit={addCustomer}
+        persisted
       />
     </>
   )
 }
+
 
 export function InvoicesView() {
   const { t } = useApp()

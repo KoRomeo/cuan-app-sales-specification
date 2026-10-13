@@ -65,6 +65,8 @@ export function AuthView({ mode }: { mode: AuthMode }) {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    console.log("LOGIN FORM SUBMITTED")
+    alert("FORM SUBMITTED")
     const nextErrors: Partial<Record<AuthField, string>> = {}
 
     if (mode === 'register' && !fields.name.trim()) nextErrors.name = t('auth.validationName')
@@ -85,8 +87,9 @@ export function AuthView({ mode }: { mode: AuthMode }) {
       : await authClient.signIn.email({ email: fields.email.trim(), password: fields.password })
     setIsLoading(false)
     if (result.error) {
-      toast.error(t('auth.validationError'))
-      setErrors({ email: t('auth.validationError') })
+      console.error("Authentication error:", result.error)
+      toast.error(result.error.message || "Login failed")
+      setErrors({ email: result.error.message || "Login failed" })
       return
     }
     router.push(isRegister ? '/onboarding' : '/dashboard')
