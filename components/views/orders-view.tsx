@@ -45,7 +45,7 @@ export function OrdersView() {
   const { data: payments, error: paymentsError } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: customers, error: customersError } = useSWR<PersistedParty[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: products, error: productsError } = useSWR<Array<{ id: string; name: string; stock?: number }>>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
-async function deleteOrder() {
+  async function deleteOrder() {
     if (!business?.id || !deleteTarget) return
     const target = deleteTarget
     try {
