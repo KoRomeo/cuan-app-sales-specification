@@ -73,8 +73,8 @@ export function NewOrderView() {
             const form = new FormData(event.currentTarget)
             const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
             const result = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-              id: `ORD-${Date.now()}`, businessId: business.id, date: form.get('orderDate'), customerId: form.get('customerId'), status: 'requested', dueDate: form.get('dueDate') || null, notes: form.get('notes') || null, paidAmount: paid, paymentAccount: 'Cash', paymentDate: form.get('orderDate'), paymentId: paid > 0 ? `PAY-ORD-${Date.now()}` : undefined,
-              items: lines.map((line) => ({ id: `OI-${Date.now()}-${line.key}`, productId: line.productId, qty: line.qty, price: line.price, discount: line.discount, unitCost: productsById.get(line.productId)?.averageCost ?? 0 })),
+              businessId: business.id, date: form.get('orderDate'), customerId: form.get('customerId'), status: 'requested', dueDate: form.get('dueDate') || null, notes: form.get('notes') || null, paidAmount: paid, paymentAccount: 'Cash', paymentDate: form.get('orderDate'), paymentId: paid > 0 ? `PAY-${crypto.randomUUID()}` : undefined,
+              items: lines.map((line) => ({ id: `OI-${crypto.randomUUID()}`, productId: line.productId, qty: line.qty, price: line.price, discount: line.discount, unitCost: productsById.get(line.productId)?.averageCost ?? 0 })),
             }) })
             if (!result.ok) throw new Error((await result.json()).error ?? 'Unable to save order')
             setPreviewed(true)
