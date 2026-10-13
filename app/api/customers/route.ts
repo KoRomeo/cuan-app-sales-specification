@@ -1,6 +1,6 @@
 
 import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, like, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -129,17 +129,46 @@ export async function POST(request: Request) {
       );
     }
 
-    const [customer] = await db
-      .insert(customers)
-      .values({
-        id: crypto.randomUUID(),
-        businessId,
-        name: name.trim(),
-        phone: optionalText(phone),
-        address: optionalText(address),
-        location: optionalText(location),
-      })
-      .returning();
+    const customer = await db.transaction(async (tx) => {
+      // Serialize ID allocation per business and year to prevent duplicate IDs
+      // when two customers are created at the same time.
+      const year = new Date().toLocaleDateString("en-CA", {
+        timeZone: "Asia/Jakarta",
+        year: "numeric",
+      });
+      const prefix = `CUS-${year}-`;
+
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${businessId}), hashtext(${prefix}))`,
+      );
+
+      const [latest] = await tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(and(eq(customers.businessId, businessId), like(customers.id, `${prefix}%`)))
+        .orderBy(sql`${customers.id} DESC`)
+        .limit(1);
+
+      const lastNumber = latest ? Number(latest.id.slice(prefix.length)) : 0;
+      if (!Number.isSafeInteger(lastNumber) || lastNumber < 0 || lastNumber >= 9999) {
+        throw new Error("CUSTOMER_ID_SEQUENCE_EXHAUSTED");
+      }
+      const id = `${prefix}${String(lastNumber + 1).padStart(4, "0")}`;
+
+      const [created] = await tx
+        .insert(customers)
+        .values({
+          id,
+          businessId,
+          name: name.trim(),
+          phone: optionalText(phone),
+          address: optionalText(address),
+          location: optionalText(location),
+        })
+        .returning();
+
+      return created;
+    });
 
     return NextResponse.json(customer, { status: 201 });
   } catch (error) {
