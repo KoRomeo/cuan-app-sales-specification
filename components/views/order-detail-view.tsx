@@ -42,17 +42,19 @@ type DetailResponse = {
 export function OrderDetailView({ orderId }: { orderId: string }) {
   const { t, features } = useApp()
   const { data, error, mutate } = useSWR<DetailResponse>(`/api/orders/${encodeURIComponent(orderId)}`, fetcher)
+  const { data: business } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const [doc, setDoc] = useState<'invoice' | 'delivery' | null>(null)
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [payOpen, setPayOpen] = useState(false)
+  const [deliveryOpen, setDeliveryOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+
   if (error) return <div role="alert" className="flex flex-col gap-3"><p className="text-sm text-destructive">{error.message}</p><Button variant="outline" size="sm" onClick={() => mutate()}>{t('common.retry')}</Button></div>
   if (!data) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
   const productById = new Map(data.products.map((product) => [product.id, { ...product, averageCost: Number(product.averageCost), stock: Number(product.stock) }]))
   const order: Order = { ...data, notes: data.notes ?? '', items: data.items.map((item) => ({ ...item, price: Number(item.price), discount: Number(item.discount), unitCost: Number(item.unitCost) })), payments: data.payments.map((payment) => ({ ...payment, amount: Number(payment.amount) })), delivery: data.delivery }
   const customer = data.customer
   const replacements = data.replacements
-  const [doc, setDoc] = useState<'invoice' | 'delivery' | null>(null)
-  const [cancelOpen, setCancelOpen] = useState(false)
-  const [payOpen, setPayOpen] = useState(false)
-  const [deliveryOpen, setDeliveryOpen] = useState(false)
-
   const total = orderTotal(order)
   const paid = orderPaid(order)
   const outstanding = orderOutstanding(order)
@@ -97,7 +99,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
             )}
             {!cancelled && (
               <>
-                <Button variant="outline" size="sm" onClick={() => toast.info(t('form.editUnavailable'))}>
+                <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
                   <Pencil />
                   {t('common.edit')}
                 </Button>
@@ -296,6 +298,49 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
       </div>
 
       {doc && <DocumentPreview order={order} kind={doc} open={!!doc} onOpenChange={(o) => !o && setDoc(null)} />}
+      <FormDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        title={t('common.edit') + ' ' + t('nav.orders')}
+        submitLabel={t('common.save')}
+        persisted
+        fields={[
+          { name: 'date', label: t('common.date'), type: 'date', defaultValue: order.date, half: true },
+          {
+            name: 'status',
+            label: t('common.status'),
+            type: 'select',
+            defaultValue: order.status,
+            half: true,
+            options: [
+              { value: 'requested', label: t('orders.statusRequested') },
+              { value: 'ready', label: t('orders.statusReady') },
+            ],
+          },
+          { name: 'dueDate', label: t('common.dueDate'), type: 'date', defaultValue: order.dueDate ?? '', required: false, half: true },
+          { name: 'notes', label: t('common.notes'), type: 'textarea', defaultValue: order.notes, required: false },
+        ]}
+        onSubmit={async (values) => {
+          if (!business?.id) throw new Error(t('common.retry'))
+          const response = await fetch('/api/orders', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: order.id,
+              businessId: business.id,
+              date: values.date,
+              status: values.status,
+              dueDate: values.dueDate || null,
+              notes: values.notes,
+            }),
+          })
+          const result = await response.json()
+          if (!response.ok) throw new Error(result.error ?? t('form.validationError'))
+          await mutate()
+          setEditOpen(false)
+          toast.success(t('form.savedFeedback'))
+        }}
+      />
       <ConfirmDialog
         open={cancelOpen}
         onOpenChange={setCancelOpen}
