@@ -57,19 +57,22 @@ export async function POST(request: NextRequest) {
     const body = await request.json(); const { businessId, date: orderDate, customerId, status = "requested", dueDate, notes, items: lineItems, paidAmount = 0, paymentAccount = "Cash", paymentDate = orderDate, paymentId } = body
     if (![businessId, customerId].every((v) => typeof v === "string" && v.trim()) || !date(orderDate) || (dueDate && !date(dueDate)) || !STATUSES.includes(status) || !["requested", "ready"].includes(status) || !items(lineItems) || typeof paidAmount !== "number" || !Number.isFinite(paidAmount) || paidAmount < 0 || (paidAmount > 0 && (typeof paymentAccount !== "string" || !paymentAccount.trim())) || (paidAmount > 0 && !paymentId)) return NextResponse.json({ error: "Order fields, items, or payment are invalid" }, { status: 400 })
     const allowed = await access(businessId); if (!allowed.ok) return NextResponse.json({ error: allowed.error }, { status: allowed.status })
-    const id = await db.transaction(async (tx) => {
+      const id = await db.transaction(async (tx) => {
       // Allocate IDs on the server, serialized globally by calendar month because IDs are primary keys.
       const [year, month] = orderDate.split("-");
       const prefix = `ORD-${year}${month}-`;
+
       await tx.execute(
         sql`SELECT pg_advisory_xact_lock(0, hashtext(${prefix}))`,
       );
+
       const [latest] = await tx
         .select({ id: orders.id })
         .from(orders)
         .where(like(orders.id, `${prefix}%`))
         .orderBy(sql`${orders.id} DESC`)
         .limit(1);
+
       const lastNumber = latest ? Number(latest.id.slice(prefix.length)) : 0;
       if (!Number.isSafeInteger(lastNumber) || lastNumber < 0 || lastNumber >= 9999) {
         throw new Error("ORDER_ID_SEQUENCE_EXHAUSTED");
