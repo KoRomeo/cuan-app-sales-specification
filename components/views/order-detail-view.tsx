@@ -312,10 +312,12 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
             type: 'select',
             defaultValue: order.status,
             half: true,
-            options: [
-              { value: 'requested', label: t('orders.statusRequested') },
-              { value: 'ready', label: t('orders.statusReady') },
-            ],
+            options: order.status === 'ready'
+              ? [{ value: 'ready', label: t('status.ready') }]
+              : [
+                  { value: 'requested', label: t('status.requested') },
+                  { value: 'ready', label: t('status.ready') },
+                ],
           },
           { name: 'dueDate', label: t('common.dueDate'), type: 'date', defaultValue: order.dueDate ?? '', required: false, half: true },
           { name: 'notes', label: t('common.notes'), type: 'textarea', defaultValue: order.notes, required: false },
