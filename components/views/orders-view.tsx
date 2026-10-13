@@ -32,6 +32,19 @@ function mapOrder(row: PersistedOrder, payments: PersistedPayment[]): Order {
   return { ...row, notes: row.notes ?? '', items: row.items.map((item) => ({ ...item, price: Number(item.price), discount: Number(item.discount ?? 0), unitCost: Number(item.unitCost) })), payments: payments.filter((payment) => payment.orderId === row.id).map((payment) => ({ id: payment.id, date: payment.date, amount: Number(payment.amount), account: payment.account })), delivery: null }
 }
 
+const hasNegativeImpact = (o: Order, productStock: Map<string, number>) =>
+  o.status !== 'cancelled' && o.items.some((it) => (productStock.get(it.productId) ?? 0) < 0)
+
+export function OrdersView() {
+  const { t } = useApp()
+  const router = useRouter()
+  const { mutate: globalMutate } = useSWRConfig()
+  const [deleteTarget, setDeleteTarget] = useState<PersistedOrder | null>(null)
+  const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { data: persistedOrders, error: ordersError, mutate: mutateOrders } = useSWR<PersistedOrder[]>(business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: payments, error: paymentsError } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: customers, error: customersError } = useSWR<PersistedParty[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: products, error: productsError } = useSWR<Array<{ id: string; name: string; stock?: number }>>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
 async function deleteOrder() {
     if (!business?.id || !deleteTarget) return
     const target = deleteTarget
@@ -47,19 +60,6 @@ async function deleteOrder() {
     }
   }
 
-const hasNegativeImpact = (o: Order, productStock: Map<string, number>) =>
-  o.status !== 'cancelled' && o.items.some((it) => (productStock.get(it.productId) ?? 0) < 0)
-
-export function OrdersView() {
-  const { t } = useApp()
-  const router = useRouter()
-  const { mutate: globalMutate } = useSWRConfig()
-  const [deleteTarget, setDeleteTarget] = useState<PersistedOrder | null>(null)
-  const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
-  const { data: persistedOrders, error: ordersError, mutate: mutateOrders } = useSWR<PersistedOrder[]>(business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
-  const { data: payments, error: paymentsError } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
-  const { data: customers, error: customersError } = useSWR<PersistedParty[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
-  const { data: products, error: productsError } = useSWR<Array<{ id: string; name: string; stock?: number }>>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const error = businessError || ordersError || paymentsError || customersError || productsError
   if (error) return <p role="alert" className="text-sm text-destructive">{error.message}</p>
   if (!business || !persistedOrders || !payments || !customers || !products) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
