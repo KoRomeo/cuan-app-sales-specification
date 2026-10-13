@@ -103,29 +103,119 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const body = await request.json(); const { id, businessId, date: orderDate, customerId, status, dueDate, notes, items: lineItems } = body
-    if (typeof id !== "string" || typeof businessId !== "string") return NextResponse.json({ error: "id and businessId are required" }, { status: 400 })
-    if (orderDate !== undefined && !date(orderDate) || dueDate !== undefined && dueDate !== null && dueDate !== "" && !date(dueDate) || status !== undefined && !STATUSES.includes(status) || lineItems !== undefined && !items(lineItems)) return NextResponse.json({ error: "Invalid order fields" }, { status: 400 })
-    const allowed = await access(businessId); if (!allowed.ok) return NextResponse.json({ error: allowed.error }, { status: allowed.status })
+    const body = await request.json()
+    const {
+      id,
+      businessId,
+      date: orderDate,
+      status,
+      dueDate,
+      notes,
+    } = body
+
+    if (
+      typeof id !== "string" ||
+      !id.trim() ||
+      typeof businessId !== "string" ||
+      !businessId.trim()
+    ) {
+      return NextResponse.json(
+        { error: "id and businessId are required" },
+        { status: 400 },
+      )
+    }
+
+    if (
+      (orderDate !== undefined &&
+        !date(orderDate)) ||
+      (dueDate !== undefined &&
+        dueDate !== null &&
+        dueDate !== "" &&
+        !date(dueDate)) ||
+      (status !== undefined &&
+        !["requested", "ready"].includes(status)) ||
+      (notes !== undefined &&
+        notes !== null &&
+        typeof notes !== "string")
+    ) {
+      return NextResponse.json(
+        { error: "Invalid order fields" },
+        { status: 400 },
+      )
+    }
+
+    const allowed = await access(businessId)
+
+    if (!allowed.ok) {
+      return NextResponse.json(
+        { error: allowed.error },
+        { status: allowed.status },
+      )
+    }
+
     await db.transaction(async (tx) => {
-      const [current] = await tx.select().from(orders).where(and(eq(orders.id, id), eq(orders.businessId, businessId))).for("update").limit(1); if (!current) throw new Error("ORDER_NOT_FOUND")
-      if (current.status === "delivered") throw new Error("DELIVERED_IMMUTABLE")
-      if (current.status === "cancelled") throw new Error("INVALID_STATUS")
-      const next = (status ?? current.status) as Status
-      const transitions: Record<Status, Status[]> = { requested: ["requested", "ready", "delivered", "cancelled"], ready: ["ready", "delivered", "cancelled"], delivered: ["delivered"], cancelled: ["cancelled"] }
-      if (!transitions[current.status].includes(next)) throw new Error("INVALID_STATUS")
-      const existingItems = await tx.select().from(orderItems).where(eq(orderItems.orderId, id))
-      if (customerId !== undefined) await verify(tx, businessId, customerId, lineItems ?? existingItems as Item[])
-      if (lineItems !== undefined) { await tx.delete(orderItems).where(eq(orderItems.orderId, id)); await tx.insert(orderItems).values(lineItems.map((item: Item) => ({ id: item.id, orderId: id, productId: item.productId, qty: Number(item.qty), price: String(item.price), discount: String(item.discount ?? 0), unitCost: String(item.unitCost) }))) }
-      if (next === "delivered") {
-        const reference = `order:${id}:sale`; const existing = await tx.select({ id: stockMovements.id }).from(stockMovements).where(and(eq(stockMovements.businessId, businessId), eq(stockMovements.reference, reference), eq(stockMovements.type, "sale"))).limit(1); if (existing[0]) throw new Error("DELIVERY_ALREADY_PROCESSED")
-        const stock = await tx.select({ productId: products.id, available: sql<number>`coalesce(sum(${stockMovements.qty}), 0)` }).from(products).leftJoin(stockMovements, and(eq(stockMovements.productId, products.id), eq(stockMovements.businessId, businessId))).where(and(eq(products.businessId, businessId), inArray(products.id, existingItems.map((item) => item.productId)))).groupBy(products.id)
-        const needed = new Map(existingItems.map((item) => [item.productId, item.qty])); if (stock.some((row) => Number(row.available) - (needed.get(row.productId) ?? 0) < 0)) throw new Error("NEGATIVE_STOCK")
-        await tx.insert(stockMovements).values(existingItems.map((item) => ({ id: `SM-SALE-${item.id}`, businessId, date: new Date().toISOString().slice(0, 10), productId: item.productId, type: "sale" as const, qty: -item.qty, reference })))
+      const [current] = await tx
+        .select()
+        .from(orders)
+        .where(
+          and(
+            eq(orders.id, id),
+            eq(orders.businessId, businessId),
+          ),
+        )
+        .for("update")
+        .limit(1)
+
+      if (!current) {
+        throw new Error("ORDER_NOT_FOUND")
       }
-      await tx.update(orders).set({ ...(orderDate !== undefined ? { date: orderDate } : {}), ...(customerId !== undefined ? { customerId } : {}), ...(dueDate !== undefined ? { dueDate: dueDate || null } : {}), ...(notes !== undefined ? { notes: notes || null } : {}), status: next }).where(and(eq(orders.id, id), eq(orders.businessId, businessId)))
+
+      if (
+        current.status === "delivered" ||
+        current.status === "cancelled"
+      ) {
+        throw new Error("INVALID_STATUS")
+      }
+
+      const nextStatus = status ?? current.status
+
+      const validTransition =
+        current.status === "requested"
+          ? ["requested", "ready"].includes(nextStatus)
+          : nextStatus === "ready"
+
+      if (!validTransition) {
+        throw new Error("INVALID_STATUS")
+      }
+
+      await tx
+        .update(orders)
+        .set({
+          ...(orderDate !== undefined
+            ? { date: orderDate }
+            : {}),
+          ...(dueDate !== undefined
+            ? { dueDate: dueDate || null }
+            : {}),
+          ...(notes !== undefined
+            ? { notes: notes || null }
+            : {}),
+          status: nextStatus,
+        })
+        .where(
+          and(
+            eq(orders.id, id),
+            eq(orders.businessId, businessId),
+          ),
+        )
     })
-    return NextResponse.json({ message: "Order updated successfully", id })
-  } catch (error) { return fail(error) }
+
+    return NextResponse.json({
+      message: "Order updated successfully",
+      id,
+    })
+  } catch (error) {
+    return fail(error)
+  }
 }
   
