@@ -3,7 +3,18 @@ import { headers } from "next/headers"
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { businessMembers, customers, deliveries, orderItems, orders, payments, products, replacements, stockMovements } from "@/lib/db/schema"
+import {
+  businessMembers,
+  customers,
+  deliveries,
+  journalEntries,
+  orderItems,
+  orders,
+  payments,
+  products,
+  replacements,
+  stockMovements,
+} from "@/lib/db/schema"
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -24,4 +35,176 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   ])
   const productRows = itemRows.length ? await db.select({ id: products.id, name: products.name, averageCost: products.averageCost, stock: sql<number>`coalesce(sum(${stockMovements.qty}), 0)` }).from(products).leftJoin(stockMovements, and(eq(stockMovements.productId, products.id), eq(stockMovements.businessId, order.businessId))).where(eq(products.businessId, order.businessId)).groupBy(products.id) : []
   return NextResponse.json({ ...order, customer: customer ?? null, items: itemRows, products: productRows, payments: paymentRows, delivery: delivery ?? null, replacements: replacementRows })
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params
+  const businessId = request.nextUrl.searchParams.get("businessId")
+
+  if (!businessId) {
+    return NextResponse.json(
+      { error: "businessId is required" },
+      { status: 400 },
+    )
+  }
+
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  })
+
+  if (!session?.user) {
+    return NextResponse.json(
+      { error: "Authentication required" },
+      { status: 401 },
+    )
+  }
+
+  const [member] = await db
+    .select({ role: businessMembers.role })
+    .from(businessMembers)
+    .where(
+      and(
+        eq(businessMembers.businessId, businessId),
+        eq(businessMembers.userId, session.user.id),
+      ),
+    )
+    .limit(1)
+
+  if (!member) {
+    return NextResponse.json(
+      { error: "Order not found" },
+      { status: 404 },
+    )
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      const [order] = await tx
+        .select()
+        .from(orders)
+        .where(
+          and(
+            eq(orders.id, id),
+            eq(orders.businessId, businessId),
+          ),
+        )
+        .for("update")
+        .limit(1)
+
+      if (!order) throw new Error("ORDER_NOT_FOUND")
+
+      // Only requested orders may be deleted.
+      if (order.status !== "requested") {
+        throw new Error("ORDER_NOT_DELETABLE")
+      }
+
+      const [payment] = await tx
+        .select({ id: payments.id })
+        .from(payments)
+        .where(
+          and(
+            eq(payments.orderId, id),
+            eq(payments.businessId, businessId),
+          ),
+        )
+        .limit(1)
+
+      const [delivery] = await tx
+        .select({ id: deliveries.id })
+        .from(deliveries)
+        .where(eq(deliveries.orderId, id))
+        .limit(1)
+
+      const [replacement] = await tx
+        .select({ id: replacements.id })
+        .from(replacements)
+        .where(
+          and(
+            eq(replacements.orderId, id),
+            eq(replacements.businessId, businessId),
+          ),
+        )
+        .limit(1)
+
+      const [movement] = await tx
+        .select({ id: stockMovements.id })
+        .from(stockMovements)
+        .where(
+          and(
+            eq(stockMovements.businessId, businessId),
+            eq(stockMovements.reference, `order:${id}:sale`),
+          ),
+        )
+        .limit(1)
+
+      const [journal] = await tx
+        .select({ id: journalEntries.id })
+        .from(journalEntries)
+        .where(
+          and(
+            eq(journalEntries.businessId, businessId),
+            eq(journalEntries.reference, id),
+          ),
+        )
+        .limit(1)
+
+      if (payment || delivery || replacement || movement || journal) {
+        throw new Error("ORDER_HAS_HISTORY")
+      }
+
+      await tx
+        .delete(orders)
+        .where(
+          and(
+            eq(orders.id, id),
+            eq(orders.businessId, businessId),
+          ),
+        )
+    })
+
+    return NextResponse.json({
+      message: "Order deleted successfully",
+      id,
+    })
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : ""
+
+    if (message === "ORDER_NOT_FOUND") {
+      return NextResponse.json(
+        { error: "Order not found" },
+        { status: 404 },
+      )
+    }
+
+    if (message === "ORDER_NOT_DELETABLE") {
+      return NextResponse.json(
+        {
+          error:
+            "Only requested orders with no related activity can be deleted.",
+        },
+        { status: 409 },
+      )
+    }
+
+    if (message === "ORDER_HAS_HISTORY") {
+      return NextResponse.json(
+        {
+          error:
+            "This order has related payment, delivery, replacement, stock, or accounting history and cannot be deleted.",
+        },
+        { status: 409 },
+      )
+    }
+
+    console.error("Order deletion failed", error)
+
+    return NextResponse.json(
+      { error: "Unable to delete order" },
+      { status: 500 },
+    )
+  }
 }

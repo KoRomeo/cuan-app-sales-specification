@@ -1,5 +1,8 @@
 'use client'
-
+import { useState } from 'react'
+import { useSWRConfig } from 'swr'
+import { appToast as toast } from '@/lib/toast'
+import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { AlertTriangle, CircleDollarSign, Clock, FileText, ShoppingCart, Truck } from 'lucide-react'
@@ -33,12 +36,63 @@ const hasNegativeImpact = (o: Order, productStock: Map<string, number>) =>
 
 export function OrdersView() {
   const { t } = useApp()
-  const router = useRouter()
+  
+  const { mutate: globalMutate } = useSWRConfig()
+  const [deleteTarget, setDeleteTarget] =
+  useState<PersistedOrder | null>(null)
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: persistedOrders, error: ordersError } = useSWR<PersistedOrder[]>(business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const {
+  data: persistedOrders,
+  error: ordersError,
+  mutate: mutateOrders,
+  } = useSWR<PersistedOrder[]>(
+    business?.id
+      ? `/api/orders?businessId=${encodeURIComponent(business.id)}`
+      : null,
+    fetcher,
+  )
   const { data: payments, error: paymentsError } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: customers, error: customersError } = useSWR<PersistedParty[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: products, error: productsError } = useSWR<Array<{ id: string; name: string; stock?: number }>>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  async function deleteOrder() {
+    if (!business?.id || !deleteTarget) return
+
+    const target = deleteTarget
+
+    try {
+      const response = await fetch(
+        `/api/orders/${encodeURIComponent(target.id)}?businessId=${encodeURIComponent(business.id)}`,
+        { method: 'DELETE' },
+      )
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error ?? 'Unable to delete order')
+      }
+
+      setDeleteTarget(null)
+
+      await Promise.all([
+        mutateOrders(),
+        globalMutate(
+          `/api/payments?businessId=${encodeURIComponent(business.id)}`,
+        ),
+        globalMutate(
+          `/api/products?businessId=${encodeURIComponent(business.id)}`,
+        ),
+      ])
+
+      toast.success('Order deleted successfully')
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Unable to delete order',
+      )
+    }
+  }
   const error = businessError || ordersError || paymentsError || customersError || productsError
   if (error) return <p role="alert" className="text-sm text-destructive">{error.message}</p>
   if (!business || !persistedOrders || !payments || !customers || !products) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
@@ -114,7 +168,37 @@ export function OrdersView() {
         addLabel={t('orders.add')}
         onAdd={() => router.push('/orders/new')}
         rowHref={(o) => `/orders/${o.id}`}
-        contextActions={() => [{ label: t('orders.viewInvoice'), icon: FileText, href: '/invoices' }]}
+        contextActions={(o) => [
+        {
+          label: t('orders.viewInvoice'),
+          icon: FileText,
+          href: '/invoices',
+        },
+        {
+          label: t('common.delete'),
+          onSelect: () =>
+            setDeleteTarget(
+              persistedOrders.find((row) => row.id === o.id) ?? null,
+            ),
+        },
+      ]}
+      deletable={false}
+      />
+            <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
+        title={t('deleteDialog.previewTitle')}
+        description={
+          deleteTarget
+            ? `Delete order ${deleteTarget.id}? Only requested orders without related activity can be deleted.`
+            : t('deleteDialog.previewBody')
+        }
+        confirmLabel={t('common.delete')}
+        onConfirm={() => {
+          void deleteOrder()
+        }}
       />
     </>
   )
