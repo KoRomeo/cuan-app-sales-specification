@@ -1,5 +1,5 @@
-import { and, desc, eq, like, sql } from "drizzle-orm"
-import { deliveries, deliveryOrders, orders } from "./schema"
+import { desc, like, sql } from "drizzle-orm"
+import { deliveries } from "./schema"
 
 /**
  * Generate a readable entity ID while holding a transaction-scoped PostgreSQL
@@ -26,7 +26,7 @@ export async function generateEntityId(
     : dateValue.slice(0, 7).replace("-", "")
   const lockKey = `cuanapp:id:${prefix}:${periodKey}`
 
-  // Serializes concurrent ID generation for the same business/entity/period.
+  // Serializes concurrent ID generation for the same entity/period across all businesses.
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${lockKey}))`)
 
   const pattern = `${prefix}-${periodKey}-%`
