@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { AlertTriangle, Coins, HandCoins, TrendingUp, Wallet } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
 import { PageHeader } from '@/components/common/page-header'
@@ -129,7 +129,7 @@ export function DashboardView() {
     grossProfit: { label: t('dash.grossProfit'), color: 'var(--chart-2)' },
   } satisfies ChartConfig
 
-  const trend = useMemo(() => {
+  const trend = (() => {
     const months = Array.from({ length: 6 }, (_, index) => {
       const date = new Date()
       date.setDate(1)
@@ -148,7 +148,7 @@ export function DashboardView() {
       }
     })
     return months
-  }, [activeOrders, expenses, locale])
+  })()
 
   const receivableByCustomer = customers
     .map((customer) => {
@@ -175,7 +175,7 @@ export function DashboardView() {
     .sort((a, b) => a.stock - b.stock)
     .slice(0, 6)
 
-  const topProducts = useMemo(() => {
+  const topProducts = (() => {
     const map = new Map<string, { qty: number; revenue: number }>()
     for (const order of periodOrders) {
       for (const item of order.items) {
@@ -184,7 +184,7 @@ export function DashboardView() {
       }
     }
     return [...map.entries()].sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 5)
-  }, [periodOrders])
+  })()
   const topMax = topProducts[0]?.[1].revenue ?? 1
   const productById = (id: string) => products.find((product) => product.id === id)
   const customerById = (id: string) => customers.find((customer) => customer.id === id)
