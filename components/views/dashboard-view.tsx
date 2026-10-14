@@ -41,11 +41,11 @@ type DashboardData = {
   suppliers: Array<{ id: string; name: string }>
   expenses: Array<{ date: string; amount: number }>
 }
-const fetcher = async (url: string): Promise<DashboardData> => {
+const fetcher = async <T,>(url: string): Promise<T> => {
   const response = await fetch(url)
   const result = await response.json()
   if (!response.ok) throw new Error(result.error ?? 'Unable to load dashboard data')
-  return result
+  return result as T
 }
 const todayISO = () => {
   const now = new Date()
@@ -85,14 +85,6 @@ const stockStatus = (product: DashboardData['products'][number]): 'normal' | 'lo
 const isPastDue = (dueDate: string | null, outstanding: number, today: string) => Boolean(dueDate && outstanding > 0 && dueDate < today)
 import { formatCompactIDR, formatDate, formatIDR, formatPercent } from '@/lib/format'
 
-const monthLabels: Record<string, [string, string]> = {
-  '05': ['May', 'Mei'],
-  '06': ['Jun', 'Jun'],
-  '07': ['Jul', 'Jul'],
-  '08': ['Aug', 'Agu'],
-  '09': ['Sep', 'Sep'],
-  '10': ['Oct', 'Okt'],
-}
 
 export function DashboardView() {
   const { t, locale } = useApp()
