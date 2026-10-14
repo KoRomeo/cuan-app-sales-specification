@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { AlertTriangle, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useSWRConfig } from 'swr'
 import useSWR from 'swr'
 import { appToast as toast } from '@/lib/toast'
 import { selectClass } from '@/components/common/form-dialog'
@@ -34,6 +36,8 @@ interface Line {
 
 export function NewOrderView() {
   const { t } = useApp()
+  const router = useRouter()
+  const { mutate: globalMutate } = useSWRConfig()
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: customerRows, error: customersError } = useSWR<Party[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: productRows, error: productsError } = useSWR<Product[]>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
@@ -72,13 +76,22 @@ export function NewOrderView() {
           try {
             const form = new FormData(event.currentTarget)
             const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
-            const result = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+            const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
               id: `ORD-${Date.now()}`, businessId: business.id, date: form.get('orderDate'), customerId: form.get('customerId'), status: 'requested', dueDate: form.get('dueDate') || null, notes: form.get('notes') || null, paidAmount: paid, paymentAccount: 'Cash', paymentDate: form.get('orderDate'), paymentId: paid > 0 ? `PAY-ORD-${Date.now()}` : undefined,
               items: lines.map((line) => ({ id: `OI-${Date.now()}-${line.key}`, productId: line.productId, qty: line.qty, price: line.price, discount: line.discount, unitCost: productsById.get(line.productId)?.averageCost ?? 0 })),
             }) })
-            if (!result.ok) throw new Error((await result.json()).error ?? 'Unable to save order')
-            setPreviewed(true)
+            const result = await response.json()
+            if (!response.ok) throw new Error(result.error ?? 'Unable to save order')
+            await Promise.all([
+              globalMutate(`/api/orders?businessId=${encodeURIComponent(business.id)}`),
+              globalMutate(`/api/payments?businessId=${encodeURIComponent(business.id)}`),
+              globalMutate(`/api/products?businessId=${encodeURIComponent(business.id)}`),
+              globalMutate(`/api/stock?businessId=${encodeURIComponent(business.id)}`),
+              globalMutate(`/api/accounting?businessId=${encodeURIComponent(business.id)}`),
+              globalMutate(`/api/dashboard?businessId=${encodeURIComponent(business.id)}`),
+            ])
             toast.success(t('form.savedFeedback'))
+            router.push(`/orders/${encodeURIComponent(result.id)}`)
           } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to save order') } finally { setIsSaving(false) }
         }}
         className="grid gap-4 lg:grid-cols-3"
