@@ -31,6 +31,7 @@ export interface FormField {
   required?: boolean
   min?: number
   max?: number
+  onValueChange?: (value: string) => void
 }
 
 export const selectClass =
@@ -162,7 +163,7 @@ export function FormDialog({
                       aria-invalid={Boolean(errors[field.name])}
                       aria-describedby={describedBy}
                       className={selectClass}
-                      onChange={() => clearFieldError(field.name)}
+                      onChange={(event) => { clearFieldError(field.name); field.onValueChange?.(event.currentTarget.value) }}
                     >
                       {field.options?.map((option) => (
                         <option key={option.value} value={option.value}>{option.label}</option>
