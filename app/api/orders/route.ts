@@ -69,6 +69,21 @@ export async function POST(request: NextRequest) {
       if (paidAmount > total) throw new Error("PAYMENT_EXCEEDS_TOTAL")
       await tx.insert(orders).values({ id, businessId, date: orderDate, customerId, status, dueDate: dueDate || null, notes: notes || null })
       await tx.insert(orderItems).values(normalizedItems.map((item) => ({ id: item.id, orderId: id, productId: item.productId, qty: Number(item.qty), price: String(item.price), discount: String(item.discount ?? 0), unitCost: String(item.unitCost) })))
+      // Stock, revenue, and COGS are recognized at Order creation. Negative stock is allowed.
+      await tx.insert(stockMovements).values(normalizedItems.map((item) => ({
+        id: `SM-SALE-${id}-${item.id}`, businessId, date: orderDate, productId: item.productId,
+        type: "sale" as const, qty: -Number(item.qty), reference: `order:${id}:sale`,
+      })))
+      const revenue = total
+      const cogs = normalizedItems.reduce((sum, item) => sum + Number(item.qty) * Number(item.unitCost), 0)
+      const saleEntryId = `JE-SALE-${id}`
+      await tx.insert(journalEntries).values({ id: saleEntryId, businessId, entryDate: orderDate, kind: "sale", reference: id, description: `Order sale and COGS for ${id}` })
+      await tx.insert(journalEntryLines).values([
+        { id: `${saleEntryId}-ar`, journalEntryId: saleEntryId, account: "Accounts Receivable", debit: revenue.toFixed(2), credit: "0" },
+        { id: `${saleEntryId}-revenue`, journalEntryId: saleEntryId, account: "Sales Revenue", debit: "0", credit: revenue.toFixed(2) },
+        { id: `${saleEntryId}-cogs`, journalEntryId: saleEntryId, account: "Cost of Goods Sold", debit: cogs.toFixed(2), credit: "0" },
+        { id: `${saleEntryId}-inventory`, journalEntryId: saleEntryId, account: "Inventory", debit: "0", credit: cogs.toFixed(2) },
+      ])
       if (paidAmount > 0) {
         const [existingPayment] = await tx.select({ id: payments.id }).from(payments).where(eq(payments.id, paymentId)).limit(1)
         if (existingPayment) throw new Error("PAYMENT_ID_EXISTS")
