@@ -1,6 +1,7 @@
 'use client'
 import useSWR from 'swr'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
+import { appToast as toast } from '@/lib/toast'
 import { CheckCircle2, FileText, HandCoins, Printer, RotateCcw, Truck, Users } from 'lucide-react'
 import { useState } from 'react'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
@@ -268,11 +269,7 @@ export function CustomersView() {
         confirmLabel={t('common.delete')}
         onConfirm={() => {
           void deleteCustomer().catch((error) => {
-            const message = error instanceof Error ? error.message : 'Failed to delete customer'
-            setDeleteTarget(null)
-            window.setTimeout(() => {
-              import('@/lib/toast').then(({ appToast }) => appToast.error(message))
-            }, 0)
+            toast.error(error instanceof Error ? error.message : 'Failed to delete customer')
           })
         }}
       />
