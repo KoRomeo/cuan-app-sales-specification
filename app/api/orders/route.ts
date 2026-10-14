@@ -28,7 +28,7 @@ function items(value: unknown): value is Item[] {
   })
 }
 function fail(error: unknown, fallback = "Order operation failed") {
-  const map: Record<string, [string, number]> = { CUSTOMER_NOT_FOUND: ["Customer not found for this business", 404], PRODUCT_NOT_FOUND: ["One or more products were not found for this business", 404], PAYMENT_EXCEEDS_TOTAL: ["Payment cannot exceed order total", 400], PAYMENT_ID_EXISTS: ["Payment ID already exists", 409], ORDER_NOT_FOUND: ["Order not found", 404], ORDER_ID_EXISTS: ["Order ID already exists", 409], INVALID_STATUS: ["Invalid order status transition", 409], DELIVERED_IMMUTABLE: ["Delivered orders cannot be edited or cancelled", 409], DELIVERY_ALREADY_PROCESSED: ["Stock deduction for this order was already recorded", 409], NEGATIVE_STOCK: ["Delivery would create negative stock", 409], DELIVERY_REQUIRED: ["Mark an Order as delivered by creating a Delivery", 409], ORDER_ITEMS_IMMUTABLE: ["Order items cannot be edited after stock and accounting have been posted", 409] }
+  const map: Record<string, [string, number]> = { CUSTOMER_NOT_FOUND: ["Customer not found for this business", 404], PRODUCT_NOT_FOUND: ["One or more products were not found for this business", 404], PAYMENT_EXCEEDS_TOTAL: ["Payment cannot exceed order total", 400], PAYMENT_ID_EXISTS: ["Payment ID already exists", 409], ORDER_NOT_FOUND: ["Order not found", 404], ORDER_ID_EXISTS: ["Order ID already exists", 409], INVALID_STATUS: ["Invalid order status transition", 409], DELIVERED_IMMUTABLE: ["Delivered orders cannot be edited or cancelled", 409], DELIVERY_ALREADY_PROCESSED: ["Stock deduction for this order was already recorded", 409], NEGATIVE_STOCK: ["Delivery would create negative stock", 409], DELIVERY_REQUIRED: ["Mark an Order as delivered by creating a Delivery", 409], ORDER_ITEMS_IMMUTABLE: ["Order items cannot be edited after stock and accounting have been posted", 409], CANCEL_WITH_PAYMENTS_UNSUPPORTED: ["This Order has payments; cancellation is blocked until payment reversal or customer-credit handling is implemented", 409] }
   const known = error instanceof Error ? map[error.message] : undefined
   if (known) return NextResponse.json({ error: known[0] }, { status: known[1] })
   console.error(fallback, error)
@@ -117,6 +117,8 @@ export async function PATCH(request: NextRequest) {
       if (next === "delivered") throw new Error("DELIVERY_REQUIRED")
       if (lineItems !== undefined) throw new Error("ORDER_ITEMS_IMMUTABLE")
       if (next === "cancelled") {
+        const linkedPayments = await tx.select({ id: payments.id }).from(payments).where(and(eq(payments.businessId, businessId), eq(payments.orderId, id))).limit(1)
+        if (linkedPayments.length) throw new Error("CANCEL_WITH_PAYMENTS_UNSUPPORTED")
         const existingReversal = await tx.select({ id: stockMovements.id }).from(stockMovements)
           .where(and(eq(stockMovements.businessId, businessId), eq(stockMovements.reference, `order:${id}:cancel`))).limit(1)
         if (!existingReversal.length) {
