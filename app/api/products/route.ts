@@ -3,6 +3,7 @@ import { db } from "@/lib/db"
 import { products, stockMovements } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
 import { asc, eq } from "drizzle-orm"
+import { generateEntityId } from "@/lib/db/ids"
 
 export async function GET(request: Request) {
   try {
@@ -21,8 +22,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { id, businessId, name, sellingPrice, costReference, averageCost, minimumStock = 0, openingStock = 0, date = new Date().toISOString().slice(0, 10) } = body
-    if (typeof id !== "string" || !id.trim() || typeof businessId !== "string" || !businessId.trim() || typeof name !== "string" || !name.trim()) {
+    const { businessId, name, sellingPrice, costReference, averageCost, minimumStock = 0, openingStock = 0, date = new Date().toISOString().slice(0, 10) } = body
+    if (typeof businessId !== "string" || !businessId.trim() || typeof name !== "string" || !name.trim()) {
       return NextResponse.json({ error: "id, businessId, and name are required" }, { status: 400 })
     }
     const access = await requireBusinessAccess(businessId)
@@ -35,10 +36,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "date must use YYYY-MM-DD format" }, { status: 400 })
     }
     const product = await db.transaction(async (tx) => {
-      const [created] = await tx.insert(products).values({ id: id.trim(), businessId, name: name.trim(), sellingPrice: String(sellingPrice), costReference: String(costReference), averageCost: String(averageCost), minimumStock }).returning()
+      const id = await generateEntityId(tx, products, businessId, "PRD", date)
+      const [created] = await tx.insert(products).values({ id, businessId, name: name.trim(), sellingPrice: String(sellingPrice), costReference: String(costReference), averageCost: String(averageCost), minimumStock }).returning()
       if (openingStock > 0) {
         await tx.insert(stockMovements).values({
-          id: `MOV-OPEN-${id.trim()}`,
+          id: `MOV-OPEN-${created.id}`,
           businessId,
           date,
           productId: created.id,
