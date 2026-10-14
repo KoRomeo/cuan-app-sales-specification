@@ -254,25 +254,50 @@ export function PayablesView() {
   )
 }
 
+type PersistedExpense = { id: string; date: string; category: string; amount: string | number; account: string; description: string }
+
 export function ExpensesView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
-  const [catOpen, setCatOpen] = useState(false)
-  const total = expenses.reduce((s, e) => s + e.amount, 0)
-  const byCat = expenseCategories
-    .map((c) => [c, expenses.filter((e) => e.category === c).reduce((s, e) => s + e.amount, 0)] as const)
-    .filter(([, v]) => v > 0)
+  const { data: business } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { data: expenseRows, error, isLoading, mutate } = useSWR<PersistedExpense[]>(
+    business?.id ? `/api/expenses?businessId=${encodeURIComponent(business.id)}` : null,
+    fetcher,
+  )
+  const rows = expenseRows ?? []
+  const total = rows.reduce((sum, expense) => sum + Number(expense.amount), 0)
+  const byCat = [...new Set(rows.map((expense) => expense.category))]
+    .map((category) => [category, rows.filter((expense) => expense.category === category).reduce((sum, expense) => sum + Number(expense.amount), 0)] as const)
+    .filter(([, value]) => value > 0)
     .sort((a, b) => b[1] - a[1])
 
-  const columns: Column<Expense>[] = [
-    { key: 'id', header: 'ID', cell: (e) => <IdCell>{e.id}</IdCell> },
-    { key: 'date', header: t('common.date'), cell: (e) => <span className="font-mono text-xs text-muted-foreground">{formatDate(e.date)}</span> },
-    { key: 'category', header: t('common.category'), cell: (e) => <Pill tone="neutral">{translateExpenseCategory(e.category, t)}</Pill> },
-    { key: 'description', header: t('common.description'), cell: (e) => <span className="font-medium">{e.description}</span> },
-    { key: 'account', header: t('common.account'), cell: (e) => <span className="text-muted-foreground">{translateAccountName(e.account, t)}</span> },
+  const columns: Column<PersistedExpense>[] = [
+    { key: 'id', header: 'ID', cell: (expense) => <IdCell>{expense.id}</IdCell> },
+    { key: 'date', header: t('common.date'), cell: (expense) => <span className="font-mono text-xs text-muted-foreground">{formatDate(expense.date)}</span> },
+    { key: 'category', header: t('common.category'), cell: (expense) => <Pill tone="neutral">{translateExpenseCategory(expense.category, t)}</Pill> },
+    { key: 'description', header: t('common.description'), cell: (expense) => <span className="font-medium">{expense.description}</span> },
+    { key: 'account', header: t('common.account'), cell: (expense) => <span className="text-muted-foreground">{translateAccountName(expense.account, t)}</span> },
     { key: 'status', header: t('common.status'), cell: () => <Pill tone="success">{t('expenses.statusPosted')}</Pill> },
-    { key: 'amount', header: t('common.amount'), align: 'right', cell: (e) => <Money value={e.amount} /> },
+    { key: 'amount', header: t('common.amount'), align: 'right', cell: (expense) => <Money value={Number(expense.amount)} /> },
   ]
+
+  const saveExpense = async (values: Record<string, string>) => {
+    if (!business?.id) throw new Error('Business not found')
+    const amount = Number(values.amount)
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error('Amount must be greater than zero')
+    const response = await fetch('/api/expenses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        businessId: business.id, date: values.date, category: values.category,
+        amount, account: values.account, description: values.description?.trim(),
+      }),
+    })
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error || 'Failed to create expense')
+    await mutate()
+    setOpen(false)
+  }
 
   return (
     <>
@@ -280,64 +305,57 @@ export function ExpensesView() {
         breadcrumbs={[{ label: t('nav.finance') }, { label: t('nav.expenses') }]}
         title={t('expenses.title')}
         description={t('expenses.desc')}
-        actions={
-          <Button size="sm" variant="outline" onClick={() => setCatOpen(true)}>
-            <Tags />
-            {t('expenses.addCategory')}
-          </Button>
-        }
       />
       <KpiGrid>
         <KpiCard label={t('expenses.total')} value={formatIDR(total)} icon={Receipt} />
         <KpiCard label={t('expenses.largest')} value={byCat[0] ? translateExpenseCategory(byCat[0][0], t) : '—'} hint={byCat[0] ? formatIDR(byCat[0][1]) : undefined} icon={Tags} tone="warning" />
-        <KpiCard label={t('expenses.count')} value={expenses.length} icon={Plus} tone="neutral" />
-        <KpiCard label={t('period.thisMonth')} value={formatIDR(expenses.filter((e) => inRange(e.date, periodRange('thisMonth'))).reduce((s, e) => s + e.amount, 0))} icon={CalendarClock} />
+        <KpiCard label={t('expenses.count')} value={rows.length} icon={Plus} tone="neutral" />
+        <KpiCard label={t('period.thisMonth')} value={formatIDR(rows.filter((expense) => inRange(expense.date, periodRange('thisMonth'))).reduce((sum, expense) => sum + Number(expense.amount), 0))} icon={CalendarClock} />
       </KpiGrid>
 
-      <div className="grid gap-4 xl:grid-cols-4">
-        <div className="xl:col-span-3">
-          <DataTable
-            rows={expenses}
-            columns={columns}
-            getRowId={(e) => e.id}
-            searchText={(e) => `${e.id} ${e.category} ${e.description}`}
-            filters={[{ value: 'all', label: t('common.all'), predicate: () => true }, ...byCat.slice(0, 4).map(([c]) => ({ value: c, label: translateExpenseCategory(c, t), predicate: (e: Expense) => e.category === c }))]}
-            addLabel={t('expenses.add')}
-            onAdd={() => setOpen(true)}
-          />
+      {error ? <p className="py-4 text-sm text-destructive">Failed to load expenses. Please refresh and try again.</p> : isLoading || !business ? <p className="py-4 text-sm text-muted-foreground">Loading expenses...</p> : (
+        <div className="grid gap-4 xl:grid-cols-4">
+          <div className="xl:col-span-3">
+            <DataTable
+              rows={rows}
+              columns={columns}
+              getRowId={(expense) => expense.id}
+              searchText={(expense) => `${expense.id} ${expense.category} ${expense.description}`}
+              filters={[{ value: 'all', label: t('common.all'), predicate: () => true }, ...byCat.slice(0, 4).map(([category]) => ({ value: category, label: translateExpenseCategory(category, t), predicate: (expense: PersistedExpense) => expense.category === category }))]}
+              addLabel={t('expenses.add')}
+              onAdd={() => setOpen(true)}
+            />
+          </div>
+          <SectionCard title={t('common.category')}>
+            <ul className="flex flex-col gap-3">
+              {byCat.map(([category, value]) => (
+                <li key={category}>
+                  <div className="flex justify-between text-sm"><span>{translateExpenseCategory(category, t)}</span><span className="font-mono text-xs tabular-nums text-muted-foreground">{formatPercent(total ? value / total * 100 : 0)}</span></div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${byCat[0]?.[1] ? value / byCat[0][1] * 100 : 0}%` }} /></div>
+                  <p className="mt-1 font-mono text-[11px] tabular-nums text-muted-foreground">{formatIDR(value)}</p>
+                </li>
+              ))}
+              {byCat.length === 0 && <li className="text-sm text-muted-foreground">{t('expenses.noCategoryBreakdown')}</li>}
+            </ul>
+          </SectionCard>
         </div>
-        <SectionCard title={t('common.category')}>
-          <ul className="flex flex-col gap-3">
-            {byCat.map(([c, v]) => (
-              <li key={c}>
-                <div className="flex justify-between text-sm">
-                  <span>{translateExpenseCategory(c, t)}</span>
-                  <span className="font-mono text-xs tabular-nums text-muted-foreground">{formatPercent((v / total) * 100)}</span>
-                </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${(v / byCat[0][1]) * 100}%` }} />
-                </div>
-                <p className="mt-1 font-mono text-[11px] tabular-nums text-muted-foreground">{formatIDR(v)}</p>
-              </li>
-            ))}
-            {byCat.length === 0 && <li className="text-sm text-muted-foreground">{t('expenses.noCategoryBreakdown')}</li>}
-          </ul>
-        </SectionCard>
-      </div>
+      )}
 
       <FormDialog
+        key={open ? 'new-expense-open' : 'new-expense-closed'}
         open={open}
         onOpenChange={setOpen}
         title={t('expenses.add')}
+        persisted
         fields={[
-          { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'category', label: t('common.category'), type: 'select', half: true, options: expenseCategories.map((c) => ({ value: c, label: translateExpenseCategory(c, t) })) },
-          { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', min: 1, half: true },
-          { name: 'account', label: t('common.account'), type: 'select', half: true, options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })) },
-          { name: 'description', label: t('common.description'), type: 'textarea' },
+          { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true, required: true },
+          { name: 'category', label: t('common.category'), type: 'select', half: true, required: true, options: expenseCategories.map((category) => ({ value: category, label: translateExpenseCategory(category, t) })) },
+          { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', min: 1, half: true, required: true },
+          { name: 'account', label: t('common.account'), type: 'select', half: true, required: true, options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })) },
+          { name: 'description', label: t('common.description'), type: 'textarea', required: true },
         ]}
+        onSubmit={saveExpense}
       />
-      <FormDialog open={catOpen} onOpenChange={setCatOpen} title={t('expenses.addCategory')} fields={[{ name: 'name', label: t('expenses.categoryName') }]} />
     </>
   )
 }
