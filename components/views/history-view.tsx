@@ -2,17 +2,18 @@
 
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from 'lucide-react'
 import { Fragment, useMemo, useState } from 'react'
+import useSWR from 'swr'
 import { PageHeader } from '@/components/common/page-header'
 import { Pill } from '@/components/common/status-badge'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
-import { history } from '@/lib/data'
 import { formatDate } from '@/lib/format'
 import { translateAccountName, translateExpenseCategory, type TranslationKey } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 
 type SortKey = 'id' | 'date' | 'time' | 'page' | 'action' | 'user'
-type HistoryEntry = (typeof history)[number]
+type HistoryEntry = { id: string; date: string; time: string; page: string; action: string; user: string; reference: string; changes: { property: string; previous: string; current: string }[] }
+const historyFetcher = async (url: string) => { const response = await fetch(url); if (!response.ok) throw new Error('Unable to load history'); return response.json() }
 
 const sortKeys: Record<SortKey, (h: HistoryEntry) => string> = {
   id: (h) => h.id,
@@ -104,7 +105,10 @@ export function HistoryView() {
     const accountName = translateAccountName(value, t)
     return accountName === value ? translateExpenseCategory(value, t) : accountName
   }
-  const [openId, setOpenId] = useState<string | null>(history[0]?.id ?? null)
+  const { data: business } = useSWR<{ id: string }>('/api/businesses/current', historyFetcher)
+  const { data: historyRows, error, isLoading } = useSWR<HistoryEntry[]>(business?.id ? `/api/history?businessId=${encodeURIComponent(business.id)}` : null, historyFetcher)
+  const history = historyRows ?? []
+  const [openId, setOpenId] = useState<string | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' } | null>(null)
 
   const rows = useMemo(() => {
@@ -112,7 +116,7 @@ export function HistoryView() {
     const get = sortKeys[sort.key]
     const factor = sort.dir === 'asc' ? 1 : -1
     return [...history].sort((a, b) => get(a).localeCompare(get(b), undefined, { numeric: true }) * factor)
-  }, [sort])
+  }, [history, sort])
 
   const toggleSort = (key: SortKey) =>
     setSort((prev) => (prev?.key !== key ? { key, dir: 'asc' } : prev.dir === 'asc' ? { key, dir: 'desc' } : null))
@@ -129,6 +133,8 @@ export function HistoryView() {
   return (
     <>
       <PageHeader breadcrumbs={[{ label: t('nav.activity') }, { label: t('nav.history') }]} title={t('history.title')} description={t('history.desc')} />
+      {error && <p role="alert" className="mb-3 text-sm text-destructive">{error.message}</p>}
+      {isLoading && <p className="mb-3 text-sm text-muted-foreground">{t('common.loading')}</p>}
       <div className="overflow-x-auto rounded-xl border bg-card shadow-xs">
         <table className="w-full min-w-[800px] text-sm">
           <caption className="sr-only">{t('history.title')}</caption>
