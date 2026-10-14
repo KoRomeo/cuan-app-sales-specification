@@ -1,5 +1,5 @@
 import { and, desc, eq, like, sql } from "drizzle-orm"
-import { deliveries, orders } from "./schema"
+import { deliveries, deliveryOrders, orders } from "./schema"
 
 /**
  * Generate a readable entity ID while holding a transaction-scoped PostgreSQL
@@ -34,7 +34,8 @@ export async function generateEntityId(
     ? await tx
         .select({ id: deliveries.id })
         .from(deliveries)
-        .innerJoin(orders, eq(deliveries.orderId, orders.id))
+        .innerJoin(deliveryOrders, eq(deliveries.id, deliveryOrders.deliveryId))
+        .innerJoin(orders, eq(deliveryOrders.orderId, orders.id))
         .where(and(eq(orders.businessId, businessId), like(deliveries.id, pattern)))
         .orderBy(desc(deliveries.id))
         .limit(1)
