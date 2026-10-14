@@ -14,8 +14,8 @@ export async function GET(request: Request) {
     if (!businessId) return NextResponse.json({ error: "businessId is required" }, { status: 400 })
     const access = await requireBusinessAccess(businessId)
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
-    if ((startDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(startDate)) ||
-        (endDate && !/^\\d{4}-\\d{2}-\\d{2}$/.test(endDate))) {
+    if ((startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) ||
+        (endDate && !/^\d{4}-\d{2}-\d{2}$/.test(endDate))) {
       return NextResponse.json({ error: "Dates must use YYYY-MM-DD format" }, { status: 400 })
     }
     if (startDate && endDate && startDate > endDate) {
