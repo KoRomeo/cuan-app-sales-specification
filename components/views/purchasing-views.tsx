@@ -2,7 +2,7 @@
 
 import { Building2, HandCoins, Package, ShoppingBag } from 'lucide-react'
 import { useState } from 'react'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
 import { FormDialog } from '@/components/common/form-dialog'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
@@ -37,9 +37,10 @@ function mapPurchase(row: PersistedPurchase, payments: PersistedPayment[]): Purc
 export function PurchasesView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
+  const { mutate: globalMutate } = useSWRConfig()
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
-  const { data: persistedPurchases, error: purchasesError } = useSWR<PersistedPurchase[]>(business?.id ? `/api/purchases?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
-  const { data: payments, error: paymentsError } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: persistedPurchases, error: purchasesError, mutate: mutatePurchases } = useSWR<PersistedPurchase[]>(business?.id ? `/api/purchases?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: payments, error: paymentsError, mutate: mutatePayments } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: persistedSuppliers, error: suppliersError } = useSWR<PersistedParty[]>(business?.id ? `/api/suppliers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: persistedProducts, error: productsError } = useSWR<Array<{ id: string; name: string; stock?: number }>>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const error = businessError || purchasesError || paymentsError || suppliersError || productsError
@@ -100,10 +101,21 @@ export function PurchasesView() {
           const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
           const response = await fetch('/api/purchases', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
             id: `PUR-${Date.now()}`, businessId: business.id, date: values.date, supplierId: values.supplier, dueDate: values.due || null,
+            paidAmount: Number(values.paid || 0), paymentId: Number(values.paid || 0) > 0 ? `PAY-S-${Date.now()}` : undefined,
+            paymentDate: values.date, paymentAccount: 'Cash',
             items: [{ id: `PI-${Date.now()}`, productId: values.product, qty: Number(values.qty), unitCost: Number(values.price) }],
           }) })
-          if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to save purchase')
+          const result = await response.json()
+          if (!response.ok) throw new Error(result.error ?? 'Unable to save purchase')
           setOpen(false)
+          await Promise.all([
+            mutatePurchases(),
+            mutatePayments(),
+            globalMutate(`/api/products?businessId=${encodeURIComponent(business.id)}`),
+            globalMutate(`/api/stock?businessId=${encodeURIComponent(business.id)}`),
+            globalMutate(`/api/accounting?businessId=${encodeURIComponent(business.id)}`),
+            globalMutate(`/api/dashboard?businessId=${encodeURIComponent(business.id)}`),
+          ])
           toast.success(t('form.savedFeedback'))
         }}
         fields={[
