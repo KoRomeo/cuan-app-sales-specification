@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { and, eq, gte, lte } from "drizzle-orm"
+import { and, eq, gte, inArray, lte } from "drizzle-orm"
 import { transactionDb } from "@/lib/db/transaction"
 import { orders, journalEntries, journalEntryLines } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
@@ -33,10 +33,7 @@ export async function GET(request: Request) {
     const entries = await transactionDb.select().from(journalEntries).where(and(...entryConditions))
     const entryIds = entries.map((entry) => entry.id)
     const lines = entryIds.length
-      ? await transactionDb.select().from(journalEntryLines).where(
-          // Entry IDs were fetched using this business's authorized, date-filtered journal records.
-          (await import("drizzle-orm")).inArray(journalEntryLines.journalEntryId, entryIds),
-        )
+      ? await transactionDb.select().from(journalEntryLines).where(inArray(journalEntryLines.journalEntryId, entryIds))
       : []
     const linesByEntry = new Map<string, typeof lines>()
     for (const line of lines) {
