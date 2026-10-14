@@ -2,9 +2,11 @@
 
 import { AlertTriangle, ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Boxes, Package, SlidersHorizontal, TrendingDown } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { useSWRConfig } from 'swr'
 import { appToast as toast } from '@/lib/toast'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
 import { FormDialog } from '@/components/common/form-dialog'
+import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
 import { PageHeader } from '@/components/common/page-header'
 import { Pill, StockStatusBadge } from '@/components/common/status-badge'
@@ -13,6 +15,8 @@ import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
 import { type MovementType, type Product, type StockMovement, stockStatusOf, TODAY } from '@/lib/data'
 import { formatIDR, formatDate, formatPercent } from '@/lib/format'
+
+const todayISODate = () => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}` }
 
 const toProduct = (row: Record<string, unknown>, stock = 0): Product => ({
   id: String(row.id),
@@ -27,9 +31,12 @@ const toProduct = (row: Record<string, unknown>, stock = 0): Product => ({
 export function ProductsView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
   const [businessId, setBusinessId] = useState<string | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const { mutate: globalMutate } = useSWRConfig()
 
   const inventoryValue = useMemo(() => products.reduce((s, p) => s + Math.max(p.stock, 0) * p.averageCost, 0), [products])
   const loadProducts = async () => {
@@ -88,38 +95,94 @@ export function ProductsView() {
           { value: 'negative', label: t('stock.negative'), predicate: (p) => p.stock < 0 },
         ]}
         addLabel={t('products.add')}
-        onAdd={() => setOpen(true)}
+        onAdd={() => {
+          setEditingProduct(null)
+          setOpen(true)
+        }}
+        contextActions={(product) => [
+          { label: t('common.edit'), onSelect: () => { setEditingProduct(product); setOpen(true) } },
+          { label: t('common.delete'), onSelect: () => setDeleteTarget(product) },
+        ]}
       />
       <FormDialog
+        key={editingProduct?.id ?? 'new-product'}
         open={open}
-        onOpenChange={setOpen}
-        title={t('products.add')}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen)
+          if (!nextOpen) setEditingProduct(null)
+        }}
+        title={editingProduct ? t('common.edit') : t('products.add')}
+        submitLabel={editingProduct ? t('common.save') : t('products.add')}
         fields={[
-          { name: 'name', label: t('common.product') },
-          { name: 'price', label: t('products.sellingPrice'), type: 'number', prefix: 'Rp', min: 0, half: true },
-          { name: 'cost', label: t('products.costReference'), type: 'number', prefix: 'Rp', min: 0, half: true },
-          { name: 'opening', label: t('mov.opening'), type: 'number', min: 0, defaultValue: '0', half: true },
-          { name: 'min', label: t('products.minimumStock'), type: 'number', min: 0, defaultValue: '0', half: true },
+          { name: 'name', label: t('common.product'), defaultValue: editingProduct?.name ?? '' },
+          { name: 'price', label: t('products.sellingPrice'), type: 'number', prefix: 'Rp', min: 0, half: true, defaultValue: String(editingProduct?.sellingPrice ?? '') },
+          { name: 'cost', label: t('products.costReference'), type: 'number', prefix: 'Rp', min: 0, half: true, defaultValue: String(editingProduct?.costReference ?? '') },
+          ...(!editingProduct ? [{ name: 'opening', label: t('mov.opening'), type: 'number' as const, min: 0, defaultValue: '0', half: true }] : []),
+          { name: 'min', label: t('products.minimumStock'), type: 'number', min: 0, defaultValue: String(editingProduct?.minimumStock ?? 0), half: true },
         ]}
         onSubmit={async (values) => {
           if (!businessId) throw new Error('No business membership found')
-          const response = await fetch('/api/products', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              id: `P-${Date.now()}`,
-              businessId,
-              name: values.name,
-              sellingPrice: Number(values.price),
-              costReference: Number(values.cost),
-              averageCost: Number(values.cost),
-              minimumStock: Number(values.min || 0),
-            }),
-          })
-          if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to create product')
+          const editing = editingProduct
+          const response = await fetch(
+            editing ? `/api/products/${encodeURIComponent(editing.id)}` : '/api/products',
+            {
+              method: editing ? 'PATCH' : 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                ...(editing ? {} : { id: `P-${Date.now()}`, businessId }),
+                name: values.name,
+                sellingPrice: Number(values.price),
+                costReference: Number(values.cost),
+                ...(editing ? {} : { averageCost: Number(values.cost) }),
+                minimumStock: Number(values.min || 0),
+              }),
+            },
+          )
+          const result = await response.json()
+          if (!response.ok) throw new Error(result.error ?? 'Unable to save product')
+          if (!editing && Number(values.opening || 0) > 0) {
+            const movementResponse = await fetch('/api/stock-movements', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                businessId,
+                productId: result.id,
+                date: todayISODate(),
+                type: 'opening',
+                qty: Number(values.opening),
+                reference: `opening:${result.id}`,
+              }),
+            })
+            if (!movementResponse.ok) throw new Error((await movementResponse.json()).error ?? 'Product saved but opening stock could not be recorded')
+          }
           await loadProducts()
+          await Promise.all([
+            globalMutate(`/api/dashboard?businessId=${encodeURIComponent(businessId)}`),
+            globalMutate(`/api/accounting?businessId=${encodeURIComponent(businessId)}`),
+          ])
           setOpen(false)
+          setEditingProduct(null)
           toast.success('Product saved')
+        }}
+        persisted
+      />
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(nextOpen) => { if (!nextOpen) setDeleteTarget(null) }}
+        title={t('common.delete')}
+        description={deleteTarget ? `Delete product ${deleteTarget.name}? Products with transaction or stock history cannot be deleted.` : ''}
+        confirmLabel={t('common.delete')}
+        onConfirm={() => {
+          void (async () => {
+            if (!deleteTarget || !businessId) return
+            const response = await fetch(`/api/products/${encodeURIComponent(deleteTarget.id)}`, { method: 'DELETE' })
+            const result = await response.json()
+            if (!response.ok) throw new Error(result.error ?? 'Unable to delete product')
+            setDeleteTarget(null)
+            await loadProducts()
+            await globalMutate(`/api/dashboard?businessId=${encodeURIComponent(businessId)}`)
+            toast.success('Product deleted')
+          })().catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to delete product'))
         }}
       />
     </>
