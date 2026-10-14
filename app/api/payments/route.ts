@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { and, desc, eq, inArray, sql } from "drizzle-orm"
+import { and, desc, eq, sql } from "drizzle-orm"
 import { transactionDb } from "@/lib/db/transaction"
 import {
   payments, orders, purchases, orderItems, purchaseItems,
