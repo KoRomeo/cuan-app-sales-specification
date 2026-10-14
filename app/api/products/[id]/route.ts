@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { products } from "@/lib/db/schema"
+import { orderItems, products, purchaseItems, stockMovements } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
 import { eq } from "drizzle-orm"
 
@@ -59,6 +59,12 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     if (!existing) return NextResponse.json({ error: "Product not found" }, { status: 404 })
     const access = await requireBusinessAccess(existing.businessId)
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
+    const [orderReference] = await db.select({ id: orderItems.id }).from(orderItems).where(eq(orderItems.productId, existing.id)).limit(1)
+    const [purchaseReference] = await db.select({ id: purchaseItems.id }).from(purchaseItems).where(eq(purchaseItems.productId, existing.id)).limit(1)
+    const [movementReference] = await db.select({ id: stockMovements.id }).from(stockMovements).where(eq(stockMovements.productId, existing.id)).limit(1)
+    if (orderReference || purchaseReference || movementReference) {
+      return NextResponse.json({ error: "This product has transaction or stock history and cannot be deleted." }, { status: 409 })
+    }
     const [product] = await db.delete(products).where(eq(products.id, existing.id)).returning()
     return NextResponse.json({ message: "Product deleted successfully", product })
   } catch (error) {
