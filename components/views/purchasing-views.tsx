@@ -120,9 +120,9 @@ export function PurchasesView() {
           { name: 'supplier', label: t('common.supplier'), type: 'select', half: true, options: persistedSuppliers.map((s) => ({ value: s.id, label: s.name })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
           { name: 'product', label: t('common.product'), type: 'select', options: persistedProducts.map((p) => ({ value: p.id, label: `${p.name}${p.stock === undefined ? '' : ` (${p.stock})`}` })) },
-          { name: 'qty', label: t('common.qty'), type: 'number', min: 1, defaultValue: '100', half: true },
-          { name: 'price', label: t('purchases.purchasePrice'), type: 'number', prefix: 'Rp', min: 0, defaultValue: '11000', half: true },
-          { name: 'paid', label: t('common.paid'), type: 'number', prefix: 'Rp', min: 0, defaultValue: '0', half: true },
+          { name: 'qty', label: t('common.qty'), type: 'number', min: 1, placeholder: 'Quantity', half: true },
+          { name: 'price', label: 'Unit purchase cost', type: 'number', prefix: 'Rp', min: 0, placeholder: 'Cost per unit', half: true, hint: 'Total purchase = quantity × unit cost.' },
+          { name: 'paid', label: 'Amount paid now', type: 'number', prefix: 'Rp', min: 0, defaultValue: '0', half: true, hint: 'Enter 0 for unpaid, the full total for paid, or a partial amount.' },
           { name: 'due', label: t('common.dueDate'), type: 'date', required: false, half: true },
         ]}
       />
