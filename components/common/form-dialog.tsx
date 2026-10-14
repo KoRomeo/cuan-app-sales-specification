@@ -136,7 +136,7 @@ export function FormDialog({
         <form noValidate onSubmit={handleSubmit} aria-busy={isChecking} className="flex flex-col gap-4">
           <DialogHeader>
             <DialogTitle className="text-base">{title}</DialogTitle>
-            <DialogDescription>{description ?? t('common.prototypeNote')}</DialogDescription>
+            {(description || !persisted) && <DialogDescription>{description ?? t('common.prototypeNote')}</DialogDescription>}
             {!persisted && <p role="note" className="rounded-md border bg-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground">{t('form.previewFeedback')}</p>}
           </DialogHeader>
 
