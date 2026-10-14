@@ -49,6 +49,14 @@ type PersistedCustomer = {
   location: string | null
 }
 
+type CustomerOrderRow = {
+  id: string
+  customerId: string
+  status: string
+  items: Array<{ qty: number; price: string | number; discount?: string | number }>
+}
+type CustomerPaymentRow = { orderId: string | null; amount: string | number }
+
 const customersFetcher = async (url: string) => {
   const response = await fetch(url)
   if (!response.ok) throw new Error('Failed to fetch customers')
@@ -79,6 +87,28 @@ export function CustomersView() {
   )
 
   const rows = customerRows ?? []
+  const { data: customerOrders } = useSWR<CustomerOrderRow[]>(
+    business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null,
+    customersFetcher,
+  )
+  const { data: customerPayments } = useSWR<CustomerPaymentRow[]>(
+    business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null,
+    customersFetcher,
+  )
+  const activeCustomerOrders = (customerOrders ?? []).filter((order) => order.status !== 'cancelled')
+  const orderTotalById = new Map(activeCustomerOrders.map((order) => [
+    order.id,
+    order.items.reduce((sum, item) => sum + Number(item.qty) * Number(item.price) - Number(item.discount ?? 0), 0),
+  ]))
+  const paidByOrderId = new Map<string, number>()
+  for (const payment of customerPayments ?? []) {
+    if (payment.orderId) paidByOrderId.set(payment.orderId, (paidByOrderId.get(payment.orderId) ?? 0) + Number(payment.amount))
+  }
+  const customerDebt = (customerId: string) => activeCustomerOrders
+    .filter((order) => order.customerId === customerId)
+    .reduce((sum, order) => sum + Math.max((orderTotalById.get(order.id) ?? 0) - (paidByOrderId.get(order.id) ?? 0), 0), 0)
+  const totalCustomerReceivable = [...orderTotalById.entries()].reduce((sum, [id, total]) => sum + Math.max(total - (paidByOrderId.get(id) ?? 0), 0), 0)
+  const lifetimeCustomerSales = [...orderTotalById.values()].reduce((sum, total) => sum + total, 0)
 
   const saveCustomer = async (values: Record<string, string>) => {
     if (!business?.id) throw new Error('Business not found')
@@ -167,20 +197,20 @@ export function CustomersView() {
         />
         <KpiCard
           label={t('customers.withDebt')}
-          value="—"
+          value={customerOrders && customerPayments ? rows.filter((customer) => customerDebt(customer.id) > 0).length : '—'}
           icon={HandCoins}
           tone="warning"
         />
         <KpiCard
           label={t('customers.totalReceivable')}
-          value="—"
+          value={customerOrders && customerPayments ? formatIDR(totalCustomerReceivable) : '—'}
           icon={HandCoins}
           tone="warning"
           href="/receivables"
         />
         <KpiCard
           label={t('customers.lifetime')}
-          value="—"
+          value={customerOrders ? formatIDR(lifetimeCustomerSales) : '—'}
           icon={FileText}
           tone="success"
         />
