@@ -80,7 +80,6 @@ export function OrdersView() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id: editTarget.id, businessId: business.id,
-        date: values.date, customerId: values.customerId,
         dueDate: values.dueDate || null, notes: values.notes ?? '',
       }),
     })
@@ -178,11 +177,9 @@ export function OrdersView() {
         open={!!editTarget}
         onOpenChange={(nextOpen) => { if (!nextOpen) setEditTarget(null) }}
         title={t('common.edit') + ' Order'}
-        description="Edit order details. Product quantities, prices and posted accounting entries remain locked after Order creation."
+        description="Edit the due date and notes. Posted order dates, customer, quantities, prices, stock and accounting entries stay locked to preserve transaction history."
         persisted
         fields={[
-          { name: 'date', label: t('common.date'), type: 'date', defaultValue: editTarget?.date ?? '', required: true },
-          { name: 'customerId', label: t('common.customer'), type: 'select', defaultValue: editTarget?.customerId ?? '', options: customers.map((customer) => ({ value: customer.id, label: customer.name })), required: true },
           { name: 'dueDate', label: t('common.dueDate'), type: 'date', defaultValue: editTarget?.dueDate ?? '', required: false },
           { name: 'notes', label: t('common.notes'), type: 'textarea', defaultValue: editTarget?.notes ?? '', required: false },
         ]}
