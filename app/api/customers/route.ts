@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { businessMembers, customers } from "@/lib/db/schema";
+import { generateEntityId } from "@/lib/db/ids";
 
 async function getBusinessAccess(businessId: string) {
   const session = await auth.api.getSession({
@@ -129,17 +130,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const [customer] = await db
-      .insert(customers)
-      .values({
-        id: crypto.randomUUID(),
-        businessId,
-        name: name.trim(),
-        phone: optionalText(phone),
-        address: optionalText(address),
-        location: optionalText(location),
-      })
-      .returning();
+    const customer = await db.transaction(async (tx) => {
+      const id = await generateEntityId(tx, customers, businessId, "CUS", new Date().toISOString().slice(0, 10), "year");
+      const [created] = await tx
+        .insert(customers)
+        .values({
+          id,
+          businessId,
+          name: name.trim(),
+          phone: optionalText(phone),
+          address: optionalText(address),
+          location: optionalText(location),
+        })
+        .returning();
+      return created;
+    });
 
     return NextResponse.json(customer, { status: 201 });
   } catch (error) {
