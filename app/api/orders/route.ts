@@ -117,7 +117,6 @@ export async function PATCH(request: NextRequest) {
       if (next === "delivered") throw new Error("DELIVERY_REQUIRED")
       if (lineItems !== undefined) throw new Error("ORDER_ITEMS_IMMUTABLE")
       if (next === "cancelled") {
-        const saleReference = `order:${id}:sale`
         const existingReversal = await tx.select({ id: stockMovements.id }).from(stockMovements)
           .where(and(eq(stockMovements.businessId, businessId), eq(stockMovements.reference, `order:${id}:cancel`))).limit(1)
         if (!existingReversal.length) {
