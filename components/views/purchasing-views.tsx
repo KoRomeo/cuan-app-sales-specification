@@ -35,6 +35,10 @@ function mapPurchase(row: PersistedPurchase, payments: PersistedPayment[]): Purc
 export function PurchasesView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
+  const [purchaseQty, setPurchaseQty] = useState('')
+  const [purchaseUnitCost, setPurchaseUnitCost] = useState('')
+  const [purchasePaid, setPurchasePaid] = useState('0')
+  const purchaseTotalPreview = Math.max(0, Number(purchaseQty) || 0) * Math.max(0, Number(purchaseUnitCost) || 0)
   const { mutate: globalMutate } = useSWRConfig()
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: persistedPurchases, error: purchasesError, mutate: mutatePurchases } = useSWR<PersistedPurchase[]>(business?.id ? `/api/purchases?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
@@ -89,11 +93,11 @@ export function PurchasesView() {
           { value: 'paid', label: t('pay.paid'), predicate: (p) => purchasePaymentStatus(p) === 'paid' },
         ]}
         addLabel={t('purchases.add')}
-        onAdd={() => setOpen(true)}
+        onAdd={() => { setPurchaseQty(''); setPurchaseUnitCost(''); setPurchasePaid('0'); setOpen(true) }}
       />
       <FormDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(nextOpen) => { setOpen(nextOpen); if (!nextOpen) { setPurchaseQty(''); setPurchaseUnitCost(''); setPurchasePaid('0') } }}
         title={t('purchases.add')}
         onSubmit={async (values) => {
           const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
@@ -120,12 +124,19 @@ export function PurchasesView() {
           { name: 'supplier', label: t('common.supplier'), type: 'select', half: true, options: persistedSuppliers.map((s) => ({ value: s.id, label: s.name })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
           { name: 'product', label: t('common.product'), type: 'select', options: persistedProducts.map((p) => ({ value: p.id, label: `${p.name}${p.stock === undefined ? '' : ` (${p.stock})`}` })) },
-          { name: 'qty', label: t('common.qty'), type: 'number', min: 1, placeholder: 'Quantity', half: true },
-          { name: 'price', label: 'Unit purchase cost', type: 'number', prefix: 'Rp', min: 0, placeholder: 'Cost per unit', half: true, hint: 'Total purchase = quantity × unit cost.' },
-          { name: 'paid', label: 'Amount paid now', type: 'number', prefix: 'Rp', min: 0, defaultValue: '0', half: true, hint: 'Enter 0 for unpaid, the full total for paid, or a partial amount.' },
+          { name: 'qty', label: t('common.qty'), type: 'number', min: 1, placeholder: 'Quantity', half: true, onValueChange: setPurchaseQty },
+          { name: 'price', label: 'Unit purchase cost', type: 'number', prefix: 'Rp', min: 0, placeholder: 'Cost per unit', half: true, hint: 'Total purchase = quantity × unit cost.', onValueChange: setPurchaseUnitCost },
+          { name: 'paid', label: 'Amount paid now', type: 'number', prefix: 'Rp', min: 0, defaultValue: '0', half: true, hint: 'Enter 0 for unpaid, the full total for paid, or a partial amount.', onValueChange: setPurchasePaid },
           { name: 'due', label: t('common.dueDate'), type: 'date', required: false, half: true },
         ]}
-      />
+        persisted
+      >
+        <div className="rounded-lg border bg-muted/30 px-3 py-3">
+          <p className="text-xs text-muted-foreground">Total purchase payable</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums">{formatIDR(purchaseTotalPreview)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Outstanding after payment: {formatIDR(Math.max(0, purchaseTotalPreview - (Number(purchasePaid) || 0)))}</p>
+        </div>
+      </FormDialog>
     </>
   )
 }
