@@ -24,25 +24,26 @@ export async function generateEntityId(
   const periodKey = period === "year"
     ? dateValue.slice(0, 4)
     : dateValue.slice(0, 7).replace("-", "")
-  const lockKey = `cuanapp:id:${businessId}:${prefix}:${periodKey}`
+  const lockKey = `cuanapp:id:${prefix}:${periodKey}`
 
   // Serializes concurrent ID generation for the same business/entity/period.
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${lockKey}))`)
 
   const pattern = `${prefix}-${periodKey}-%`
+  // Primary keys are globally unique, so sequence lookup must also be global.
+  // Scoping the sequence by business can generate the same ID in two businesses
+  // and make the second insert fail with a misleading "already exists" error.
   const [latest] = prefix === "DEL"
     ? await tx
         .select({ id: deliveries.id })
         .from(deliveries)
-        .innerJoin(deliveryOrders, eq(deliveries.id, deliveryOrders.deliveryId))
-        .innerJoin(orders, eq(deliveryOrders.orderId, orders.id))
-        .where(and(eq(orders.businessId, businessId), like(deliveries.id, pattern)))
+        .where(like(deliveries.id, pattern))
         .orderBy(desc(deliveries.id))
         .limit(1)
     : await tx
         .select({ id: table.id })
         .from(table)
-        .where(and(eq(table.businessId, businessId), like(table.id, pattern)))
+        .where(like(table.id, pattern))
         .orderBy(desc(table.id))
         .limit(1)
 
