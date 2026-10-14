@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils'
 export interface FormField {
   name: string
   label: string
-  type?: 'text' | 'number' | 'date' | 'select' | 'textarea'
+  type?: 'text' | 'number' | 'date' | 'select' | 'multiselect' | 'textarea'
   options?: { value: string; label: string }[]
   defaultValue?: string
   placeholder?: string
@@ -109,7 +109,7 @@ export function FormDialog({
 
     setValidated(false)
     setIsChecking(true)
-    const values = Object.fromEntries(controls.map((control) => [control.name, control.value]))
+    const values = Object.fromEntries(controls.map((control) => [control.name, control instanceof HTMLSelectElement && control.multiple ? Array.from(control.selectedOptions).map((option) => option.value).join(',') : control.value]))
     if (onSubmit) {
       Promise.resolve(onSubmit(values))
         .then(() => {
@@ -151,11 +151,12 @@ export function FormDialog({
                     {field.label}
                     {required && <span aria-hidden="true" className="ml-1 text-destructive">*</span>}
                   </Label>
-                  {field.type === 'select' ? (
+                  {field.type === 'select' || field.type === 'multiselect' ? (
                     <select
                       id={id}
                       name={field.name}
                       defaultValue={field.defaultValue}
+                      multiple={field.type === 'multiselect'}
                       required={required}
                       disabled={isChecking}
                       aria-invalid={Boolean(errors[field.name])}
