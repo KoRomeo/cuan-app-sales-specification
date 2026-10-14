@@ -33,7 +33,6 @@ import {
   supplierById,
   TODAY,
 } from '@/lib/data'
-import { profitAndLoss } from '@/lib/accounting'
 import { formatDate, formatIDR, formatPercent } from '@/lib/format'
 import { translateAccountName, translateExpenseCategory } from '@/lib/i18n'
 
@@ -374,11 +373,29 @@ function PlRow({ label, value, strong, negative, indent }: { label: string; valu
 export function ProfitLossView() {
   const { t } = useApp()
   const [period, setPeriod] = useState<Period>('thisMonth')
-  const pl = profitAndLoss(periodRange(period))
-  const pct = (v: number) => (pl.revenue ? formatPercent((v / pl.revenue) * 100) : '—')
-
+  const [startDate, endDate] = periodRange(period)
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
-  const { data: accounting } = useSWR<{ ledger?: Record<string, { debit: number; credit: number }>; ledgerBalanced?: boolean; note?: string }>(business?.id ? `/api/accounting?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: accounting } = useSWR<{
+    ledger?: Record<string, { debit: number; credit: number }>
+    ledgerBalanced?: boolean
+    note?: string
+    salesRevenue?: number
+    costOfGoodsSold?: number
+    totalExpenses?: number
+  }>(business?.id ? `/api/accounting?businessId=${encodeURIComponent(business.id)}&startDate=${startDate}&endDate=${endDate}` : null, fetcher)
+  const revenue = Number(accounting?.salesRevenue ?? 0)
+  const cogs = Number(accounting?.costOfGoodsSold ?? 0)
+  const operatingExpenses = Number(accounting?.totalExpenses ?? 0)
+  const pl = {
+    revenue,
+    cogs,
+    grossProfit: revenue - cogs,
+    operating: operatingExpenses,
+    transport: 0,
+    expenseByCategory: [] as Array<[string, number]>,
+    netProfit: revenue - cogs - operatingExpenses,
+  }
+  const pct = (v: number) => (pl.revenue ? formatPercent((v / pl.revenue) * 100) : '—')
 
   return (
     <>
