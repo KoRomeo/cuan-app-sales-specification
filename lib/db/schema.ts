@@ -204,7 +204,6 @@ unitCost: decimal("unit_cost", {
 export const deliveries = pgTable("deliveries", {
 id: text("id").primaryKey(),
 orderId: text("order_id")
-    .notNull()
     .references(() => orders.id, { onDelete: "cascade" }),
 date: date("date").notNull(),
 method: deliveryMethodEnum("method").notNull(),
@@ -215,6 +214,14 @@ transportCost: decimal("transport_cost", {
     scale: 2,
 }).notNull().default("0"),
 })
+
+// One delivery can contain multiple orders. Legacy deliveries.orderId is retained for backward compatibility.
+export const deliveryOrders = pgTable("delivery_orders", {
+  deliveryId: text("delivery_id").notNull().references(() => deliveries.id, { onDelete: "cascade" }),
+  orderId: text("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+}, (table) => ({
+  deliveryOrderUnique: uniqueIndex("delivery_orders_delivery_order_idx").on(table.deliveryId, table.orderId),
+}))
 
 // ============================================================
 // PURCHASES
