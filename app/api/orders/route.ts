@@ -28,7 +28,7 @@ function items(value: unknown): value is Item[] {
   })
 }
 function fail(error: unknown, fallback = "Order operation failed") {
-  const map: Record<string, [string, number]> = { CUSTOMER_NOT_FOUND: ["Customer not found for this business", 404], PRODUCT_NOT_FOUND: ["One or more products were not found for this business", 404], PAYMENT_EXCEEDS_TOTAL: ["Payment cannot exceed order total", 400], PAYMENT_ID_EXISTS: ["Payment ID already exists", 409], ORDER_NOT_FOUND: ["Order not found", 404], ORDER_ID_EXISTS: ["Order ID already exists", 409], INVALID_STATUS: ["Invalid order status transition", 409], DELIVERED_IMMUTABLE: ["Delivered orders cannot be edited or cancelled", 409], DELIVERY_ALREADY_PROCESSED: ["Stock deduction for this order was already recorded", 409], NEGATIVE_STOCK: ["Delivery would create negative stock", 409] }
+  const map: Record<string, [string, number]> = { CUSTOMER_NOT_FOUND: ["Customer not found for this business", 404], PRODUCT_NOT_FOUND: ["One or more products were not found for this business", 404], PAYMENT_EXCEEDS_TOTAL: ["Payment cannot exceed order total", 400], PAYMENT_ID_EXISTS: ["Payment ID already exists", 409], ORDER_NOT_FOUND: ["Order not found", 404], ORDER_ID_EXISTS: ["Order ID already exists", 409], INVALID_STATUS: ["Invalid order status transition", 409], DELIVERED_IMMUTABLE: ["Delivered orders cannot be edited or cancelled", 409], DELIVERY_ALREADY_PROCESSED: ["Stock deduction for this order was already recorded", 409], NEGATIVE_STOCK: ["Delivery would create negative stock", 409], DELIVERY_REQUIRED: ["Mark an Order as delivered by creating a Delivery", 409], ORDER_ITEMS_IMMUTABLE: ["Order items cannot be edited after stock and accounting have been posted", 409] }
   const known = error instanceof Error ? map[error.message] : undefined
   if (known) return NextResponse.json({ error: known[0] }, { status: known[1] })
   console.error(fallback, error)
@@ -109,18 +109,36 @@ export async function PATCH(request: NextRequest) {
       if (current.status === "delivered") throw new Error("DELIVERED_IMMUTABLE")
       if (current.status === "cancelled") throw new Error("INVALID_STATUS")
       const next = (status ?? current.status) as Status
-      const transitions: Record<Status, Status[]> = { requested: ["requested", "ready", "delivered", "cancelled"], ready: ["ready", "delivered", "cancelled"], delivered: ["delivered"], cancelled: ["cancelled"] }
+      const transitions: Record<Status, Status[]> = { requested: ["requested", "ready", "cancelled"], ready: ["ready", "cancelled"], delivered: ["delivered"], cancelled: ["cancelled"] }
       if (!transitions[current.status].includes(next)) throw new Error("INVALID_STATUS")
       const existingItems = await tx.select().from(orderItems).where(eq(orderItems.orderId, id))
       if (customerId !== undefined) await verify(tx, businessId, customerId, lineItems ?? existingItems as Item[])
       if (lineItems !== undefined) { await tx.delete(orderItems).where(eq(orderItems.orderId, id)); await tx.insert(orderItems).values(lineItems.map((item: Item) => ({ id: item.id, orderId: id, productId: item.productId, qty: Number(item.qty), price: String(item.price), discount: String(item.discount ?? 0), unitCost: String(item.unitCost) }))) }
-      if (next === "delivered") {
-        const reference = `order:${id}:sale`; const existing = await tx.select({ id: stockMovements.id }).from(stockMovements).where(and(eq(stockMovements.businessId, businessId), eq(stockMovements.reference, reference), eq(stockMovements.type, "sale"))).limit(1); if (existing[0]) throw new Error("DELIVERY_ALREADY_PROCESSED")
-        const stock = await tx.select({ productId: products.id, available: sql<number>`coalesce(sum(${stockMovements.qty}), 0)` }).from(products).leftJoin(stockMovements, and(eq(stockMovements.productId, products.id), eq(stockMovements.businessId, businessId))).where(and(eq(products.businessId, businessId), inArray(products.id, existingItems.map((item) => item.productId)))).groupBy(products.id)
-        const needed = new Map(existingItems.map((item) => [item.productId, item.qty])); if (stock.some((row) => Number(row.available) - (needed.get(row.productId) ?? 0) < 0)) throw new Error("NEGATIVE_STOCK")
-        await tx.insert(stockMovements).values(existingItems.map((item) => ({ id: `SM-SALE-${item.id}`, businessId, date: new Date().toISOString().slice(0, 10), productId: item.productId, type: "sale" as const, qty: -item.qty, reference })))
+      if (next === "delivered") throw new Error("DELIVERY_REQUIRED")
+      if (lineItems !== undefined) throw new Error("ORDER_ITEMS_IMMUTABLE")
+      if (next === "cancelled") {
+        const saleReference = `order:${id}:sale`
+        const existingReversal = await tx.select({ id: stockMovements.id }).from(stockMovements)
+          .where(and(eq(stockMovements.businessId, businessId), eq(stockMovements.reference, `order:${id}:cancel`))).limit(1)
+        if (!existingReversal.length) {
+          await tx.insert(stockMovements).values(existingItems.map((item) => ({
+            id: `SM-REVERSAL-${id}-${item.id}`, businessId, date: new Date().toISOString().slice(0, 10),
+            productId: item.productId, type: "reversal" as const, qty: item.qty, reference: `order:${id}:cancel`,
+          })))
+          const [saleEntry] = await tx.select({ id: journalEntries.id }).from(journalEntries)
+            .where(and(eq(journalEntries.businessId, businessId), eq(journalEntries.kind, "sale"), eq(journalEntries.reference, id))).limit(1)
+          if (saleEntry) {
+            const lines = await tx.select().from(journalEntryLines).where(eq(journalEntryLines.journalEntryId, saleEntry.id))
+            const reversalId = `JE-REVERSAL-${id}`
+            await tx.insert(journalEntries).values({ id: reversalId, businessId, entryDate: new Date().toISOString().slice(0, 10), kind: "reversal", reference: `order:${id}:cancel`, description: `Reversal of cancelled Order ${id}` })
+            await tx.insert(journalEntryLines).values(lines.map((line) => ({
+              id: `${reversalId}-${line.id}`, journalEntryId: reversalId, account: line.account,
+              debit: line.credit, credit: line.debit,
+            })))
+          }
+        }
       }
-      await tx.update(orders).set({ ...(orderDate !== undefined ? { date: orderDate } : {}), ...(customerId !== undefined ? { customerId } : {}), ...(dueDate !== undefined ? { dueDate: dueDate || null } : {}), ...(notes !== undefined ? { notes: notes || null } : {}), status: next }).where(and(eq(orders.id, id), eq(orders.businessId, businessId)))
+            await tx.update(orders).set({ ...(orderDate !== undefined ? { date: orderDate } : {}), ...(customerId !== undefined ? { customerId } : {}), ...(dueDate !== undefined ? { dueDate: dueDate || null } : {}), ...(notes !== undefined ? { notes: notes || null } : {}), status: next }).where(and(eq(orders.id, id), eq(orders.businessId, businessId)))
     })
     return NextResponse.json({ message: "Order updated successfully", id })
   } catch (error) { return fail(error) }
