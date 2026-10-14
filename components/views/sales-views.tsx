@@ -462,55 +462,108 @@ export function DeliveriesView() {
   )
 }
 
+type PersistedReturn = { id: string; date: string; orderId: string; productId: string; qty: number; reason: string; delivered: boolean; returnValue?: number }
+type ReturnOrderOption = { id: string; customerId: string; status: string }
+type ReturnProductOption = { id: string; name: string }
+
 export function ReturnsView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
-
-  const columns: Column<Replacement>[] = [
+  const { data: business } = useSWR<{ id: string }>('/api/businesses/current', customersFetcher)
+  const { data: rows, error, isLoading, mutate } = useSWR<PersistedReturn[]>(
+    business?.id ? `/api/replacements?businessId=${encodeURIComponent(business.id)}` : null,
+    customersFetcher,
+  )
+  const { data: orderRows, mutate: mutateOrders } = useSWR<ReturnOrderOption[]>(
+    business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null,
+    customersFetcher,
+  )
+  const { data: productRows } = useSWR<ReturnProductOption[]>(
+    business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null,
+    customersFetcher,
+  )
+  const { data: customerRows } = useSWR<PersistedCustomer[]>(
+    business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null,
+    customersFetcher,
+  )
+  const returns = rows ?? []
+  const orderOptions = (orderRows ?? []).filter((o) => o.status === 'delivered')
+  const productName = (id: string) => productRows?.find((p) => p.id === id)?.name ?? id
+  const customerName = (orderId: string) => {
+    const order = orderRows?.find((o) => o.id === orderId)
+    return customerRows?.find((c) => c.id === order?.customerId)?.name ?? '—'
+  }
+  const columns: Column<PersistedReturn>[] = [
     { key: 'id', header: t('returns.id'), cell: (r) => <IdCell>{r.id}</IdCell> },
     { key: 'date', header: t('common.date'), cell: (r) => <span className="font-mono text-xs text-muted-foreground">{formatDate(r.date)}</span> },
     { key: 'order', header: t('returns.order'), cell: (r) => <span className="font-mono text-xs">{r.orderId}</span> },
-    { key: 'customer', header: t('common.customer'), cell: (r) => customerById(orderById(r.orderId)?.customerId ?? '')?.name ?? '—' },
-    { key: 'product', header: t('common.product'), cell: (r) => <span className="font-medium">{productById(r.productId)?.name}</span> },
+    { key: 'customer', header: t('common.customer'), cell: (r) => customerName(r.orderId) },
+    { key: 'product', header: t('common.product'), cell: (r) => <span className="font-medium">{productName(r.productId)}</span> },
     { key: 'qty', header: t('common.qty'), align: 'right', cell: (r) => <span className="font-mono tabular-nums">{r.qty}</span> },
+    { key: 'value', header: t('common.amount'), align: 'right', cell: (r) => <Money value={Number(r.returnValue ?? 0)} /> },
     { key: 'reason', header: t('returns.reason'), cell: (r) => <span className="text-muted-foreground">{r.reason}</span> },
     { key: 'status', header: t('common.status'), cell: (r) => (r.delivered ? <Pill tone="success">{t('returns.delivered')}</Pill> : <Pill tone="warning">{t('returns.outstanding')}</Pill>) },
   ]
+  const saveReturn = async (values: Record<string, string>) => {
+    if (!business?.id) throw new Error('Business not found')
+    const response = await fetch('/api/replacements', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        businessId: business.id,
+        orderId: values.order,
+        date: values.date,
+        productId: values.product,
+        qty: Number(values.qty),
+        reason: values.reason?.trim(),
+      }),
+    })
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error || 'Failed to create Return')
+    await Promise.all([mutate(), mutateOrders()])
+    setOpen(false)
+  }
 
   return (
     <>
       <PageHeader breadcrumbs={[{ label: t('nav.sales') }, { label: t('nav.returns') }]} title={t('returns.title')} description={t('returns.desc')} />
       <KpiGrid>
-        <KpiCard label={t('returns.title')} value={replacements.length} icon={RotateCcw} />
-        <KpiCard label={t('returns.outstanding')} value={replacements.filter((r) => !r.delivered).length} icon={RotateCcw} tone="warning" />
-        <KpiCard label={t('returns.delivered')} value={replacements.filter((r) => r.delivered).length} icon={CheckCircle2} tone="success" />
-        <KpiCard label={t('reports.units')} value={replacements.reduce((s, r) => s + r.qty, 0)} icon={Truck} tone="neutral" />
+        <KpiCard label={t('returns.title')} value={returns.length} icon={RotateCcw} />
+        <KpiCard label={t('returns.outstanding')} value={returns.filter((r) => !r.delivered).length} icon={RotateCcw} tone="warning" />
+        <KpiCard label={t('returns.delivered')} value={returns.filter((r) => r.delivered).length} icon={CheckCircle2} tone="success" />
+        <KpiCard label={t('reports.units')} value={returns.reduce((sum, r) => sum + r.qty, 0)} icon={Truck} tone="neutral" />
       </KpiGrid>
-      <DataTable
-        rows={replacements}
-        columns={columns}
-        getRowId={(r) => r.id}
-        searchText={(r) => `${r.id} ${r.orderId} ${productById(r.productId)?.name} ${r.reason}`}
-        filters={[
-          { value: 'all', label: t('common.all'), predicate: () => true },
-          { value: 'out', label: t('returns.outstanding'), predicate: (r) => !r.delivered },
-          { value: 'done', label: t('returns.delivered'), predicate: (r) => r.delivered },
-        ]}
-        rowHref={(r) => `/orders/${r.orderId}`}
-        addLabel={t('returns.add')}
-        onAdd={() => setOpen(true)}
-      />
+      {error ? <p className="py-4 text-sm text-destructive">Failed to load Returns. Please refresh and try again.</p> : isLoading || !business ? <p className="py-4 text-sm text-muted-foreground">Loading Returns...</p> : (
+        <DataTable
+          rows={returns}
+          columns={columns}
+          getRowId={(r) => r.id}
+          searchText={(r) => `${r.id} ${r.orderId} ${productName(r.productId)} ${r.reason}`}
+          filters={[
+            { value: 'all', label: t('common.all'), predicate: () => true },
+            { value: 'out', label: t('returns.outstanding'), predicate: (r) => !r.delivered },
+            { value: 'done', label: t('returns.delivered'), predicate: (r) => r.delivered },
+          ]}
+          rowHref={(r) => `/orders/${r.orderId}`}
+          addLabel={t('returns.add')}
+          onAdd={() => setOpen(true)}
+        />
+      )}
       <FormDialog
+        key={open ? 'new-return-open' : 'new-return-closed'}
         open={open}
         onOpenChange={setOpen}
         title={t('returns.add')}
+        description="Creating a Return records the replacement obligation and deducts replacement stock once."
+        persisted
         fields={[
-          { name: 'order', label: t('returns.order'), type: 'select', half: true, options: orders.filter((o) => o.status === 'delivered').map((o) => ({ value: o.id, label: o.id })) },
-          { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'product', label: t('common.product'), type: 'select', half: true, options: products.map((p) => ({ value: p.id, label: p.name })) },
-          { name: 'qty', label: t('common.qty'), type: 'number', min: 1, defaultValue: '1', half: true },
-          { name: 'reason', label: t('returns.reason'), type: 'textarea' },
+          { name: 'order', label: t('returns.order'), type: 'select', half: true, required: true, options: orderOptions.map((o) => ({ value: o.id, label: o.id })) },
+          { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true, required: true },
+          { name: 'product', label: t('common.product'), type: 'select', half: true, required: true, options: (productRows ?? []).map((p) => ({ value: p.id, label: p.name })) },
+          { name: 'qty', label: t('common.qty'), type: 'number', min: 1, defaultValue: '1', half: true, required: true },
+          { name: 'reason', label: t('returns.reason'), type: 'textarea', required: true },
         ]}
+        onSubmit={saveReturn}
       />
     </>
   )
