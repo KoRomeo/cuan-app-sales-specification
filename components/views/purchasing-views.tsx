@@ -2,7 +2,6 @@
 
 import { Building2, HandCoins, Package, ShoppingBag } from 'lucide-react'
 import { useState } from 'react'
-import { useSWRConfig } from 'swr'
 import useSWR, { useSWRConfig } from 'swr'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
 import { FormDialog } from '@/components/common/form-dialog'
