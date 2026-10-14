@@ -1,5 +1,6 @@
 'use client'
 import useSWR from 'swr'
+import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { CheckCircle2, FileText, HandCoins, Printer, RotateCcw, Truck, Users } from 'lucide-react'
 import { useState } from 'react'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
@@ -56,7 +57,8 @@ const customersFetcher = async (url: string) => {
 export function CustomersView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [editingCustomer, setEditingCustomer] = useState<PersistedCustomer | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<PersistedCustomer | null>(null)
 
   const { data: business, error: businessError } = useSWR<{ id: string }>(
     '/api/businesses/current',
@@ -77,30 +79,41 @@ export function CustomersView() {
 
   const rows = customerRows ?? []
 
-  const addCustomer = async (values: Record<string, string>) => {
-    if (!business?.id) {
-      throw new Error('Business not found')
-    }
-
-    const response = await fetch('/api/customers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        businessId: business.id,
-        name: values.name?.trim(),
-        phone: values.phone?.trim() || null,
-        address: values.address?.trim() || null,
-      }),
-    })
-
+  const saveCustomer = async (values: Record<string, string>) => {
+    if (!business?.id) throw new Error('Business not found')
+    const editing = editingCustomer
+    const response = await fetch(
+      editing
+        ? `/api/customers/${encodeURIComponent(editing.id)}?businessId=${encodeURIComponent(business.id)}`
+        : '/api/customers',
+      {
+        method: editing ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessId: business.id,
+          name: values.name?.trim(),
+          phone: values.phone?.trim() || null,
+          address: values.address?.trim() || null,
+        }),
+      },
+    )
     const result = await response.json()
-
-    if (!response.ok) {
-      throw new Error(result.error || 'Failed to create customer')
-    }
-
+    if (!response.ok) throw new Error(result.error || 'Failed to save customer')
     await mutate()
     setOpen(false)
+    setEditingCustomer(null)
+  }
+
+  const deleteCustomer = async () => {
+    if (!business?.id || !deleteTarget) return
+    const response = await fetch(
+      `/api/customers/${encodeURIComponent(deleteTarget.id)}?businessId=${encodeURIComponent(business.id)}`,
+      { method: 'DELETE' },
+    )
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error || 'Failed to delete customer')
+    setDeleteTarget(null)
+    await mutate()
   }
 
   const columns: Column<PersistedCustomer>[] = [
@@ -189,33 +202,79 @@ export function CustomersView() {
             `${c.id} ${c.name} ${c.phone ?? ''} ${c.address ?? ''}`
           }
           addLabel={t('customers.add')}
-          onAdd={() => setOpen(true)}
+          onAdd={() => {
+            setEditingCustomer(null)
+            setOpen(true)
+          }}
+          contextActions={(customer) => [
+            {
+              label: t('common.edit'),
+              onSelect: () => {
+                setEditingCustomer(customer)
+                setOpen(true)
+              },
+            },
+            {
+              label: t('common.delete'),
+              onSelect: () => setDeleteTarget(customer),
+            },
+          ]}
         />
       )}
 
       <FormDialog
+        key={editingCustomer?.id ?? 'new-customer'}
         open={open}
-        onOpenChange={setOpen}
-        title={t('customers.add')}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen)
+          if (!nextOpen) setEditingCustomer(null)
+        }}
+        title={editingCustomer ? t('common.edit') : t('customers.add')}
+        submitLabel={editingCustomer ? t('common.save') : t('customers.add')}
         fields={[
           {
             name: 'name',
             label: t('common.customer'),
             placeholder: 'Toko …',
+            defaultValue: editingCustomer?.name ?? '',
           },
           {
             name: 'phone',
             label: t('common.phone'),
             placeholder: '08xx-xxxx-xxxx',
+            defaultValue: editingCustomer?.phone ?? '',
           },
           {
             name: 'address',
             label: t('common.address'),
             type: 'textarea',
+            defaultValue: editingCustomer?.address ?? '',
           },
         ]}
-        onSubmit={addCustomer}
+        onSubmit={saveCustomer}
         persisted
+      />
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setDeleteTarget(null)
+        }}
+        title={t('common.delete')}
+        description={
+          deleteTarget
+            ? `Delete customer ${deleteTarget.name}? Customers with order history cannot be deleted.`
+            : ''
+        }
+        confirmLabel={t('common.delete')}
+        onConfirm={() => {
+          void deleteCustomer().catch((error) => {
+            const message = error instanceof Error ? error.message : 'Failed to delete customer'
+            setDeleteTarget(null)
+            window.setTimeout(() => {
+              import('@/lib/toast').then(({ appToast }) => appToast.error(message))
+            }, 0)
+          })
+        }}
       />
     </>
   )
