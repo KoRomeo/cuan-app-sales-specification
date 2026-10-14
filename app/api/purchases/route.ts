@@ -14,6 +14,7 @@ import {
   suppliers,
 } from "@/lib/db/schema"
 import { headers } from "next/headers"
+import { generateEntityId } from "@/lib/db/ids"
 
 type PurchaseInputItem = {
   id: string
@@ -82,7 +83,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const {
-      id,
       businessId,
       date,
       supplierId,
@@ -94,7 +94,6 @@ export async function POST(request: NextRequest) {
       paymentDate,
       paymentAccount = "Cash",
     } = body as {
-      id: string
       businessId: string
       date: string
       supplierId: string
@@ -108,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (
-      ![id, businessId, supplierId].every((value) => typeof value === "string" && value.trim()) ||
+      ![businessId, supplierId].every((value) => typeof value === "string" && value.trim()) ||
       !validDate(date) ||
       (dueDate != null && dueDate !== "" && !validDate(dueDate)) ||
       !Array.isArray(items) ||
@@ -140,7 +139,8 @@ export async function POST(request: NextRequest) {
     const allowed = await access(businessId)
     if (!allowed.ok) return NextResponse.json({ error: allowed.error }, { status: allowed.status })
 
-    await db.transaction(async (tx) => {
+    const id = await db.transaction(async (tx) => {
+      const id = await generateEntityId(tx, purchases, businessId, "PUR", date)
       const [existing] = await tx.select({ id: purchases.id }).from(purchases).where(eq(purchases.id, id)).limit(1)
       if (existing) throw new Error("PURCHASE_ID_EXISTS")
 
@@ -264,6 +264,7 @@ export async function POST(request: NextRequest) {
           { id: `${paymentJournalId}-credit`, journalEntryId: paymentJournalId, account: paymentAccount!.trim(), debit: "0", credit: paidAmount.toFixed(2) },
         ])
       }
+      return id
     })
 
     return NextResponse.json({ message: "Purchase created successfully", id }, { status: 201 })
