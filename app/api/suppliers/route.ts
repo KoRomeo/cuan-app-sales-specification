@@ -4,6 +4,7 @@ import { headers } from "next/headers"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { businessMembers, suppliers } from "@/lib/db/schema"
+import { generateEntityId } from "@/lib/db/ids"
 
 async function getBusinessAccess(businessId: string) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -38,14 +39,9 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
-    const {
-      id,
-      businessId,
-      name,
-      contact,
-    } = body
+    const { businessId, name, contact } = body
 
-    if (!id || !businessId || !name) {
+    if (!businessId || !name) {
       return NextResponse.json(
         {
           error: "Supplier ID, business ID and name are required",
@@ -56,15 +52,14 @@ export async function POST(request: Request) {
     const access = await getBusinessAccess(businessId)
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
-    const [supplier] = await db
-      .insert(suppliers)
-      .values({
-        id,
-        businessId,
-        name,
-        contact: contact || null,
-      })
-      .returning()
+    const supplier = await db.transaction(async (tx) => {
+      const id = await generateEntityId(tx, suppliers, businessId, "SUP", new Date().toISOString().slice(0, 10))
+      const [created] = await tx
+        .insert(suppliers)
+        .values({ id, businessId, name: String(name).trim(), contact: contact || null })
+        .returning()
+      return created
+    })
 
     return NextResponse.json(supplier, { status: 201 })
   } catch (error) {
