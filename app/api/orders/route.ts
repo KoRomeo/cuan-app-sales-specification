@@ -67,17 +67,17 @@ export async function POST(request: NextRequest) {
       const normalizedItems = lineItems.map((item) => ({ ...item, price: Number(item.price), unitCost: Number(byProduct.get(item.productId)?.averageCost) }))
       const total = normalizedItems.reduce((sum, item) => sum + item.qty * item.price - Number(item.discount ?? 0), 0)
       if (paidAmount > total) throw new Error("PAYMENT_EXCEEDS_TOTAL")
-      await tx.insert(orders).values({ id, businessId, date: orderDate, customerId, status, dueDate: dueDate || null, notes: notes || null })
-      await tx.insert(orderItems).values(normalizedItems.map((item) => ({ id: item.id, orderId: id, productId: item.productId, qty: Number(item.qty), price: String(item.price), discount: String(item.discount ?? 0), unitCost: String(item.unitCost) })))
+      await tx.insert(orders).values({ id: generatedId, businessId, date: orderDate, customerId, status, dueDate: dueDate || null, notes: notes || null })
+      await tx.insert(orderItems).values(normalizedItems.map((item) => ({ id: item.id, orderId: generatedId, productId: item.productId, qty: Number(item.qty), price: String(item.price), discount: String(item.discount ?? 0), unitCost: String(item.unitCost) })))
       // Stock, revenue, and COGS are recognized at Order creation. Negative stock is allowed.
       await tx.insert(stockMovements).values(normalizedItems.map((item) => ({
-        id: `SM-SALE-${id}-${item.id}`, businessId, date: orderDate, productId: item.productId,
-        type: "sale" as const, qty: -Number(item.qty), reference: `order:${id}:sale`,
+        id: `SM-SALE-${generatedId}-${item.id}`, businessId, date: orderDate, productId: item.productId,
+        type: "sale" as const, qty: -Number(item.qty), reference: `order:${generatedId}:sale`,
       })))
       const revenue = total
       const cogs = normalizedItems.reduce((sum, item) => sum + Number(item.qty) * Number(item.unitCost), 0)
-      const saleEntryId = `JE-SALE-${id}`
-      await tx.insert(journalEntries).values({ id: saleEntryId, businessId, entryDate: orderDate, kind: "sale", reference: id, description: `Order sale and COGS for ${id}` })
+      const saleEntryId = `JE-SALE-${generatedId}`
+      await tx.insert(journalEntries).values({ id: saleEntryId, businessId, entryDate: orderDate, kind: "sale", reference: generatedId, description: `Order sale and COGS for ${generatedId}` })
       await tx.insert(journalEntryLines).values([
         { id: `${saleEntryId}-ar`, journalEntryId: saleEntryId, account: "Accounts Receivable", debit: revenue.toFixed(2), credit: "0" },
         { id: `${saleEntryId}-revenue`, journalEntryId: saleEntryId, account: "Sales Revenue", debit: "0", credit: revenue.toFixed(2) },
@@ -88,8 +88,8 @@ export async function POST(request: NextRequest) {
         const [existingPayment] = await tx.select({ id: payments.id }).from(payments).where(eq(payments.id, paymentId)).limit(1)
         if (existingPayment) throw new Error("PAYMENT_ID_EXISTS")
         const entryId = `JE-PAY-${paymentId}`
-        await tx.insert(payments).values({ id: paymentId, businessId, orderId: id, purchaseId: null, date: paymentDate, amount: paidAmount.toFixed(2), account: paymentAccount.trim() })
-        await tx.insert(journalEntries).values({ id: entryId, businessId, entryDate: paymentDate, kind: "payment", reference: paymentId, description: `Customer payment for ${id}` })
+        await tx.insert(payments).values({ id: paymentId, businessId, orderId: generatedId, purchaseId: null, date: paymentDate, amount: paidAmount.toFixed(2), account: paymentAccount.trim() })
+        await tx.insert(journalEntries).values({ id: entryId, businessId, entryDate: paymentDate, kind: "payment", reference: paymentId, description: `Customer payment for ${generatedId}` })
         await tx.insert(journalEntryLines).values([{ id: `${entryId}-debit`, journalEntryId: entryId, account: paymentAccount.trim(), debit: paidAmount.toFixed(2), credit: "0" }, { id: `${entryId}-credit`, journalEntryId: entryId, account: "Accounts Receivable", debit: "0", credit: paidAmount.toFixed(2) }])
       }
       return generatedId
