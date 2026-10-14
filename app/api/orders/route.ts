@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       await verify(tx, businessId, customerId, lineItems)
       const productRows = await tx.select({ id: products.id, sellingPrice: products.sellingPrice, averageCost: products.averageCost }).from(products).where(and(eq(products.businessId, businessId), inArray(products.id, [...new Set(lineItems.map((item) => item.productId))])))
       const byProduct = new Map(productRows.map((product) => [product.id, product]))
-      const normalizedItems = lineItems.map((item) => ({ ...item, price: Number(byProduct.get(item.productId)?.sellingPrice), unitCost: Number(byProduct.get(item.productId)?.averageCost) }))
+      const normalizedItems = lineItems.map((item) => ({ ...item, price: Number(item.price), unitCost: Number(byProduct.get(item.productId)?.averageCost) }))
       const total = normalizedItems.reduce((sum, item) => sum + item.qty * item.price - Number(item.discount ?? 0), 0)
       if (paidAmount > total) throw new Error("PAYMENT_EXCEEDS_TOTAL")
       await tx.insert(orders).values({ id, businessId, date: orderDate, customerId, status, dueDate: dueDate || null, notes: notes || null })
