@@ -133,28 +133,17 @@ export function ProductsView() {
                 name: values.name,
                 sellingPrice: Number(values.price),
                 costReference: Number(values.cost),
-                ...(editing ? {} : { averageCost: Number(values.cost) }),
+                ...(editing ? {} : {
+                  averageCost: Number(values.cost),
+                  openingStock: Number(values.opening || 0),
+                  date: todayISODate(),
+                }),
                 minimumStock: Number(values.min || 0),
               }),
             },
           )
           const result = await response.json()
           if (!response.ok) throw new Error(result.error ?? 'Unable to save product')
-          if (!editing && Number(values.opening || 0) > 0) {
-            const movementResponse = await fetch('/api/stock-movements', {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({
-                businessId,
-                productId: result.id,
-                date: todayISODate(),
-                type: 'opening',
-                qty: Number(values.opening),
-                reference: `opening:${result.id}`,
-              }),
-            })
-            if (!movementResponse.ok) throw new Error((await movementResponse.json()).error ?? 'Product saved but opening stock could not be recorded')
-          }
           await loadProducts()
           await Promise.all([
             globalMutate(`/api/dashboard?businessId=${encodeURIComponent(businessId)}`),
