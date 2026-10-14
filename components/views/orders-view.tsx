@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import useSWR from 'swr'
 import { AlertTriangle, CircleDollarSign, Clock, FileText, ShoppingCart, Truck } from 'lucide-react'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
+import { FormDialog } from '@/components/common/form-dialog'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
 import { PageHeader } from '@/components/common/page-header'
 import { OrderStatusBadge, PaymentStatusBadge } from '@/components/common/status-badge'
@@ -40,24 +41,54 @@ export function OrdersView() {
   const router = useRouter()
   const { mutate: globalMutate } = useSWRConfig()
   const [deleteTarget, setDeleteTarget] = useState<PersistedOrder | null>(null)
+  const [editTarget, setEditTarget] = useState<PersistedOrder | null>(null)
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: persistedOrders, error: ordersError, mutate: mutateOrders } = useSWR<PersistedOrder[]>(business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: payments, error: paymentsError } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: customers, error: customersError } = useSWR<PersistedParty[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: products, error: productsError } = useSWR<Array<{ id: string; name: string; stock?: number }>>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
-  async function deleteOrder() {
+  async function cancelOrder() {
     if (!business?.id || !deleteTarget) return
     const target = deleteTarget
     try {
-      const response = await fetch(`/api/orders/${encodeURIComponent(target.id)}?businessId=${encodeURIComponent(business.id)}`, { method: 'DELETE' })
+      const response = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: target.id, businessId: business.id, status: 'cancelled' }),
+      })
       const result = await response.json()
-      if (!response.ok) throw new Error(result.error ?? 'Unable to delete order')
+      if (!response.ok) throw new Error(result.error ?? 'Unable to cancel order')
       setDeleteTarget(null)
-      await Promise.all([mutateOrders(), globalMutate(`/api/payments?businessId=${encodeURIComponent(business.id)}`), globalMutate(`/api/products?businessId=${encodeURIComponent(business.id)}`)])
-      toast.success('Order deleted successfully')
+      await Promise.all([
+        mutateOrders(),
+        globalMutate(`/api/payments?businessId=${encodeURIComponent(business.id)}`),
+        globalMutate(`/api/products?businessId=${encodeURIComponent(business.id)}`),
+        globalMutate(`/api/stock?businessId=${encodeURIComponent(business.id)}`),
+        globalMutate(`/api/accounting?businessId=${encodeURIComponent(business.id)}`),
+        globalMutate(`/api/dashboard?businessId=${encodeURIComponent(business.id)}`),
+      ])
+      toast.success('Order cancelled successfully')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to delete order')
+      toast.error(error instanceof Error ? error.message : 'Unable to cancel order')
     }
+  }
+
+  async function saveOrder(values: Record<string, string>) {
+    if (!business?.id || !editTarget) throw new Error('Order or business not found')
+    const response = await fetch('/api/orders', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: editTarget.id, businessId: business.id,
+        date: values.date, customerId: values.customerId,
+        dueDate: values.dueDate || null, notes: values.notes ?? '',
+      }),
+    })
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error ?? 'Unable to update order')
+    setEditTarget(null)
+    await mutateOrders()
+    toast.success('Order updated successfully')
   }
 
   const error = businessError || ordersError || paymentsError || customersError || productsError
@@ -137,17 +168,33 @@ export function OrdersView() {
         rowHref={(o) => `/orders/${o.id}`}
         contextActions={(o) => [
           { label: t('orders.viewInvoice'), icon: FileText, href: '/invoices' },
-          { label: t('common.delete'), onSelect: () => setDeleteTarget(persistedOrders.find((row) => row.id === o.id) ?? null) },
+          { label: t('common.edit'), onSelect: () => setEditTarget(persistedOrders.find((row) => row.id === o.id) ?? null) },
+          ...(o.status !== 'delivered' && o.status !== 'cancelled' ? [{ label: t('orders.cancelOrder'), onSelect: () => setDeleteTarget(persistedOrders.find((row) => row.id === o.id) ?? null) }] : []),
         ]}
         deletable={false}
+      />
+      <FormDialog
+        key={editTarget?.id ?? 'no-order-edit'}
+        open={!!editTarget}
+        onOpenChange={(nextOpen) => { if (!nextOpen) setEditTarget(null) }}
+        title={t('common.edit') + ' Order'}
+        description="Edit order details. Product quantities, prices and posted accounting entries remain locked after Order creation."
+        persisted
+        fields={[
+          { name: 'date', label: t('common.date'), type: 'date', defaultValue: editTarget?.date ?? '', required: true },
+          { name: 'customerId', label: t('common.customer'), type: 'select', defaultValue: editTarget?.customerId ?? '', options: customers.map((customer) => ({ value: customer.id, label: customer.name })), required: true },
+          { name: 'dueDate', label: t('common.dueDate'), type: 'date', defaultValue: editTarget?.dueDate ?? '', required: false },
+          { name: 'notes', label: t('common.notes'), type: 'textarea', defaultValue: editTarget?.notes ?? '', required: false },
+        ]}
+        onSubmit={saveOrder}
       />
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
-        title={t('deleteDialog.previewTitle')}
-        description={deleteTarget ? `Delete order ${deleteTarget.id}? Only requested orders without payments or other related activity can be deleted.` : t('deleteDialog.previewBody')}
-        confirmLabel={t('common.delete')}
-        onConfirm={() => { void deleteOrder() }}
+        title={t('orders.cancelOrder')}
+        description={deleteTarget ? `Cancel Order ${deleteTarget.id}? This preserves its audit trail and reverses stock and accounting entries. Orders with payments or deliveries cannot be cancelled.` : ''}
+        confirmLabel={t('orders.cancelOrder')}
+        onConfirm={() => { void cancelOrder() }}
       />
     </>
   )
