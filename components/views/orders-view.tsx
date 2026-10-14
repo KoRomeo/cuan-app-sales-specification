@@ -6,7 +6,7 @@ import { useSWRConfig } from 'swr'
 import { appToast as toast } from '@/lib/toast'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import useSWR from 'swr'
-import { AlertTriangle, CircleDollarSign, Clock, FileText, ShoppingCart, Truck } from 'lucide-react'
+import { AlertTriangle, CircleDollarSign, Clock, ShoppingCart, Truck } from 'lucide-react'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
 import { FormDialog } from '@/components/common/form-dialog'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
@@ -166,9 +166,8 @@ export function OrdersView() {
         onAdd={() => router.push('/orders/new')}
         rowHref={(o) => `/orders/${o.id}`}
         contextActions={(o) => [
-          { label: t('orders.viewInvoice'), icon: FileText, href: '/invoices' },
           { label: t('common.edit'), onSelect: () => setEditTarget(persistedOrders.find((row) => row.id === o.id) ?? null) },
-          ...(o.status !== 'delivered' && o.status !== 'cancelled' ? [{ label: t('orders.cancelOrder'), onSelect: () => setDeleteTarget(persistedOrders.find((row) => row.id === o.id) ?? null) }] : []),
+          ...(o.status !== 'delivered' && o.status !== 'cancelled' ? [{ label: 'Cancel Order', onSelect: () => setDeleteTarget(persistedOrders.find((row) => row.id === o.id) ?? null) }] : []),
         ]}
         deletable={false}
       />
@@ -188,9 +187,9 @@ export function OrdersView() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
-        title={t('orders.cancelOrder')}
+        title="Cancel Order"
         description={deleteTarget ? `Cancel Order ${deleteTarget.id}? This preserves its audit trail and reverses stock and accounting entries. Orders with payments or deliveries cannot be cancelled.` : ''}
-        confirmLabel={t('orders.cancelOrder')}
+        confirmLabel="Cancel Order"
         onConfirm={() => { void cancelOrder() }}
       />
     </>
