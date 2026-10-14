@@ -2,23 +2,22 @@
 
 import { Building2, HandCoins, Package, ShoppingBag } from 'lucide-react'
 import { useState } from 'react'
+import { useSWRConfig } from 'swr'
 import useSWR, { useSWRConfig } from 'swr'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
 import { FormDialog } from '@/components/common/form-dialog'
+import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
 import { PageHeader } from '@/components/common/page-header'
 import { PaymentStatusBadge } from '@/components/common/status-badge'
 import { useApp } from '@/components/providers'
 import { appToast as toast } from '@/lib/toast'
 import {
-  type Party,
   type Purchase,
   purchaseOutstanding,
   purchasePaid,
   purchasePaymentStatus,
-  purchases,
   purchaseTotal,
-  suppliers,
   TODAY,
 } from '@/lib/data'
 import { formatDate, formatIDR } from '@/lib/format'
@@ -132,27 +131,99 @@ export function PurchasesView() {
   )
 }
 
-const supStats = (s: Party) => {
-  const list = purchases.filter((p) => p.supplierId === s.id)
-  return {
-    count: list.length,
-    total: list.reduce((acc, p) => acc + purchaseTotal(p), 0),
-    outstanding: list.reduce((acc, p) => acc + purchaseOutstanding(p), 0),
-  }
+type PersistedSupplier = { id: string; businessId: string; name: string; contact: string | null }
+type SupplierPurchaseRow = {
+  id: string
+  supplierId: string
+  items: Array<{ qty: number; unitCost: string | number }>
 }
+type SupplierPaymentRow = { purchaseId: string | null; amount: string | number }
 
 export function SuppliersView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
+  const [editingSupplier, setEditingSupplier] = useState<PersistedSupplier | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<PersistedSupplier | null>(null)
+  const { mutate: globalMutate } = useSWRConfig()
+  const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { data: supplierRows, error: suppliersError, mutate: mutateSuppliers } = useSWR<PersistedSupplier[]>(
+    business?.id ? `/api/suppliers?businessId=${encodeURIComponent(business.id)}` : null,
+    fetcher,
+  )
+  const { data: purchaseRows, error: purchasesError } = useSWR<SupplierPurchaseRow[]>(
+    business?.id ? `/api/purchases?businessId=${encodeURIComponent(business.id)}` : null,
+    fetcher,
+  )
+  const { data: paymentRows } = useSWR<SupplierPaymentRow[]>(
+    business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null,
+    fetcher,
+  )
 
-  const columns: Column<Party>[] = [
-    { key: 'id', header: 'ID', cell: (s) => <IdCell>{s.id}</IdCell> },
-    { key: 'name', header: t('common.supplier'), cell: (s) => <span className="font-medium">{s.name}</span> },
-    { key: 'phone', header: t('common.phone'), cell: (s) => <span className="font-mono text-xs text-muted-foreground">{s.phone}</span> },
-    { key: 'address', header: t('common.address'), cell: (s) => <span className="block max-w-60 truncate text-muted-foreground">{s.address}</span> },
-    { key: 'count', header: t('suppliers.totalPurchases'), align: 'right', cell: (s) => <span className="font-mono tabular-nums">{supStats(s).count}</span> },
-    { key: 'total', header: t('suppliers.lifetime'), align: 'right', cell: (s) => <Money value={supStats(s).total} /> },
-    { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (s) => <Money value={supStats(s).outstanding} className={supStats(s).outstanding > 0 ? 'font-medium text-warning' : 'text-muted-foreground'} /> },
+  const suppliers = supplierRows ?? []
+  const purchases = purchaseRows ?? []
+  const payments = paymentRows ?? []
+  const stats = (supplier: PersistedSupplier) => {
+    const supplierPurchases = purchases.filter((purchase) => purchase.supplierId === supplier.id)
+    const total = supplierPurchases.reduce((sum, purchase) =>
+      sum + purchase.items.reduce((itemSum, item) => itemSum + Number(item.qty) * Number(item.unitCost), 0), 0)
+    const paid = supplierPurchases.reduce((sum, purchase) =>
+      sum + payments.filter((payment) => payment.purchaseId === purchase.id).reduce((paymentSum, payment) => paymentSum + Number(payment.amount), 0), 0)
+    return { count: supplierPurchases.length, total, outstanding: Math.max(total - paid, 0) }
+  }
+
+  const saveSupplier = async (values: Record<string, string>) => {
+    if (!business?.id) throw new Error('Business not found')
+    const editing = editingSupplier
+    const response = await fetch(
+      editing
+        ? `/api/suppliers/${encodeURIComponent(editing.id)}?businessId=${encodeURIComponent(business.id)}`
+        : '/api/suppliers',
+      {
+        method: editing ? 'PATCH' : 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          id: editing?.id ?? `SUP-${crypto.randomUUID()}`,
+          businessId: business.id,
+          name: values.name?.trim(),
+          contact: values.contact?.trim() || null,
+        }),
+      },
+    )
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error ?? 'Unable to save supplier')
+    setOpen(false)
+    setEditingSupplier(null)
+    await Promise.all([
+      mutateSuppliers(),
+      globalMutate(`/api/dashboard?businessId=${encodeURIComponent(business.id)}`),
+    ])
+    toast.success(t('form.savedFeedback'))
+  }
+
+  const deleteSupplier = async () => {
+    if (!business?.id || !deleteTarget) return
+    const response = await fetch(
+      `/api/suppliers/${encodeURIComponent(deleteTarget.id)}?businessId=${encodeURIComponent(business.id)}`,
+      { method: 'DELETE' },
+    )
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error ?? 'Unable to delete supplier')
+    setDeleteTarget(null)
+    await mutateSuppliers()
+    toast.success(t('common.delete'))
+  }
+
+  const error = businessError || suppliersError || purchasesError
+  if (error) return <p role="alert" className="text-sm text-destructive">{error.message}</p>
+  if (!business || !supplierRows || !purchaseRows || !paymentRows) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+
+  const columns: Column<PersistedSupplier>[] = [
+    { key: 'id', header: 'ID', cell: (supplier) => <IdCell>{supplier.id}</IdCell> },
+    { key: 'name', header: t('common.supplier'), cell: (supplier) => <span className="font-medium">{supplier.name}</span> },
+    { key: 'contact', header: t('common.phone'), cell: (supplier) => <span className="font-mono text-xs text-muted-foreground">{supplier.contact || '—'}</span> },
+    { key: 'count', header: t('suppliers.totalPurchases'), align: 'right', cell: (supplier) => <span className="font-mono tabular-nums">{stats(supplier).count}</span> },
+    { key: 'total', header: t('suppliers.lifetime'), align: 'right', cell: (supplier) => <Money value={stats(supplier).total} /> },
+    { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (supplier) => <Money value={stats(supplier).outstanding} className={stats(supplier).outstanding > 0 ? 'font-medium text-warning' : 'text-muted-foreground'} /> },
   ]
 
   return (
@@ -160,31 +231,54 @@ export function SuppliersView() {
       <PageHeader breadcrumbs={[{ label: t('nav.purchasing') }, { label: t('nav.suppliers') }]} title={t('suppliers.title')} description={t('suppliers.desc')} />
       <KpiGrid>
         <KpiCard label={t('suppliers.count')} value={suppliers.length} icon={Building2} />
-        <KpiCard label={t('payables.suppliersOwed')} value={suppliers.filter((s) => supStats(s).outstanding > 0).length} icon={HandCoins} tone="warning" />
-        <KpiCard label={t('suppliers.lifetime')} value={formatIDR(suppliers.reduce((a, s) => a + supStats(s).total, 0))} icon={Package} />
-        <KpiCard label={t('payables.total')} value={formatIDR(suppliers.reduce((a, s) => a + supStats(s).outstanding, 0))} icon={HandCoins} tone="warning" href="/payables" />
+        <KpiCard label={t('payables.suppliersOwed')} value={suppliers.filter((supplier) => stats(supplier).outstanding > 0).length} icon={HandCoins} tone="warning" />
+        <KpiCard label={t('suppliers.lifetime')} value={formatIDR(suppliers.reduce((sum, supplier) => sum + stats(supplier).total, 0))} icon={Package} />
+        <KpiCard label={t('payables.total')} value={formatIDR(suppliers.reduce((sum, supplier) => sum + stats(supplier).outstanding, 0))} icon={HandCoins} tone="warning" href="/payables" />
       </KpiGrid>
       <DataTable
         rows={suppliers}
         columns={columns}
-        getRowId={(s) => s.id}
-        searchText={(s) => `${s.id} ${s.name} ${s.phone} ${s.address}`}
+        getRowId={(supplier) => supplier.id}
+        searchText={(supplier) => `${supplier.id} ${supplier.name} ${supplier.contact ?? ''}`}
         filters={[
           { value: 'all', label: t('common.all'), predicate: () => true },
-          { value: 'owed', label: t('payables.suppliersOwed'), predicate: (s) => supStats(s).outstanding > 0 },
+          { value: 'owed', label: t('payables.suppliersOwed'), predicate: (supplier) => stats(supplier).outstanding > 0 },
         ]}
         addLabel={t('suppliers.add')}
-        onAdd={() => setOpen(true)}
+        onAdd={() => {
+          setEditingSupplier(null)
+          setOpen(true)
+        }}
+        contextActions={(supplier) => [
+          { label: t('common.edit'), onSelect: () => { setEditingSupplier(supplier); setOpen(true) } },
+          { label: t('common.delete'), onSelect: () => setDeleteTarget(supplier) },
+        ]}
       />
       <FormDialog
+        key={editingSupplier?.id ?? 'new-supplier'}
         open={open}
-        onOpenChange={setOpen}
-        title={t('suppliers.add')}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen)
+          if (!nextOpen) setEditingSupplier(null)
+        }}
+        title={editingSupplier ? t('common.edit') : t('suppliers.add')}
+        submitLabel={editingSupplier ? t('common.save') : t('suppliers.add')}
         fields={[
-          { name: 'name', label: t('common.supplier') },
-          { name: 'phone', label: t('common.phone') },
-          { name: 'address', label: t('common.address'), type: 'textarea' },
+          { name: 'name', label: t('common.supplier'), defaultValue: editingSupplier?.name ?? '' },
+          { name: 'contact', label: t('common.phone'), defaultValue: editingSupplier?.contact ?? '' },
         ]}
+        onSubmit={saveSupplier}
+        persisted
+      />
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(nextOpen) => { if (!nextOpen) setDeleteTarget(null) }}
+        title={t('common.delete')}
+        description={deleteTarget ? `Delete supplier ${deleteTarget.name}? Suppliers with purchase history cannot be deleted.` : ''}
+        confirmLabel={t('common.delete')}
+        onConfirm={() => {
+          void deleteSupplier().catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to delete supplier'))
+        }}
       />
     </>
   )
