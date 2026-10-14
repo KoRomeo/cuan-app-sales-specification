@@ -362,46 +362,102 @@ export function InvoicesView() {
   )
 }
 
+type PersistedDelivery = {
+  id: string
+  date: string
+  method: 'own' | 'expedition' | 'pickup'
+  recipient: string
+  address: string
+  transportCost: string | number
+  orders: Array<{ id: string; customerId: string; customerName: string }>
+}
+type DeliveryOrderOption = { id: string; status: string; customerId: string; date: string }
+
 export function DeliveriesView() {
   const { t } = useApp()
-  const [preview, setPreview] = useState<Order | null>(null)
-  const delivered = orders.filter((o) => o.delivery).sort((a, b) => (a.delivery!.id < b.delivery!.id ? 1 : -1))
-  const awaiting = orders.filter((o) => o.status === 'ready' || o.status === 'requested')
-
-  const columns: Column<Order>[] = [
-    { key: 'id', header: t('deliveries.id'), cell: (o) => <IdCell>{o.delivery!.id}</IdCell> },
-    { key: 'date', header: t('common.date'), cell: (o) => <span className="font-mono text-xs text-muted-foreground">{formatDate(o.delivery!.date)}</span> },
-    { key: 'order', header: t('returns.order'), cell: (o) => <span className="font-mono text-xs">{o.id}</span> },
-    { key: 'customer', header: t('common.customer'), cell: (o) => <span className="font-medium">{customerById(o.customerId)?.name}</span> },
-    { key: 'method', header: t('orders.method'), cell: (o) => <Pill tone={o.delivery!.method === 'pickup' ? 'neutral' : 'primary'}>{t(`method.${o.delivery!.method}`)}</Pill> },
-    { key: 'recipient', header: t('orders.recipient'), cell: (o) => o.delivery!.recipient },
-    { key: 'transport', header: t('orders.transportCost'), align: 'right', cell: (o) => <Money value={o.delivery!.transportCost} className={o.delivery!.transportCost === 0 ? 'text-muted-foreground' : ''} /> },
+  const [open, setOpen] = useState(false)
+  const { data: business } = useSWR<{ id: string }>('/api/businesses/current', customersFetcher)
+  const { data: rows, error, isLoading, mutate } = useSWR<PersistedDelivery[]>(
+    business?.id ? `/api/deliveries?businessId=${encodeURIComponent(business.id)}` : null,
+    customersFetcher,
+  )
+  const { data: orderRows, mutate: mutateOrders } = useSWR<DeliveryOrderOption[]>(
+    business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null,
+    customersFetcher,
+  )
+  const delivered = rows ?? []
+  const awaiting = (orderRows ?? []).filter((o) => o.status === 'ready' || o.status === 'requested')
+  const columns: Column<PersistedDelivery>[] = [
+    { key: 'id', header: t('deliveries.id'), cell: (d) => <IdCell>{d.id}</IdCell> },
+    { key: 'date', header: t('common.date'), cell: (d) => <span className="font-mono text-xs text-muted-foreground">{formatDate(d.date)}</span> },
+    { key: 'orders', header: t('returns.order'), cell: (d) => <span className="font-mono text-xs">{d.orders.map((o) => o.id).join(', ')}</span> },
+    { key: 'customer', header: t('common.customer'), cell: (d) => <span className="font-medium">{[...new Set(d.orders.map((o) => o.customerName))].join(', ')}</span> },
+    { key: 'method', header: t('orders.method'), cell: (d) => <Pill tone={d.method === 'pickup' ? 'neutral' : 'primary'}>{t(`method.${d.method}`)}</Pill> },
+    { key: 'recipient', header: t('orders.recipient'), cell: (d) => d.recipient || '—' },
+    { key: 'transport', header: t('orders.transportCost'), align: 'right', cell: (d) => <Money value={Number(d.transportCost)} className={Number(d.transportCost) === 0 ? 'text-muted-foreground' : ''} /> },
   ]
-
+  const saveDelivery = async (values: Record<string, string>) => {
+    if (!business?.id) throw new Error('Business not found')
+    const orderIds = (values.orderIds ?? '').split(',').filter(Boolean)
+    if (!orderIds.length) throw new Error('Select at least one Order')
+    const response = await fetch('/api/deliveries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        businessId: business.id, orderIds, date: values.date, method: values.method,
+        recipient: values.recipient?.trim() ?? '', address: values.address?.trim() ?? '',
+        transportCost: Number(values.transportCost || 0),
+      }),
+    })
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error || 'Failed to create Delivery')
+    await Promise.all([mutate(), mutateOrders()])
+    setOpen(false)
+  }
   return (
     <>
       <PageHeader breadcrumbs={[{ label: t('nav.sales') }, { label: t('nav.deliveries') }]} title={t('deliveries.title')} description={t('deliveries.desc')} />
       <KpiGrid>
         <KpiCard label={t('deliveries.count')} value={delivered.length} icon={Truck} />
         <KpiCard label={t('deliveries.awaiting')} value={awaiting.length} icon={Truck} tone="warning" href="/orders" />
-        <KpiCard label={t('deliveries.transport')} value={formatIDR(delivered.reduce((s, o) => s + o.delivery!.transportCost, 0))} icon={HandCoins} />
-        <KpiCard label={t('method.pickup')} value={delivered.filter((o) => o.delivery!.method === 'pickup').length} icon={Users} tone="neutral" />
+        <KpiCard label={t('deliveries.transport')} value={formatIDR(delivered.reduce((sum, d) => sum + Number(d.transportCost), 0))} icon={HandCoins} />
+        <KpiCard label={t('method.pickup')} value={delivered.filter((d) => d.method === 'pickup').length} icon={Users} tone="neutral" />
       </KpiGrid>
-      <DataTable
-        rows={delivered}
-        columns={columns}
-        getRowId={(o) => o.delivery!.id}
-        searchText={(o) => `${o.delivery!.id} ${o.id} ${customerById(o.customerId)?.name} ${o.delivery!.recipient}`}
-        filters={[
-          { value: 'all', label: t('common.all'), predicate: () => true },
-          { value: 'own', label: t('method.own'), predicate: (o) => o.delivery!.method === 'own' },
-          { value: 'expedition', label: t('method.expedition'), predicate: (o) => o.delivery!.method === 'expedition' },
-          { value: 'pickup', label: t('method.pickup'), predicate: (o) => o.delivery!.method === 'pickup' },
+      {error ? <p className="py-4 text-sm text-destructive">Failed to load deliveries. Please refresh and try again.</p> : isLoading || !business ? <p className="py-4 text-sm text-muted-foreground">Loading deliveries...</p> : (
+        <DataTable
+          rows={delivered}
+          columns={columns}
+          getRowId={(d) => d.id}
+          searchText={(d) => `${d.id} ${d.orders.map((o) => o.id + ' ' + o.customerName).join(' ')} ${d.recipient}`}
+          filters={[
+            { value: 'all', label: t('common.all'), predicate: () => true },
+            { value: 'own', label: t('method.own'), predicate: (d) => d.method === 'own' },
+            { value: 'expedition', label: t('method.expedition'), predicate: (d) => d.method === 'expedition' },
+            { value: 'pickup', label: t('method.pickup'), predicate: (d) => d.method === 'pickup' },
+          ]}
+          rowHref={(d) => `/orders/${d.orders[0]?.id ?? ''}`}
+          addLabel={t('deliveries.title')}
+          onAdd={() => setOpen(true)}
+        />
+      )}
+      <FormDialog
+        key={open ? 'new-delivery-open' : 'new-delivery-closed'}
+        open={open}
+        onOpenChange={setOpen}
+        title={t('deliveries.title')}
+        description="Select one or more Orders for this Delivery. Stock and HPP are not deducted again."
+        submitLabel={t('common.save')}
+        persisted
+        fields={[
+          { name: 'orderIds', label: 'Orders (select multiple with Ctrl/Cmd)', type: 'multiselect', options: awaiting.map((o) => ({ value: o.id, label: `${o.id} — ${customerById(o.customerId)?.name ?? o.customerId}` })), required: true, hint: 'On mobile, use the multi-select control to choose multiple Orders.' },
+          { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
+          { name: 'method', label: t('orders.method'), type: 'select', defaultValue: 'own', options: [{ value: 'own', label: t('method.own') }, { value: 'expedition', label: t('method.expedition') }, { value: 'pickup', label: t('method.pickup') }], half: true },
+          { name: 'recipient', label: t('orders.recipient'), required: false, placeholder: 'Recipient name' },
+          { name: 'address', label: t('common.address'), type: 'textarea', required: false },
+          { name: 'transportCost', label: t('orders.transportCost'), type: 'number', defaultValue: '0', min: 0 },
         ]}
-        rowHref={(o) => `/orders/${o.id}`}
-        contextActions={(o) => [{ label: t('orders.suratJalan'), icon: Printer, onSelect: () => setPreview(o) }]}
+        onSubmit={saveDelivery}
       />
-      {preview && <DocumentPreview order={preview} kind="delivery" open onOpenChange={(v) => !v && setPreview(null)} />}
     </>
   )
 }
