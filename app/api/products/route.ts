@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     if (values.some((value) => typeof value !== "number" || !Number.isFinite(value) || value < 0) || !Number.isInteger(minimumStock) || !Number.isSafeInteger(openingStock)) {
       return NextResponse.json({ error: "Prices, stock, and minimumStock must be valid non-negative numbers" }, { status: 400 })
     }
-    if (typeof date !== "string" || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`))) {
+    if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`))) {
       return NextResponse.json({ error: "date must use YYYY-MM-DD format" }, { status: 400 })
     }
     const product = await db.transaction(async (tx) => {
