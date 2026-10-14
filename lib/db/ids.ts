@@ -1,4 +1,5 @@
 import { and, desc, eq, like, sql } from "drizzle-orm"
+import { deliveries, orders } from "./schema"
 
 /**
  * Generate a readable entity ID while holding a transaction-scoped PostgreSQL
@@ -29,12 +30,20 @@ export async function generateEntityId(
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${lockKey}))`)
 
   const pattern = `${prefix}-${periodKey}-%`
-  const [latest] = await tx
-    .select({ id: table.id })
-    .from(table)
-    .where(and(eq(table.businessId, businessId), like(table.id, pattern)))
-    .orderBy(desc(table.id))
-    .limit(1)
+  const [latest] = prefix === "DEL"
+    ? await tx
+        .select({ id: deliveries.id })
+        .from(deliveries)
+        .innerJoin(orders, eq(deliveries.orderId, orders.id))
+        .where(and(eq(orders.businessId, businessId), like(deliveries.id, pattern)))
+        .orderBy(desc(deliveries.id))
+        .limit(1)
+    : await tx
+        .select({ id: table.id })
+        .from(table)
+        .where(and(eq(table.businessId, businessId), like(table.id, pattern)))
+        .orderBy(desc(table.id))
+        .limit(1)
 
   const latestNumber = latest?.id?.match(/-(\d{4})$/)
   const next = latestNumber ? Number(latestNumber[1]) + 1 : 1
