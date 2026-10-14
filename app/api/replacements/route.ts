@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { and, desc, eq, sql } from "drizzle-orm"
+import { and, desc, eq, inArray, sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import {
   journalEntries,
@@ -24,14 +24,15 @@ export async function GET(request: Request) {
     const access = await requireBusinessAccess(businessId)
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
     const rows = await db.select().from(replacements).where(eq(replacements.businessId, businessId)).orderBy(desc(replacements.date))
-    const lines = rows.length ? await db.select().from(orderItems).where(and(
-      eq(orderItems.orderId, rows[0].orderId),
-    )) : []
-    return NextResponse.json(rows.map((row) => ({
-      ...row,
-      returnValue: 0,
-      items: lines.filter((line) => line.productId === row.productId),
-    })))
+    const orderIds = [...new Set(rows.map((row) => row.orderId))]
+    const lines = orderIds.length ? await db.select().from(orderItems).where(inArray(orderItems.orderId, orderIds)) : []
+    return NextResponse.json(rows.map((row) => {
+      const line = lines.find((item) => item.orderId === row.orderId && item.productId === row.productId)
+      return {
+        ...row,
+        returnValue: line ? Math.max(0, Number(line.price) * row.qty - Number(line.discount)) : 0,
+      }
+    }))
   } catch (error) {
     console.error("GET /api/replacements", error)
     return NextResponse.json({ error: "Failed to fetch replacements" }, { status: 500 })
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Valid business, date, order, product, quantity and reason are required" }, { status: 400 })
     }
     const access = await requireBusinessAccess(businessId)
-    if (!access.ok) return NextResponse.json({ error: access.error, status: access.status })
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
     const replacement = await db.transaction(async (tx) => {
       const [order] = await tx.select({ id: orders.id, status: orders.status }).from(orders)
         .where(and(eq(orders.id, orderId), eq(orders.businessId, businessId))).for("update").limit(1)
