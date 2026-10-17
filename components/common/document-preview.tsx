@@ -12,14 +12,18 @@ export function DocumentPreview({
   kind,
   open,
   onOpenChange,
+  customerOverride,
+  productNames,
 }: {
   order: Order
   kind: 'invoice' | 'delivery'
   open: boolean
   onOpenChange: (open: boolean) => void
+  customerOverride?: { id: string; name: string; address?: string | null } | null
+  productNames?: Record<string, string>
 }) {
   const { t, features } = useApp()
-  const customer = customerById(order.customerId)
+  const customer = customerOverride ?? customerById(order.customerId)
   const total = orderTotal(order)
   const paid = orderPaid(order)
   const isInvoice = kind === 'invoice'
@@ -83,7 +87,7 @@ export function DocumentPreview({
                     return (
                       <tr key={item ? item.productId : `blank-${index}`} className="h-[26px] border-b border-black">
                         <td className="border-r border-black px-1 py-1 text-right">{item ? item.qty : ''}</td>
-                        <td className="border-r border-black px-1 py-1">{item ? productById(item.productId)?.name ?? item.productId : ''}</td>
+                        <td className="border-r border-black px-1 py-1">{item ? productNames?.[item.productId] ?? productById(item.productId)?.name ?? item.productId : ''}</td>
                         <td className="border-r border-black px-2 py-1 text-right">{item ? formatIDR(item.price) : ''}</td>
                         <td className="px-2 py-1 text-right">{item ? formatIDR(lineSubtotal(item)) : ''}</td>
                       </tr>
@@ -136,7 +140,7 @@ export function DocumentPreview({
               </div>
               <table className="mt-6 w-full text-xs">
                 <thead><tr className="border-b border-slate-200 text-left uppercase tracking-wider text-slate-400"><th className="py-2 font-semibold">{t('common.product')}</th><th className="py-2 text-right font-semibold">{t('common.qty')}</th></tr></thead>
-                <tbody>{order.items.map((it) => <tr key={it.productId} className="border-b border-slate-100"><td className="py-2.5">{productById(it.productId)?.name}</td><td className="py-2.5 text-right font-mono">{it.qty}</td></tr>)}</tbody>
+                <tbody>{order.items.map((it) => <tr key={it.productId} className="border-b border-slate-100"><td className="py-2.5">{productNames?.[it.productId] ?? productById(it.productId)?.name}</td><td className="py-2.5 text-right font-mono">{it.qty}</td></tr>)}</tbody>
               </table>
               <div className="mt-10 grid grid-cols-2 gap-8 text-center text-xs text-slate-500"><div><div className="h-16 border-b border-dashed border-slate-300" /><p className="mt-2">Pengirim</p></div><div><div className="h-16 border-b border-dashed border-slate-300" /><p className="mt-2">Penerima</p></div></div>
             </article>
