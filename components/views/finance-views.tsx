@@ -174,11 +174,11 @@ export function PayablesView() {
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: persistedPurchases, error: purchasesError } = useSWR<PersistedPurchase[]>(business?.id ? `/api/purchases?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: paymentRows, error: paymentsError, mutate: refreshPayments } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
-  const { data: persistedSuppliers } = useSWR<PersistedParty[]>(business?.id ? `/api/suppliers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: persistedSuppliers, error: suppliersError } = useSWR<PersistedParty[]>(business?.id ? `/api/suppliers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const persisted = (persistedPurchases ?? []).map((purchase) => mapPurchase(purchase, paymentRows ?? []))
   const rows = persisted.filter((p) => purchaseOutstanding(p) > 0)
   const partyById = new Map((persistedSuppliers ?? []).map((supplier) => [supplier.id, supplier]))
-  const financeError = businessError || purchasesError || paymentsError
+  const financeError = businessError || purchasesError || paymentsError || suppliersError
   const total = rows.reduce((s, p) => s + purchaseOutstanding(p), 0)
   const overdue = rows.filter((p) => isOverdue(p.dueDate, purchaseOutstanding(p)))
 
@@ -239,7 +239,7 @@ export function PayablesView() {
           if (!purchase) throw new Error('Select a purchase with an outstanding balance')
           const response = await fetch('/api/payments', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: `PAY-${crypto.randomUUID()}`, businessId: business.id, purchaseId: purchase.id, date: values.date, amount: Number(values.amount), account: values.account }) })
           if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to record payment')
-          await refreshPayments()
+          await Promise.all([refreshPayments(),])
           setOpen(false)
         }}
         fields={[
