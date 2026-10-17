@@ -37,7 +37,7 @@ export function PurchasesView() {
   const [open, setOpen] = useState(false)
   const [purchaseQty, setPurchaseQty] = useState('')
   const [purchaseUnitCost, setPurchaseUnitCost] = useState('')
-  const [purchasePaid, setPurchasePaid] = useState('0')
+  const [purchasePaidAmount, setPurchasePaid] = useState('0')
   const purchaseTotalPreview = Math.max(0, Number(purchaseQty) || 0) * Math.max(0, Number(purchaseUnitCost) || 0)
   const { mutate: globalMutate } = useSWRConfig()
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
@@ -134,7 +134,7 @@ export function PurchasesView() {
         <div className="rounded-lg border bg-muted/30 px-3 py-3">
           <p className="text-xs text-muted-foreground">Total purchase payable</p>
           <p className="mt-1 text-lg font-semibold tabular-nums">{formatIDR(purchaseTotalPreview)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Outstanding after payment: {formatIDR(Math.max(0, purchaseTotalPreview - (Number(purchasePaid) || 0)))}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Outstanding after payment: {formatIDR(Math.max(0, purchaseTotalPreview - (Number(purchasePaidAmount) || 0)))}</p>
         </div>
       </FormDialog>
     </>
