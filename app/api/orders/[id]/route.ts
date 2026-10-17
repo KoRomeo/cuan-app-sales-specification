@@ -20,7 +20,14 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     db.select({ id: customers.id, name: customers.name, phone: customers.phone, address: customers.address }).from(customers).where(and(eq(customers.id, order.customerId), eq(customers.businessId, order.businessId))).limit(1),
     db.select({ id: orderItems.id, productId: orderItems.productId, qty: orderItems.qty, price: orderItems.price, discount: orderItems.discount, unitCost: orderItems.unitCost }).from(orderItems).where(eq(orderItems.orderId, id)),
     db.select({ id: payments.id, date: payments.date, amount: payments.amount, account: payments.account }).from(payments).where(and(eq(payments.orderId, id), eq(payments.businessId, order.businessId))),
-    db.select({ id: deliveries.id, date: deliveries.date, method: deliveries.method, recipient: deliveries.recipient, address: deliveries.address, transportCost: deliveries.transportCost }).from(deliveryOrders).innerJoin(deliveries, eq(deliveryOrders.deliveryId, deliveries.id)).where(eq(deliveryOrders.orderId, id)).limit(1),
+    db.select({ id: deliveries.id, date: deliveries.date, method: deliveries.method, recipient: deliveries.recipient, address: deliveries.address, transportCost: deliveries.transportCost }).from(deliveryOrders).innerJoin(deliveries, eq(deliveryOrders.deliveryId, deliveries.id)).where(eq(deliveryOrders.orderId, id)).limit(1).catch(async (error: unknown) => {
+      // Older Neon databases may not have applied migration 0004 yet.
+      // Fall back to the legacy one-order-per-delivery relation in that case.
+      if (typeof error === "object" && error !== null && "code" in error && error.code === "42P01") {
+        return db.select({ id: deliveries.id, date: deliveries.date, method: deliveries.method, recipient: deliveries.recipient, address: deliveries.address, transportCost: deliveries.transportCost }).from(deliveries).where(eq(deliveries.orderId, id)).limit(1)
+      }
+      throw error
+    }),
     db.select({ id: replacements.id, date: replacements.date, productId: replacements.productId, qty: replacements.qty, reason: replacements.reason, delivered: replacements.delivered }).from(replacements).where(and(eq(replacements.orderId, id), eq(replacements.businessId, order.businessId))),
   ])
   const productRows = itemRows.length ? await db.select({ id: products.id, name: products.name, averageCost: products.averageCost, stock: sql<number>`coalesce(sum(${stockMovements.qty}), 0)` }).from(products).leftJoin(stockMovements, and(eq(stockMovements.productId, products.id), eq(stockMovements.businessId, order.businessId))).where(eq(products.businessId, order.businessId)).groupBy(products.id) : []
