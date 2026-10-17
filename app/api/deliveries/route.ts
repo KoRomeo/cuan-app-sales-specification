@@ -3,7 +3,7 @@ import { and, desc, eq, inArray } from "drizzle-orm"
 import { headers } from "next/headers"
 import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
-import { businessMembers, customers, deliveries, deliveryOrders, orders } from "@/lib/db/schema"
+import { businessMembers, customers, deliveries, orders } from "@/lib/db/schema"
 import { generateEntityId } from "@/lib/db/ids"
 
 async function access(businessId: string) {
@@ -69,24 +69,29 @@ export async function POST(request: Request) {
         .where(and(eq(orders.businessId, businessId), inArray(orders.id, orderIds))).for("update")
       if (foundOrders.length !== orderIds.length) throw new Error("ORDER_NOT_FOUND")
       if (foundOrders.some((order) => order.status === "cancelled" || order.status === "delivered")) throw new Error("ORDER_STATE")
-      const existingLinks = await tx.select({ orderId: deliveryOrders.orderId }).from(deliveryOrders)
-        .where(inArray(deliveryOrders.orderId, orderIds))
-      if (existingLinks.length) throw new Error("ORDER_ALREADY_ASSIGNED")
+      const existingDeliveries = await tx.select({ orderId: deliveries.orderId }).from(deliveries)
+        .where(inArray(deliveries.orderId, orderIds))
+      if (existingDeliveries.some((row) => row.orderId !== null)) throw new Error("ORDER_ALREADY_ASSIGNED")
 
-      const deliveryId = await generateEntityId(tx, deliveries, businessId, "DEL", date)
-      await tx.insert(deliveries).values({
-        id: deliveryId,
-        orderId: orderIds.length === 1 ? orderIds[0] : null,
-        date, method, recipient: String(recipient), address: String(address),
-        transportCost: Number(transportCost).toFixed(2),
-      })
-      await tx.insert(deliveryOrders).values(orderIds.map((orderId: string) => ({ deliveryId, orderId })))
+      // Persist one delivery row per order. This uses the legacy deliveries.order_id column
+      // directly, so delivery creation does not depend on the optional delivery_orders table.
+      const deliveryIds: string[] = []
+      for (const orderId of orderIds) {
+        const deliveryId = await generateEntityId(tx, deliveries, businessId, "DEL", date)
+        await tx.insert(deliveries).values({
+          id: deliveryId,
+          orderId,
+          date, method, recipient: String(recipient), address: String(address),
+          transportCost: (Number(transportCost) / orderIds.length).toFixed(2),
+        })
+        deliveryIds.push(deliveryId)
+      }
       // Stock and COGS are recorded when the Order is created. Delivery only updates per-Order delivery status.
       await tx.update(orders).set({ status: "delivered" })
         .where(and(eq(orders.businessId, businessId), inArray(orders.id, orderIds)))
-      return deliveryId
+      return deliveryIds
     })
-    return NextResponse.json({ message: "Delivery recorded successfully", id, orderIds }, { status: 201 })
+    return NextResponse.json({ message: "Delivery recorded successfully", ids: id, orderIds }, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : ""
     const map: Record<string, [string, number]> = {
