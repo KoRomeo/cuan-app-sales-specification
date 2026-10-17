@@ -22,10 +22,17 @@ import {
 } from '@/lib/data'
 import { formatDate, formatIDR } from '@/lib/format'
 
-const fetcher = (url: string) => fetch(url).then(async (response) => {
-  if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load orders')
-  return response.json()
-})
+const fetcher = async (url: string) => {
+  const response = await fetch(url)
+  const body = await response.text()
+  let result: any = null
+  if (body) {
+    try { result = JSON.parse(body) } catch { result = null }
+  }
+  if (!response.ok) throw new Error(result?.error ?? `Request failed (${response.status}). Please try again.`)
+  if (result === null) throw new Error('The server returned an invalid response. Please try again.')
+  return result
+}
 type PersistedOrder = { id: string; date: string; customerId: string; status: Order['status']; dueDate: string | null; notes: string | null; items: Array<{ productId: string; qty: number; price: string | number; discount?: string | number; unitCost: string | number }> }
 type PersistedPayment = { id: string; date: string; amount: string | number; account: string; orderId: string | null }
 type PersistedParty = { id: string; name: string; phone?: string | null; address?: string | null }
@@ -166,8 +173,11 @@ export function OrdersView() {
         onAdd={() => router.push('/orders/new')}
         rowHref={(o) => `/orders/${o.id}`}
         contextActions={(o) => [
-          { label: t('common.edit'), onSelect: () => setEditTarget(persistedOrders.find((row) => row.id === o.id) ?? null) },
-          ...(o.status !== 'delivered' && o.status !== 'cancelled' ? [{ label: 'Cancel Order', onSelect: () => setDeleteTarget(persistedOrders.find((row) => row.id === o.id) ?? null) }] : []),
+          { label: 'View', onSelect: () => router.push(`/orders/${encodeURIComponent(o.id)}`) },
+          ...(o.status !== 'delivered' && o.status !== 'cancelled' ? [
+            { label: t('common.edit'), onSelect: () => setEditTarget(persistedOrders.find((row) => row.id === o.id) ?? null) },
+            { label: 'Cancel Order', onSelect: () => setDeleteTarget(persistedOrders.find((row) => row.id === o.id) ?? null) },
+          ] : []),
         ]}
         deletable={false}
       />
