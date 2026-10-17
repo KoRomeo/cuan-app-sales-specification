@@ -22,7 +22,7 @@ export function SectionCard({
   bodyClassName?: string
 }) {
   return (
-    <section className={cn('flex flex-col rounded-xl border bg-card shadow-xs', className)}>
+    <section className={cn('flex flex-col rounded-md border bg-card shadow-xs', className)}>
       <header className="flex items-center justify-between gap-3 border-b px-4 py-3 md:px-5">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold">{title}</h2>
