@@ -49,7 +49,7 @@ function mapOrder(row: PersistedOrder, paymentRows: PersistedPayment[]): Order {
   return { ...row, notes: row.notes ?? '', items: row.items.map((item) => ({ ...item, price: Number(item.price), discount: Number(item.discount ?? 0), unitCost: Number(item.unitCost) })), payments: paymentRows.filter((payment) => payment.orderId === row.id).map((payment) => ({ id: payment.id, date: payment.date, amount: Number(payment.amount), account: payment.account })), delivery: null }
 }
 function mapPurchase(row: PersistedPurchase, paymentRows: PersistedPayment[]): Purchase {
-  return { ...row, notes: row.notes ?? '', items: row.items.map((item) => ({ productId: item.productId, qty: item.qty, price: Number(item.price), unitCost: Number(item.unitCost ?? 0) })), payments: paymentRows.filter((payment) => payment.purchaseId === row.id).map((payment) => ({ id: payment.id, date: payment.date, amount: Number(payment.amount), account: payment.account })) }
+  return { ...row, notes: row.notes ?? '', items: row.items.map((item) => ({ productId: item.productId, qty: item.qty, price: Number(item.price ?? item.unitCost ?? 0), unitCost: Number(item.unitCost ?? item.price ?? 0) })), payments: paymentRows.filter((payment) => payment.purchaseId === row.id).map((payment) => ({ id: payment.id, date: payment.date, amount: Number(payment.amount), account: payment.account })) }
 }
 
 function PersistedPaymentHistory({ businessId, kind }: { businessId: string | undefined; kind: 'receivable' | 'payable' }) {
