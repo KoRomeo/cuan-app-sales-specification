@@ -171,7 +171,7 @@ export function DataTable<T>({
   const hasActions = Boolean(rowHref || contextActions || editable || deletable)
 
   return (
-    <div className="rounded-xl border bg-card shadow-xs">
+    <div className="rounded-md border bg-card shadow-xs">
       <div className="flex flex-col gap-3 border-b p-3 md:flex-row md:items-center md:p-4">
         <div className="relative w-full md:max-w-xs">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
