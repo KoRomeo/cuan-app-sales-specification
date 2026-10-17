@@ -2,7 +2,7 @@
 import useSWR from 'swr'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { appToast as toast } from '@/lib/toast'
-import { CheckCircle2, FileText, HandCoins, Printer, RotateCcw, Truck, Users } from 'lucide-react'
+import { Ban, CheckCircle2, Eye, FileText, HandCoins, Pencil, Printer, RotateCcw, Truck, Users } from 'lucide-react'
 import { useState } from 'react'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
 import { DocumentPreview } from '@/components/common/document-preview'
@@ -463,12 +463,13 @@ export function DeliveriesView() {
 }
 
 type PersistedReturn = { id: string; date: string; orderId: string; productId: string; qty: number; reason: string; delivered: boolean; returnValue?: number }
-type ReturnOrderOption = { id: string; customerId: string; status: string }
+type ReturnOrderOption = { id: string; customerId: string; status: string; items: Array<{ productId: string; qty: number }> }
 type ReturnProductOption = { id: string; name: string }
 
 export function ReturnsView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
+  const [selectedReturnOrderId, setSelectedReturnOrderId] = useState('')
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', customersFetcher)
   const { data: rows, error, isLoading, mutate } = useSWR<PersistedReturn[]>(
     business?.id ? `/api/replacements?businessId=${encodeURIComponent(business.id)}` : null,
@@ -488,6 +489,9 @@ export function ReturnsView() {
   )
   const returns = rows ?? []
   const orderOptions = (orderRows ?? []).filter((o) => o.status === 'delivered')
+  const selectedReturnOrder = orderOptions.find((o) => o.id === selectedReturnOrderId)
+  const orderedProductIds = new Set((selectedReturnOrder?.items ?? []).map((item) => item.productId))
+  const orderedProducts = (productRows ?? []).filter((product) => orderedProductIds.has(product.id))
   const productName = (id: string) => productRows?.find((p) => p.id === id)?.name ?? id
   const customerName = (orderId: string) => {
     const order = orderRows?.find((o) => o.id === orderId)
@@ -557,9 +561,9 @@ export function ReturnsView() {
         description="Creating a Return records the replacement obligation and deducts replacement stock once."
         persisted
         fields={[
-          { name: 'order', label: t('returns.order'), type: 'select', half: true, required: true, options: orderOptions.map((o) => ({ value: o.id, label: o.id })) },
+          { name: 'order', label: t('returns.order'), type: 'select', half: true, required: true, options: [{ value: '', label: 'Select an order' }, ...orderOptions.map((o) => ({ value: o.id, label: o.id }))], onValueChange: setSelectedReturnOrderId },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true, required: true },
-          { name: 'product', label: t('common.product'), type: 'select', half: true, required: true, options: (productRows ?? []).map((p) => ({ value: p.id, label: p.name })) },
+          { name: 'product', label: t('common.product'), type: 'select', half: true, required: true, options: [{ value: '', label: selectedReturnOrderId ? 'Select a product from this order' : 'Select an order first' }, ...orderedProducts.map((p) => ({ value: p.id, label: p.name }))] },
           { name: 'qty', label: t('common.qty'), type: 'number', min: 1, defaultValue: '1', half: true, required: true },
           { name: 'reason', label: t('returns.reason'), type: 'textarea', required: true },
         ]}
