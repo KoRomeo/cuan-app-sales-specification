@@ -24,13 +24,13 @@ export async function GET(request: Request) {
     const allowed = await access(businessId)
     if (!allowed.ok) return NextResponse.json({ error: allowed.error }, { status: allowed.status })
 
+    // Use deliveries.orderId, which is the persisted relationship supported by the current database schema.
     const rows = await db.select({
       id: deliveries.id, date: deliveries.date, method: deliveries.method,
       recipient: deliveries.recipient, address: deliveries.address, transportCost: deliveries.transportCost,
       orderId: orders.id, customerId: orders.customerId, customerName: customers.name,
     }).from(deliveries)
-      .innerJoin(deliveryOrders, eq(deliveryOrders.deliveryId, deliveries.id))
-      .innerJoin(orders, and(eq(orders.id, deliveryOrders.orderId), eq(orders.businessId, businessId)))
+      .innerJoin(orders, and(eq(orders.id, deliveries.orderId), eq(orders.businessId, businessId)))
       .innerJoin(customers, eq(customers.id, orders.customerId))
       .where(eq(orders.businessId, businessId)).orderBy(desc(deliveries.date))
 
