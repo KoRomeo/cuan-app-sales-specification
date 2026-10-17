@@ -6,7 +6,7 @@ import { useSWRConfig } from 'swr'
 import { appToast as toast } from '@/lib/toast'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import useSWR from 'swr'
-import { AlertTriangle, CircleDollarSign, Clock, ShoppingCart, Truck } from 'lucide-react'
+import { AlertTriangle, Ban, CircleDollarSign, Clock, Eye, Pencil, ShoppingCart, Truck } from 'lucide-react'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
 import { FormDialog } from '@/components/common/form-dialog'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
@@ -174,10 +174,10 @@ export function OrdersView() {
         onAdd={() => router.push('/orders/new')}
         rowHref={(o) => `/orders/${o.id}`}
         contextActions={(o) => [
-          { label: 'View', onSelect: () => router.push(`/orders/${encodeURIComponent(o.id)}`) },
+          { label: 'View', icon: Eye, onSelect: () => router.push(`/orders/${encodeURIComponent(o.id)}`) },
           ...(o.status !== 'delivered' && o.status !== 'cancelled' ? [
-            { label: t('common.edit'), onSelect: () => setEditTarget(persistedOrders.find((row) => row.id === o.id) ?? null) },
-            { label: 'Cancel Order', onSelect: () => setDeleteTarget(persistedOrders.find((row) => row.id === o.id) ?? null) },
+            { label: t('common.edit'), icon: Pencil, onSelect: () => setEditTarget(persistedOrders.find((row) => row.id === o.id) ?? null) },
+            { label: 'Cancel Order', icon: Ban, onSelect: () => setDeleteTarget(persistedOrders.find((row) => row.id === o.id) ?? null) },
           ] : []),
         ]}
         deletable={false}
