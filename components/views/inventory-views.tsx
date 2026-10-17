@@ -18,6 +18,24 @@ import { formatIDR, formatDate, formatPercent } from '@/lib/format'
 
 const todayISODate = () => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}` }
 
+ // Reuse the current-business request across inventory pages.
+type CurrentBusiness = { id: string }
+let currentBusinessCache: { value: CurrentBusiness; expiresAt: number } | null = null
+let currentBusinessRequest: Promise<CurrentBusiness> | null = null
+
+async function getCurrentBusiness(): Promise<CurrentBusiness> {
+  if (currentBusinessCache && currentBusinessCache.expiresAt > Date.now()) return currentBusinessCache.value
+  if (!currentBusinessRequest) {
+    currentBusinessRequest = fetch('/api/businesses/current').then(async (response) => {
+      const result = await response.json()
+      if (!response.ok || !result?.id) throw new Error(result?.error ?? 'Unable to load business')
+      currentBusinessCache = { value: result as CurrentBusiness, expiresAt: Date.now() + 30_000 }
+      return result as CurrentBusiness
+    }).finally(() => { currentBusinessRequest = null })
+  }
+  return currentBusinessRequest
+}
+
 const toProduct = (row: Record<string, unknown>, stock = 0): Product => ({
   id: String(row.id),
   name: String(row.name),
@@ -40,10 +58,7 @@ export function ProductsView() {
 
   const inventoryValue = useMemo(() => products.reduce((s, p) => s + Math.max(p.stock, 0) * p.averageCost, 0), [products])
   const loadProducts = async () => {
-    const business = await fetch('/api/businesses/current').then(async (response) => {
-      if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load business')
-      return response.json()
-    })
+    const business = await getCurrentBusiness()
     setBusinessId(business.id)
     const [productRows, stockRows] = await Promise.all([
       fetch(`/api/products?businessId=${encodeURIComponent(business.id)}`).then((response) => response.json()),
@@ -185,10 +200,7 @@ export function StockView() {
   const [businessId, setBusinessId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const loadStock = async () => {
-    const business = await fetch('/api/businesses/current').then(async (response) => {
-      if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load business')
-      return response.json()
-    })
+    const business = await getCurrentBusiness()
     setBusinessId(business.id)
     const [productRows, stockRows] = await Promise.all([
       fetch(`/api/products?businessId=${encodeURIComponent(business.id)}`).then((response) => response.json()),
@@ -314,10 +326,7 @@ export function StockMovementsView() {
   useEffect(() => {
     async function loadMovements() {
       try {
-        const business = await fetch('/api/businesses/current').then(async (response) => {
-          if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load business')
-          return response.json()
-        })
+        const business = await getCurrentBusiness()
         const [movementResponse, productResponse] = await Promise.all([
           fetch(`/api/stock-movements?businessId=${encodeURIComponent(business.id)}`),
           fetch(`/api/products?businessId=${encodeURIComponent(business.id)}`),
