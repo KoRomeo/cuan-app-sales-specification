@@ -26,10 +26,17 @@ import {
 import { formatDate, formatIDR, formatPercent } from '@/lib/format'
 import { translateAccountName } from '@/lib/i18n'
 
-const fetcher = (url: string) => fetch(url).then(async (response) => {
-  if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load order')
-  return response.json()
-})
+const fetcher = async (url: string) => {
+  const response = await fetch(url)
+  const body = await response.text()
+  let result: any = null
+  if (body) {
+    try { result = JSON.parse(body) } catch { result = null }
+  }
+  if (!response.ok) throw new Error(result?.error ?? `Request failed (${response.status}). Please try again.`)
+  if (result === null) throw new Error('The server returned an invalid response. Please try again.')
+  return result
+}
 type DetailResponse = {
   id: string; date: string; customerId: string; status: Order['status']; dueDate: string | null; notes: string | null
   customer: { id: string; name: string; phone: string | null; address: string | null } | null
