@@ -60,7 +60,7 @@ function PersistedPaymentHistory({ businessId, kind }: { businessId: string | un
     <SectionCard title={t('finance.paymentHistory')} description={t('finance.persistedData')}>
       {error ? <p className="text-sm text-destructive">{error.message}</p> : payments.length === 0 ? <p className="text-sm text-muted-foreground">{t('finance.noPayments')}</p> : (
         <div className="divide-y">
-          {payments.map((payment) => <div key={payment.id} className="flex items-center justify-between gap-3 py-2 text-sm"><span><span className="font-mono text-xs">{payment.id}</span><span className="ml-2 text-muted-foreground">{formatDate(payment.date)}</span></span><span className="font-mono tabular-nums">{formatIDR(Number(payment.amount))}</span></div>)}
+          {payments.map((payment) => <div key={payment.id} className="flex items-center justify-between gap-4 px-1 py-3 text-sm"><span><span className="font-mono text-xs">{payment.id}</span><span className="ml-2 text-muted-foreground">{formatDate(payment.date)}</span></span><span className="font-mono tabular-nums">{formatIDR(Number(payment.amount))}</span></div>)}
         </div>
       )}
       <button type="button" className="sr-only" onClick={() => mutate()}>Refresh payment history</button>
@@ -412,7 +412,7 @@ export function ProfitLossView() {
         <KpiCard label={t('pl.netProfit')} value={formatIDR(pl.netProfit)} hint={`${pct(pl.netProfit)} ${t('dash.margin')}`} icon={Wallet} tone={pl.netProfit < 0 ? 'destructive' : 'success'} />
       </KpiGrid>
 
-      <SectionCard title={t('pl.statement')} description={t(`period.${period}`)} className="mx-auto max-w-3xl">
+      <SectionCard title={t('pl.statement')} description={t(`period.${period}`)} className="mx-auto w-full max-w-5xl">
         <div className="divide-y">
           <PlRow label={t('pl.revenue')} value={pl.revenue} strong />
           <PlRow label={t('pl.cogs')} value={pl.cogs} negative indent />
@@ -432,7 +432,7 @@ export function ProfitLossView() {
           </div>
         </div>
       </SectionCard>
-      <SectionCard title={t('finance.persistedLedger')} description={accounting?.note ?? t('finance.persistedData')} className="mx-auto mt-4 max-w-3xl">
+      <SectionCard title={t('finance.persistedLedger')} description={accounting?.note ?? t('finance.persistedData')} className="mx-auto mt-4 w-full max-w-5xl">
         <div className="flex items-center justify-between border-b pb-3 text-sm">
           <span>{t('finance.ledgerStatus')}</span>
           <Pill tone={accounting?.ledgerBalanced ? 'success' : 'destructive'}>{accounting?.ledgerBalanced ? t('finance.balanced') : t('finance.unavailable')}</Pill>
