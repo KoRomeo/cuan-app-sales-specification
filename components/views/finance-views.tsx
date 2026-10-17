@@ -412,7 +412,7 @@ export function ProfitLossView() {
         <KpiCard label={t('pl.netProfit')} value={formatIDR(pl.netProfit)} hint={`${pct(pl.netProfit)} ${t('dash.margin')}`} icon={Wallet} tone={pl.netProfit < 0 ? 'destructive' : 'success'} />
       </KpiGrid>
 
-      <SectionCard title={t('pl.statement')} description={t(`period.${period}`)} className="mx-auto w-full max-w-5xl">
+      <SectionCard title={t('pl.statement')} description={t(`period.${period}`)} className="w-full max-w-none">
         <div className="divide-y">
           <PlRow label={t('pl.revenue')} value={pl.revenue} strong />
           <PlRow label={t('pl.cogs')} value={pl.cogs} negative indent />
@@ -432,7 +432,7 @@ export function ProfitLossView() {
           </div>
         </div>
       </SectionCard>
-      <SectionCard title={t('finance.persistedLedger')} description={accounting?.note ?? t('finance.persistedData')} className="mx-auto mt-4 w-full max-w-5xl">
+      <SectionCard title={t('finance.persistedLedger')} description={accounting?.note ?? t('finance.persistedData')} className="mt-4 w-full max-w-none">
         <div className="flex items-center justify-between border-b pb-3 text-sm">
           <span>{t('finance.ledgerStatus')}</span>
           <Pill tone={accounting?.ledgerBalanced ? 'success' : 'destructive'}>{accounting?.ledgerBalanced ? t('finance.balanced') : t('finance.unavailable')}</Pill>
