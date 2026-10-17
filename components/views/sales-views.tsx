@@ -308,56 +308,59 @@ export function CustomersView() {
 }
 
 
+type InvoiceOrderRow = { id: string; date: string; customerId: string; status: Order['status']; dueDate: string | null; notes: string | null; items: Array<{ productId: string; qty: number; price: string | number; discount?: string | number; unitCost?: string | number }> }
+type InvoicePaymentRow = { id: string; date: string; amount: string | number; account: string; orderId: string | null }
+type InvoiceCustomerRow = { id: string; name: string; address?: string | null }
+type InvoiceProductRow = { id: string; name: string }
+
 export function InvoicesView() {
   const { t } = useApp()
   const [preview, setPreview] = useState<Order | null>(null)
-  const invoices = [...orders].filter((o) => o.status !== 'cancelled').sort((a, b) => (a.id < b.id ? 1 : -1))
-
+  const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', customersFetcher)
+  const { data: orderRows, error: ordersError, isLoading } = useSWR<InvoiceOrderRow[]>(business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null, customersFetcher)
+  const { data: paymentRows, error: paymentsError } = useSWR<InvoicePaymentRow[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, customersFetcher)
+  const { data: customerRows, error: customersError } = useSWR<InvoiceCustomerRow[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, customersFetcher)
+  const { data: productRows, error: productsError } = useSWR<InvoiceProductRow[]>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, customersFetcher)
+  const customerMap = new Map((customerRows ?? []).map((customer) => [customer.id, customer]))
+  const productMap = new Map((productRows ?? []).map((product) => [product.id, product]))
+  const invoices: Order[] = (orderRows ?? []).filter((o) => o.status !== 'cancelled').map((row) => ({
+    ...row,
+    notes: row.notes ?? '',
+    items: row.items.map((item) => ({ ...item, price: Number(item.price), discount: Number(item.discount ?? 0), unitCost: Number(item.unitCost ?? 0) })),
+    payments: (paymentRows ?? []).filter((payment) => payment.orderId === row.id).map((payment) => ({ id: payment.id, date: payment.date, amount: Number(payment.amount), account: payment.account })),
+    delivery: null,
+  }))
   const columns: Column<Order>[] = [
     { key: 'id', header: t('invoices.no'), cell: (o) => <IdCell>{o.id}</IdCell> },
     { key: 'date', header: t('invoices.issued'), cell: (o) => <span className="font-mono text-xs text-muted-foreground">{formatDate(o.date)}</span> },
-    { key: 'customer', header: t('common.customer'), cell: (o) => <span className="font-medium">{customerById(o.customerId)?.name}</span> },
-    {
-      key: 'due',
-      header: t('common.dueDate'),
-      cell: (o) =>
-        o.dueDate ? (
-          <span className={`font-mono text-xs ${isOverdue(o.dueDate, orderOutstanding(o)) ? 'text-destructive' : 'text-muted-foreground'}`}>{formatDate(o.dueDate)}</span>
-        ) : (
-          <span className="text-xs text-muted-foreground">—</span>
-        ),
-    },
+    { key: 'customer', header: t('common.customer'), cell: (o) => <span className="font-medium">{customerMap.get(o.customerId)?.name ?? o.customerId}</span> },
+    { key: 'due', header: t('common.dueDate'), cell: (o) => o.dueDate ? <span className={`font-mono text-xs ${isOverdue(o.dueDate, orderOutstanding(o)) ? 'text-destructive' : 'text-muted-foreground'}`}>{formatDate(o.dueDate)}</span> : <span className="text-xs text-muted-foreground">—</span> },
     { key: 'status', header: t('common.status'), sortValue: (o) => orderPaymentStatus(o), cell: (o) => <PaymentStatusBadge status={orderPaymentStatus(o)} /> },
     { key: 'total', header: t('common.total'), align: 'right', cell: (o) => <Money value={orderTotal(o)} /> },
     { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (o) => <Money value={orderOutstanding(o)} className={orderOutstanding(o) > 0 ? 'text-warning' : 'text-muted-foreground'} /> },
   ]
-
+  const loadError = businessError || ordersError || paymentsError || customersError || productsError
   return (
     <>
       <PageHeader breadcrumbs={[{ label: t('nav.sales') }, { label: t('nav.invoices') }]} title={t('invoices.title')} description={t('invoices.desc')} />
-      <KpiGrid>
-        <KpiCard label={t('invoices.count')} value={invoices.length} icon={FileText} />
-        <KpiCard label={t('pay.paid')} value={invoices.filter((o) => orderPaymentStatus(o) === 'paid').length} icon={CheckCircle2} tone="success" />
-        <KpiCard label={t('pay.partial')} value={invoices.filter((o) => orderPaymentStatus(o) === 'partial').length} icon={HandCoins} tone="warning" />
-        <KpiCard label={t('pay.unpaid')} value={invoices.filter((o) => orderPaymentStatus(o) === 'unpaid').length} icon={HandCoins} tone="destructive" />
-      </KpiGrid>
-      <DataTable
-        rows={invoices}
-        columns={columns}
-        getRowId={(o) => o.id}
-        searchText={(o) => `${o.id} ${customerById(o.customerId)?.name}`}
-        filters={[
-          { value: 'all', label: t('common.all'), predicate: () => true },
-          { value: 'unpaid', label: t('pay.unpaid'), predicate: (o) => orderPaymentStatus(o) === 'unpaid' },
-          { value: 'partial', label: t('pay.partial'), predicate: (o) => orderPaymentStatus(o) === 'partial' },
-          { value: 'paid', label: t('pay.paid'), predicate: (o) => orderPaymentStatus(o) === 'paid' },
-        ]}
-        rowHref={(o) => `/orders/${o.id}`}
-        editable={false}
-        deletable={false}
-        contextActions={(o) => [{ label: t('common.preview'), icon: Printer, onSelect: () => setPreview(o) }]}
-      />
-      {preview && <DocumentPreview order={preview} kind="invoice" open onOpenChange={(v) => !v && setPreview(null)} />}
+      {loadError ? <p role="alert" className="py-4 text-sm text-destructive">{loadError.message}</p> : isLoading || !business || !orderRows || !paymentRows || !customerRows || !productRows ? <p className="py-4 text-sm text-muted-foreground">{t('common.loading')}</p> : <>
+        <KpiGrid>
+          <KpiCard label={t('invoices.count')} value={invoices.length} icon={FileText} />
+          <KpiCard label={t('pay.paid')} value={invoices.filter((o) => orderPaymentStatus(o) === 'paid').length} icon={CheckCircle2} tone="success" />
+          <KpiCard label={t('pay.partial')} value={invoices.filter((o) => orderPaymentStatus(o) === 'partial').length} icon={HandCoins} tone="warning" />
+          <KpiCard label={t('pay.unpaid')} value={invoices.filter((o) => orderPaymentStatus(o) === 'unpaid').length} icon={HandCoins} tone="destructive" />
+        </KpiGrid>
+        <DataTable rows={invoices} columns={columns} getRowId={(o) => o.id} searchText={(o) => `${o.id} ${customerMap.get(o.customerId)?.name ?? ''}`}
+          filters={[
+            { value: 'all', label: t('common.all'), predicate: () => true },
+            { value: 'unpaid', label: t('pay.unpaid'), predicate: (o) => orderPaymentStatus(o) === 'unpaid' },
+            { value: 'partial', label: t('pay.partial'), predicate: (o) => orderPaymentStatus(o) === 'partial' },
+            { value: 'paid', label: t('pay.paid'), predicate: (o) => orderPaymentStatus(o) === 'paid' },
+          ]}
+          rowHref={(o) => `/orders/${o.id}`} editable={false} deletable={false}
+          contextActions={(o) => [{ label: t('common.preview'), icon: Printer, onSelect: () => setPreview(o) }]} />
+      </>}
+      {preview && <DocumentPreview order={preview} kind="invoice" open onOpenChange={(v) => !v && setPreview(null)} customerOverride={customerMap.get(preview.customerId)} productNames={Object.fromEntries([...productMap.entries()].map(([id, product]) => [id, product.name]))} />}
     </>
   )
 }
