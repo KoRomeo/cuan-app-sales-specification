@@ -423,7 +423,7 @@ export function DeliveriesView() {
         <KpiCard label={t('deliveries.transport')} value={formatIDR(delivered.reduce((sum, d) => sum + Number(d.transportCost), 0))} icon={HandCoins} />
         <KpiCard label={t('method.pickup')} value={delivered.filter((d) => d.method === 'pickup').length} icon={Users} tone="neutral" />
       </KpiGrid>
-      {error ? <p className="py-4 text-sm text-destructive">Failed to load deliveries. Please refresh and try again.</p> : isLoading || !business ? <p className="py-4 text-sm text-muted-foreground">Loading deliveries...</p> : (
+      {error ? <p role="alert" className="py-4 text-sm text-destructive">Failed to load deliveries: {error.message}. Please refresh and try again.</p> : isLoading || !business ? <p className="py-4 text-sm text-muted-foreground">Loading deliveries...</p> : (
         <DataTable
           rows={delivered}
           columns={columns}
@@ -445,7 +445,7 @@ export function DeliveriesView() {
         open={open}
         onOpenChange={setOpen}
         title={t('deliveries.title')}
-        description="Select one or more Orders for this Delivery. Stock and HPP are not deducted again."
+        description="Select one or more ready Orders. Each selected Order gets a delivery record; stock and HPP are not deducted again."
         submitLabel={t('common.save')}
         persisted
         fields={[
