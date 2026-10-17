@@ -6,6 +6,7 @@ import { db } from "@/lib/db"
 import { businessMembers, customers, deliveries, deliveryOrders, journalEntries, orderItems, orders, payments, products, replacements, stockMovements } from "@/lib/db/schema"
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
   const { id } = await params
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) return NextResponse.json({ error: "Authentication required" }, { status: 401 })
@@ -24,6 +25,10 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   ])
   const productRows = itemRows.length ? await db.select({ id: products.id, name: products.name, averageCost: products.averageCost, stock: sql<number>`coalesce(sum(${stockMovements.qty}), 0)` }).from(products).leftJoin(stockMovements, and(eq(stockMovements.productId, products.id), eq(stockMovements.businessId, order.businessId))).where(eq(products.businessId, order.businessId)).groupBy(products.id) : []
   return NextResponse.json({ ...order, customer: customer ?? null, items: itemRows, products: productRows, payments: paymentRows, delivery: delivery ?? null, replacements: replacementRows })
+  } catch (error) {
+    console.error("Order detail request failed", error)
+    return NextResponse.json({ error: "Unable to load order details" }, { status: 500 })
+  }
 }
 
 
