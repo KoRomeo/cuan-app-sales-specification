@@ -372,7 +372,7 @@ export function DataTable<T>({
                               {t('common.view')}
                             </DropdownMenuItem>
                           )}
-                          {editable && (
+                          {editable && !extra.some((action) => action.label === t('common.edit')) && (
                             <DropdownMenuItem onClick={() => toast.info(t('form.editUnavailable'))}>
                               <Pencil />
                               {t('common.edit')}
@@ -394,7 +394,7 @@ export function DataTable<T>({
                               </DropdownMenuItem>
                             )
                           })}
-                          {deletable && (
+                          {deletable && !extra.some((action) => action.label === t('common.delete')) && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
