@@ -60,13 +60,10 @@ export function ProductsView() {
   const loadProducts = async () => {
     const business = await getCurrentBusiness()
     setBusinessId(business.id)
-    const [productRows, stockRows] = await Promise.all([
-      fetch(`/api/products?businessId=${encodeURIComponent(business.id)}`).then((response) => response.json()),
-      fetch(`/api/stock?businessId=${encodeURIComponent(business.id)}`).then((response) => response.json()),
-    ])
-    if (!Array.isArray(productRows) || !Array.isArray(stockRows)) throw new Error('Unable to load products')
-    const stockByProduct = new Map<string, number>(stockRows.map((row: { productId: string; stock: number }) => [row.productId, Number(row.stock)] as [string, number]))
-    setProducts(productRows.map((row: Record<string, unknown>) => toProduct(row, stockByProduct.get(String(row.id)) ?? 0)))
+    const response = await fetch(`/api/inventory?businessId=${encodeURIComponent(business.id)}`)
+    const result = await response.json()
+    if (!response.ok || !Array.isArray(result.products)) throw new Error(result.error ?? 'Unable to load products')
+    setProducts(result.products.map((row: Record<string, unknown>) => toProduct(row, Number(row.stock ?? 0))))
   }
 
   useEffect(() => {
@@ -202,12 +199,10 @@ export function StockView() {
   const loadStock = async () => {
     const business = await getCurrentBusiness()
     setBusinessId(business.id)
-    const [productRows, stockRows] = await Promise.all([
-      fetch(`/api/products?businessId=${encodeURIComponent(business.id)}`).then((response) => response.json()),
-      fetch(`/api/stock?businessId=${encodeURIComponent(business.id)}`).then((response) => response.json()),
-    ])
-    const stockByProduct = new Map<string, number>(stockRows.map((row: { productId: string; stock: number }) => [row.productId, Number(row.stock)] as [string, number]))
-    setProducts(productRows.map((row: Record<string, unknown>) => toProduct(row, stockByProduct.get(String(row.id)) ?? 0)))
+    const response = await fetch(`/api/inventory?businessId=${encodeURIComponent(business.id)}`)
+    const result = await response.json()
+    if (!response.ok || !Array.isArray(result.products)) throw new Error(result.error ?? 'Unable to load stock')
+    setProducts(result.products.map((row: Record<string, unknown>) => toProduct(row, Number(row.stock ?? 0))))
   }
   useEffect(() => { loadStock().catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to load stock')) }, [])
   const sorted = [...products].sort((a, b) => a.stock - b.stock)
@@ -327,14 +322,13 @@ export function StockMovementsView() {
     async function loadMovements() {
       try {
         const business = await getCurrentBusiness()
-        const [movementResponse, productResponse] = await Promise.all([
-          fetch(`/api/stock-movements?businessId=${encodeURIComponent(business.id)}`),
-          fetch(`/api/products?businessId=${encodeURIComponent(business.id)}`),
-        ])
-        if (!movementResponse.ok || !productResponse.ok) throw new Error('Failed to fetch inventory data')
-        const [data, productRows] = await Promise.all([movementResponse.json(), productResponse.json()])
-        setMovements(data)
-        setProductNames(Object.fromEntries(productRows.map((product: { id: string; name: string }) => [product.id, product.name])))
+        const response = await fetch(`/api/inventory?businessId=${encodeURIComponent(business.id)}&includeMovements=1`)
+        const result = await response.json()
+        if (!response.ok || !Array.isArray(result.products) || !Array.isArray(result.movements)) {
+          throw new Error(result.error ?? 'Failed to fetch inventory data')
+        }
+        setMovements(result.movements)
+        setProductNames(Object.fromEntries(result.products.map((product: { id: string; name: string }) => [product.id, product.name])))
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : 'Failed to load inventory data')
       }
