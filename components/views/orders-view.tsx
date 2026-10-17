@@ -87,6 +87,7 @@ export function OrdersView() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id: editTarget.id, businessId: business.id,
+        status: values.status,
         dueDate: values.dueDate || null, notes: values.notes ?? '',
       }),
     })
@@ -189,6 +190,18 @@ export function OrdersView() {
         description="Edit the due date and notes. Posted order dates, customer, quantities, prices, stock and accounting entries stay locked to preserve transaction history."
         persisted
         fields={[
+          {
+            name: 'status',
+            label: t('common.status'),
+            type: 'select',
+            defaultValue: editTarget?.status ?? 'requested',
+            options: editTarget?.status === 'ready'
+              ? [{ value: 'ready', label: t('status.ready') }]
+              : [
+                  { value: 'requested', label: t('status.requested') },
+                  { value: 'ready', label: t('status.ready') },
+                ],
+          },
           { name: 'dueDate', label: t('common.dueDate'), type: 'date', defaultValue: editTarget?.dueDate ?? '', required: false },
           { name: 'notes', label: t('common.notes'), type: 'textarea', defaultValue: editTarget?.notes ?? '', required: false },
         ]}
