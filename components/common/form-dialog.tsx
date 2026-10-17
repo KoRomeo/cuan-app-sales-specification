@@ -35,7 +35,7 @@ export interface FormField {
 }
 
 export const selectClass =
-  'h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30'
+  'h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50'
 
 export function FormDialog({
   open,
@@ -162,7 +162,8 @@ export function FormDialog({
                       disabled={isChecking}
                       aria-invalid={Boolean(errors[field.name])}
                       aria-describedby={describedBy}
-                      className={selectClass}
+                      size={field.type === 'multiselect' ? Math.min(Math.max(field.options?.length ?? 0, 3), 6) : undefined}
+                      className={cn(selectClass, field.type === 'multiselect' && 'h-auto min-h-24 py-2')}
                       onChange={(event) => { clearFieldError(field.name); field.onValueChange?.(event.currentTarget.value) }}
                     >
                       {field.options?.map((option) => (
