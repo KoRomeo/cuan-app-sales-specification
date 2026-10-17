@@ -268,7 +268,7 @@ export function DataTable<T>({
                     scope="col"
                     aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : sortable ? 'none' : undefined}
                     className={cn(
-                      'h-10 whitespace-nowrap px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground',
+                      'h-10 whitespace-nowrap px-5 text-xs font-medium uppercase tracking-wider text-muted-foreground',
                       c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
                     )}
                   >
@@ -341,7 +341,7 @@ export function DataTable<T>({
                       <td
                         key={c.key}
                         className={cn(
-                          'h-12 whitespace-nowrap px-4',
+                          'h-12 whitespace-nowrap px-5',
                           c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
                           c.className,
                         )}
@@ -360,7 +360,7 @@ export function DataTable<T>({
                     )
                   })}
                   {hasActions && (
-                    <td className="px-2 text-right" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-3 text-right" onClick={(e) => e.stopPropagation()}>
                       {(href || extra.length > 0 || editable || deletable) && <DropdownMenu>
                         <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={t('common.actions')} />}>
                           <MoreHorizontal />
