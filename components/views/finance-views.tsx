@@ -88,6 +88,7 @@ export function ReceivablesView() {
   const [open, setOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { data: financialAccounts } = useSWR<Array<{ id: string; name: string; type: string; active: boolean }>>(business?.id ? `/api/financial-accounts?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: persistedOrders, error: ordersError } = useSWR<PersistedOrder[]>(business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: paymentRows, error: paymentsError, mutate: refreshPayments } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: persistedCustomers } = useSWR<PersistedParty[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
@@ -157,7 +158,7 @@ export function ReceivablesView() {
         }}
         fields={[
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'account', label: t('receivables.receiveTo'), type: 'select', options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })), half: true },
+          { name: 'account', label: t('receivables.receiveTo'), type: 'select', options: (financialAccounts ?? []).filter((account) => account.active).map((account) => ({ value: account.name, label: account.name })), half: true },
           { name: 'amount', label: t('receivables.paymentAmount'), type: 'number', prefix: 'Rp', min: 1 },
         ]}
       />
@@ -170,6 +171,7 @@ export function PayablesView() {
   const [open, setOpen] = useState(false)
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null)
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { data: financialAccounts } = useSWR<Array<{ id: string; name: string; type: string; active: boolean }>>(business?.id ? `/api/financial-accounts?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: persistedPurchases, error: purchasesError } = useSWR<PersistedPurchase[]>(business?.id ? `/api/purchases?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: paymentRows, error: paymentsError, mutate: refreshPayments } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: persistedSuppliers, error: suppliersError } = useSWR<PersistedParty[]>(business?.id ? `/api/suppliers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
@@ -238,7 +240,7 @@ export function PayablesView() {
         }}
         fields={[
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'account', label: t('payables.payFrom'), type: 'select', options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })), half: true },
+          { name: 'account', label: t('payables.payFrom'), type: 'select', options: (financialAccounts ?? []).filter((account) => account.active).map((account) => ({ value: account.name, label: account.name })), half: true },
           { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', min: 1 },
         ]}
       />
@@ -252,6 +254,7 @@ export function ExpensesView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { data: financialAccounts } = useSWR<Array<{ id: string; name: string; type: string; active: boolean }>>(business?.id ? `/api/financial-accounts?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: expenseRows, error, isLoading, mutate } = useSWR<PersistedExpense[]>(
     business?.id ? `/api/expenses?businessId=${encodeURIComponent(business.id)}` : null,
     fetcher,
@@ -343,7 +346,7 @@ export function ExpensesView() {
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true, required: true },
           { name: 'category', label: t('common.category'), type: 'select', half: true, required: true, options: expenseCategories.map((category) => ({ value: category, label: translateExpenseCategory(category, t) })) },
           { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', min: 1, half: true, required: true },
-          { name: 'account', label: t('common.account'), type: 'select', half: true, required: true, options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })) },
+          { name: 'account', label: t('common.account'), type: 'select', half: true, required: true, options: (financialAccounts ?? []).filter((account) => account.active).map((account) => ({ value: account.name, label: account.name })) },
           { name: 'description', label: t('common.description'), type: 'textarea', required: true },
         ]}
         onSubmit={saveExpense}
