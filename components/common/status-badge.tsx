@@ -54,7 +54,7 @@ export function StatusDropdown<T extends string>({
 }: {
   value: T
   options: StatusOption<T>[]
-  onChange: (value: T) => void
+  onChange: (value: T) => void | Promise<void>
   disabled?: boolean
   align?: 'start' | 'center' | 'end'
 }) {
