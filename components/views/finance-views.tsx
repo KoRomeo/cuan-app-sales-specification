@@ -116,12 +116,6 @@ export function ReceivablesView() {
         breadcrumbs={[{ label: t('nav.finance') }, { label: t('nav.receivables') }]}
         title={t('receivables.title')}
         description={t('receivables.desc')}
-        actions={
-          <Button size="sm" onClick={() => setOpen(true)}>
-            <Wallet />
-            {t('orders.addPayment')}
-          </Button>
-        }
       />
       <KpiGrid>
         <KpiCard label={t('receivables.total')} value={formatIDR(total)} icon={HandCoins} tone="warning" />
@@ -204,12 +198,6 @@ export function PayablesView() {
         breadcrumbs={[{ label: t('nav.finance') }, { label: t('nav.payables') }]}
         title={t('payables.title')}
         description={t('payables.desc')}
-        actions={
-          <Button size="sm" onClick={() => setOpen(true)}>
-            <Wallet />
-            {t('orders.addPayment')}
-          </Button>
-        }
       />
       <KpiGrid>
         <KpiCard label={t('payables.total')} value={formatIDR(total)} icon={HandCoins} tone="warning" />
