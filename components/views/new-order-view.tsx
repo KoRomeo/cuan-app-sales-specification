@@ -45,8 +45,7 @@ export function NewOrderView() {
   const productsById = new Map((productRows ?? []).map((product) => [product.id, { ...product, sellingPrice: Number(product.sellingPrice), averageCost: Number(product.averageCost), stock: Number(product.stock ?? 0) }]))
   const [lines, setLines] = useState<Line[]>([])
   const [customerId, setCustomerId] = useState('')
-  const [paid, setPaid] = useState(0)
-  const [previewed, setPreviewed] = useState(false)
+  const [paid, setPaid] = useState('0')
   const [isSaving, setIsSaving] = useState(false)
   const [lineToRemove, setLineToRemove] = useState<number | null>(null)
 
@@ -66,7 +65,7 @@ export function NewOrderView() {
       <PageHeader
         breadcrumbs={[{ label: t('nav.sales') }, { label: t('nav.orders'), href: '/orders' }, { label: t('orders.add') }]}
         title={t('orders.add')}
-        description={t('common.prototypeNote')}
+        description="Enter the order details, then save to create the order and record any initial payment."
       />
       <form
         onSubmit={async (event) => {
@@ -77,7 +76,7 @@ export function NewOrderView() {
             const form = new FormData(event.currentTarget)
             const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
             const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-              id: `ORD-${Date.now()}`, businessId: business.id, date: form.get('orderDate'), customerId: form.get('customerId'), status: 'requested', dueDate: form.get('dueDate') || null, notes: form.get('notes') || null, paidAmount: paid, paymentAccount: 'Cash', paymentDate: form.get('orderDate'), paymentId: paid > 0 ? `PAY-ORD-${Date.now()}` : undefined,
+              id: `ORD-${Date.now()}`, businessId: business.id, date: form.get('orderDate'), customerId: form.get('customerId'), status: 'requested', dueDate: form.get('dueDate') || null, notes: form.get('notes') || null, paidAmount: Number(paid || 0), paymentAccount: 'Cash', paymentDate: form.get('orderDate'), paymentId: Number(paid || 0) > 0 ? `PAY-ORD-${Date.now()}` : undefined,
               items: lines.map((line) => ({ id: `OI-${Date.now()}-${line.key}`, productId: line.productId, qty: line.qty, price: line.price, discount: line.discount, unitCost: productsById.get(line.productId)?.averageCost ?? 0 })),
             }) })
             const result = await response.json()
@@ -148,7 +147,7 @@ export function NewOrderView() {
                         >
                           {productRows.map((pr) => (
                             <option key={pr.id} value={pr.id}>
-                              {pr.name} ({pr.stock})
+                              {pr.name}{pr.stock !== undefined && pr.stock !== null ? ` (${pr.stock})` : ''}
                             </option>
                           ))}
                         </select>
@@ -217,7 +216,7 @@ export function NewOrderView() {
             <div className="mt-4 flex flex-col gap-3 border-t pt-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="paid">{t('common.paid')}</Label>
-                <Input id="paid" name="paidAmount" type="number" min={0} max={Math.max(total, 0)} className="font-mono" value={paid} onChange={(e) => setPaid(Number(e.target.value))} />
+                <Input id="paid" name="paidAmount" type="number" min={0} max={Math.max(total, 0)} className="font-mono" value={paid} onChange={(e) => setPaid(e.target.value)} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="due">{t('common.dueDate')}</Label>
@@ -225,16 +224,15 @@ export function NewOrderView() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('common.outstanding')}</span>
-                <span className="font-mono font-semibold tabular-nums text-warning">{formatIDR(Math.max(total - paid, 0))}</span>
+                <span className="font-mono font-semibold tabular-nums text-warning">{formatIDR(Math.max(total - Number(paid || 0), 0))}</span>
               </div>
             </div>
             <div className="mt-5 flex gap-2">
               <Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/orders" />}>
                 {t('common.cancel')}
               </Button>
-              <Button type="submit" className="flex-1" disabled={isSaving}>{isSaving ? t('common.loading') : t('form.validateAction')}</Button>
+              <Button type="submit" className="flex-1" disabled={isSaving}>{isSaving ? 'Saving…' : 'Save Order'}</Button>
             </div>
-            {previewed && <p role="status" aria-live="polite" className="mt-3 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-xs leading-5 text-muted-foreground">{t('form.previewFeedback')}</p>}
           </SectionCard>
         </div>
       </form>
@@ -244,14 +242,12 @@ export function NewOrderView() {
           if (!open) setLineToRemove(null)
         }}
         title={t('orders.removeLineTitle')}
-        description={t('orders.removeLineDescription')}
-        confirmLabel={t('orders.removeLineAction')}
-        previewOnly
+        description="Remove this item from the order before saving?"
+        confirmLabel={t('common.delete')}
         onConfirm={() => {
           if (lineToRemove === null) return
           setLines((previous) => previous.filter((line) => line.key !== lineToRemove))
-          setPreviewed(false)
-          toast.info(t('form.previewFeedback'))
+          toast.success('Item removed')
         }}
       />
     </>
