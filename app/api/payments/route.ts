@@ -3,7 +3,7 @@ import { and, desc, eq, sql } from "drizzle-orm"
 import { transactionDb } from "@/lib/db/transaction"
 import {
   payments, orders, purchases, orderItems, purchaseItems,
-  journalEntries, journalEntryLines,
+  journalEntries, journalEntryLines, financialAccounts,
 } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
 
@@ -43,6 +43,13 @@ export async function POST(request: Request) {
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     await transactionDb.transaction(async (tx) => {
+      const [cashAccount] = await tx.select({ id: financialAccounts.id }).from(financialAccounts)
+        .where(and(
+          eq(financialAccounts.businessId, businessId),
+          eq(financialAccounts.name, account.trim()),
+          eq(financialAccounts.active, true),
+        )).limit(1)
+      if (!cashAccount) throw new Error("INVALID_FINANCIAL_ACCOUNT")
       const [existing] = await tx.select({ id: payments.id }).from(payments).where(eq(payments.id, id)).limit(1)
       if (existing) throw new Error("PAYMENT_ID_EXISTS")
       const [existingJournal] = await tx.select({ id: journalEntries.id }).from(journalEntries)
@@ -98,6 +105,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : ""
     const known: Record<string, [string, number]> = {
+      INVALID_FINANCIAL_ACCOUNT: ["Select an active Cash & Bank account for this business", 400],
       PAYMENT_ID_EXISTS: ["Payment ID already exists", 409],
       PAYMENT_JOURNAL_EXISTS: ["Payment journal already exists", 409],
       ORDER_NOT_FOUND: ["Order not found for this business", 404],
