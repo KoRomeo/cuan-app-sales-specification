@@ -11,7 +11,7 @@ import { DataTable, IdCell, Money, type Column } from '@/components/common/data-
 import { FormDialog } from '@/components/common/form-dialog'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
 import { PageHeader } from '@/components/common/page-header'
-import { OrderStatusBadge, PaymentStatusBadge } from '@/components/common/status-badge'
+import { OrderStatusBadge, PaymentStatusBadge, StatusDropdown } from '@/components/common/status-badge'
 import { useApp } from '@/components/providers'
 import {
   type Order,
@@ -21,6 +21,7 @@ import {
   orderTotal,
 } from '@/lib/data'
 import { formatDate, formatIDR } from '@/lib/format'
+import type { OrderStatus } from '@/lib/data'
 
 const fetcher = async (url: string) => {
   const response = await fetch(url)
@@ -54,6 +55,29 @@ export function OrdersView() {
   const { data: payments, error: paymentsError } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: customers, error: customersError } = useSWR<PersistedParty[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: products, error: productsError } = useSWR<Array<{ id: string; name: string; stock?: number }>>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  async function changeOrderStatus(order: Order, status: OrderStatus) {
+    if (!business?.id) return
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: order.id, businessId: business.id, status }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error ?? 'Unable to update order status')
+      await Promise.all([
+        mutateOrders(),
+        globalMutate(`/api/products?businessId=${encodeURIComponent(business.id)}`),
+        globalMutate(`/api/stock?businessId=${encodeURIComponent(business.id)}`),
+        globalMutate(`/api/accounting?businessId=${encodeURIComponent(business.id)}`),
+        globalMutate(`/api/dashboard?businessId=${encodeURIComponent(business.id)}`),
+      ])
+      toast.success('Order status updated')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to update order status')
+    }
+  }
+
   async function cancelOrder() {
     if (!business?.id || !deleteTarget) return
     const target = deleteTarget
@@ -123,7 +147,7 @@ export function OrdersView() {
     },
     { key: 'date', header: t('common.date'), cell: (o) => <span className="font-mono text-xs text-muted-foreground">{formatDate(o.date)}</span> },
     { key: 'customer', header: t('common.customer'), cell: (o) => <span className="font-medium">{customerByIdMap.get(o.customerId)?.name}</span> },
-    { key: 'status', header: t('common.status'), sortValue: (o) => o.status, cell: (o) => <OrderStatusBadge status={o.status} /> },
+    { key: 'status', header: t('common.status'), sortValue: (o) => o.status, className: 'text-right', cell: (o) => <StatusDropdown value={o.status} options={[{ value: 'requested', label: t('status.requested'), tone: 'warning', disabled: o.status !== 'requested' }, { value: 'ready', label: t('status.ready'), tone: 'primary', disabled: o.status !== 'requested' }, { value: 'delivered', label: t('status.delivered'), tone: 'success', disabled: true }, { value: 'cancelled', label: t('status.cancelled'), tone: 'neutral', disabled: o.status === 'delivered' || o.status === 'cancelled' }]} onChange={(status) => { void changeOrderStatus(o, status) }} disabled={o.status === 'delivered' || o.status === 'cancelled'} /> },
     { key: 'payment', header: t('orders.paymentStatus'), sortValue: (o) => (o.status === 'cancelled' ? null : orderPaymentStatus(o)), cell: (o) => (o.status === 'cancelled' ? <span className="text-muted-foreground">—</span> : <PaymentStatusBadge status={orderPaymentStatus(o)} />) },
     { key: 'total', header: t('common.total'), align: 'right', cell: (o) => <Money value={orderTotal(o)} className={o.status === 'cancelled' ? 'text-muted-foreground line-through' : ''} /> },
     { key: 'paid', header: t('common.paid'), align: 'right', cell: (o) => <Money value={orderPaid(o)} className="text-muted-foreground" /> },
