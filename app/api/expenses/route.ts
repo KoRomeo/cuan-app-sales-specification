@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { and, desc, eq } from "drizzle-orm"
 import { db } from "@/lib/db"
-import { expenses, journalEntries, journalEntryLines } from "@/lib/db/schema"
+import { expenses, journalEntries, journalEntryLines, financialAccounts } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
 import { generateEntityId } from "@/lib/db/ids"
 
@@ -39,6 +39,13 @@ export async function POST(request: Request) {
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     const expense = await db.transaction(async (tx) => {
+      const [cashAccount] = await tx.select({ id: financialAccounts.id }).from(financialAccounts)
+        .where(and(
+          eq(financialAccounts.businessId, businessId),
+          eq(financialAccounts.name, account.trim()),
+          eq(financialAccounts.active, true),
+        )).limit(1)
+      if (!cashAccount) throw new Error("INVALID_FINANCIAL_ACCOUNT")
       const id = await generateEntityId(tx, expenses, businessId, "EXP", date)
       const [created] = await tx.insert(expenses).values({
         id, businessId, date, category: category.trim(), amount: amount.toFixed(2),
@@ -57,6 +64,9 @@ export async function POST(request: Request) {
     })
     return NextResponse.json(expense, { status: 201 })
   } catch (error) {
+    if (error instanceof Error && error.message === "INVALID_FINANCIAL_ACCOUNT") {
+      return NextResponse.json({ error: "Select an active Cash & Bank account for this business" }, { status: 400 })
+    }
     console.error("POST /api/expenses", error)
     return NextResponse.json({ error: "Failed to create expense" }, { status: 500 })
   }
