@@ -57,6 +57,7 @@ function PersistedPaymentHistory({ businessId, kind }: { businessId: string | un
   const { data, error, mutate } = useSWR<PersistedPayment[]>(businessId ? `/api/payments?businessId=${encodeURIComponent(businessId)}` : null, fetcher)
   const payments = (data ?? []).filter((payment) => kind === 'receivable' ? payment.orderId : payment.purchaseId)
   return (
+    <div className="mt-6">
     <SectionCard title={t('finance.paymentHistory')} description={t('finance.persistedData')}>
       {error ? <p className="text-sm text-destructive">{error.message}</p> : payments.length === 0 ? <p className="text-sm text-muted-foreground">{t('finance.noPayments')}</p> : (
         <div className="divide-y">
@@ -158,7 +159,7 @@ export function ReceivablesView() {
           setOpen(false)
         }}
         fields={[
-          { name: 'customer', label: t('common.customer'), type: 'select', options: customers.filter((c) => rows.some((o) => o.customerId === c.id)).map((c) => ({ value: c.id, label: c.name })) },
+          { name: 'customer', label: t('common.customer'), type: 'select', searchable: true, options: [...new Map(rows.map((o) => [o.customerId, { value: o.customerId, label: partyById.get(o.customerId)?.name ?? o.customerId }])).values()].sort((a, b) => a.label.localeCompare(b.label)) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
           { name: 'account', label: t('receivables.receiveTo'), type: 'select', options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })), half: true },
           { name: 'amount', label: t('receivables.paymentAmount'), type: 'number', prefix: 'Rp', min: 1 },
@@ -243,7 +244,7 @@ export function PayablesView() {
           setOpen(false)
         }}
         fields={[
-          { name: 'purchase', label: t('purchases.id'), type: 'select', options: rows.map((p) => ({ value: p.id, label: `${p.id} · ${partyById.get(p.supplierId)?.name}` })) },
+          { name: 'purchase', label: t('purchases.id'), type: 'select', searchable: true, options: rows.map((p) => ({ value: p.id, label: `${partyById.get(p.supplierId)?.name ?? p.supplierId} · ${p.id}` })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
           { name: 'account', label: t('payables.payFrom'), type: 'select', options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })), half: true },
           { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', min: 1 },
