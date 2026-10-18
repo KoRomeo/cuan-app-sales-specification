@@ -86,6 +86,7 @@ function DueCell({ due, outstanding }: { due: string | null; outstanding: number
 export function ReceivablesView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: persistedOrders, error: ordersError } = useSWR<PersistedOrder[]>(business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: paymentRows, error: paymentsError, mutate: refreshPayments } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
@@ -141,26 +142,26 @@ export function ReceivablesView() {
         rowHref={(o) => `/orders/${o.id}`}
         editable={false}
         deletable={false}
-        contextActions={() => [{ label: t('orders.addPayment'), icon: Wallet, onSelect: () => setOpen(true) }]}
+        contextActions={(order) => [{ label: t('orders.addPayment'), icon: Wallet, onSelect: () => { setSelectedOrder(order); setOpen(true) } }]}
       />
       <PersistedPaymentHistory businessId={business?.id} kind="receivable" />
       <FormDialog
         open={open}
         onOpenChange={setOpen}
         title={t('orders.addPayment')}
-        description={t('receivables.allocationHint')}
+        description={selectedOrder ? `${partyById.get(selectedOrder.customerId)?.name ?? selectedOrder.customerId} · ${selectedOrder.id} · ${t('common.outstanding')}: ${formatIDR(orderOutstanding(selectedOrder))}` : t('receivables.allocationHint')}
         persisted
         onSubmit={async (values) => {
           if (!business?.id) throw new Error('Business access required')
-          const order = rows.find((item) => item.customerId === values.customer)
-          if (!order) throw new Error('Select a customer with an outstanding order')
+          const order = selectedOrder
+          if (!order || !rows.some((item) => item.id === order.id)) throw new Error('Select an order with an outstanding balance')
           const response = await fetch('/api/payments', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: `PAY-${crypto.randomUUID()}`, businessId: business.id, orderId: order.id, date: values.date, amount: Number(values.amount), account: values.account }) })
           if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to record payment')
           await refreshPayments()
           setOpen(false)
+          setSelectedOrder(null)
         }}
         fields={[
-          { name: 'customer', label: t('common.customer'), type: 'select', searchable: true, options: [...new Map(rows.map((o) => [o.customerId, { value: o.customerId, label: partyById.get(o.customerId)?.name ?? o.customerId }])).values()].sort((a, b) => a.label.localeCompare(b.label)) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
           { name: 'account', label: t('receivables.receiveTo'), type: 'select', options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })), half: true },
           { name: 'amount', label: t('receivables.paymentAmount'), type: 'number', prefix: 'Rp', min: 1 },
@@ -173,6 +174,7 @@ export function ReceivablesView() {
 export function PayablesView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
+  const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null)
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: persistedPurchases, error: purchasesError } = useSWR<PersistedPurchase[]>(business?.id ? `/api/purchases?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: paymentRows, error: paymentsError, mutate: refreshPayments } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
@@ -227,25 +229,26 @@ export function PayablesView() {
         ]}
         editable={false}
         deletable={false}
-        contextActions={() => [{ label: t('orders.addPayment'), icon: Wallet, onSelect: () => setOpen(true) }]}
+        contextActions={(purchase) => [{ label: t('orders.addPayment'), icon: Wallet, onSelect: () => { setSelectedPurchase(purchase); setOpen(true) } }]}
       />
       <PersistedPaymentHistory businessId={business?.id} kind="payable" />
       <FormDialog
         open={open}
         onOpenChange={setOpen}
         title={t('orders.addPayment')}
+        description={selectedPurchase ? `${partyById.get(selectedPurchase.supplierId)?.name ?? selectedPurchase.supplierId} · ${selectedPurchase.id} · ${t('common.outstanding')}: ${formatIDR(purchaseOutstanding(selectedPurchase))}` : t('payables.desc')}
         persisted
         onSubmit={async (values) => {
           if (!business?.id) throw new Error('Business access required')
-          const purchase = rows.find((item) => item.id === values.purchase)
-          if (!purchase) throw new Error('Select a purchase with an outstanding balance')
+          const purchase = selectedPurchase
+          if (!purchase || !rows.some((item) => item.id === purchase.id)) throw new Error('Select a purchase with an outstanding balance')
           const response = await fetch('/api/payments', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: `PAY-${crypto.randomUUID()}`, businessId: business.id, purchaseId: purchase.id, date: values.date, amount: Number(values.amount), account: values.account }) })
           if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to record payment')
-          await Promise.all([refreshPayments(),])
+          await refreshPayments()
           setOpen(false)
+          setSelectedPurchase(null)
         }}
         fields={[
-          { name: 'purchase', label: t('purchases.id'), type: 'select', searchable: true, options: rows.map((p) => ({ value: p.id, label: `${partyById.get(p.supplierId)?.name ?? p.supplierId} · ${p.id}` })) },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
           { name: 'account', label: t('payables.payFrom'), type: 'select', options: accountValues.map((value) => ({ value, label: translateAccountName(value, t) })), half: true },
           { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', min: 1 },
