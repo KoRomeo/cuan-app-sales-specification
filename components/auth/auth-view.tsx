@@ -65,8 +65,6 @@ export function AuthView({ mode }: { mode: AuthMode }) {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    console.log("LOGIN FORM SUBMITTED")
-    alert("FORM SUBMITTED")
     const nextErrors: Partial<Record<AuthField, string>> = {}
 
     if (mode === 'register' && !fields.name.trim()) nextErrors.name = t('auth.validationName')
