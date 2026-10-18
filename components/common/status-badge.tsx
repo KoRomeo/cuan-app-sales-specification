@@ -64,7 +64,7 @@ export function StatusDropdown<T extends string>({
   const pending = options.find((option) => option.value === pendingValue)
   if (!current) return null
   return (
-    <div className="flex w-full justify-end">
+    <div className="flex w-full justify-end" onClick={(event) => event.stopPropagation()}>
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button type="button" variant="ghost" size="sm" disabled={disabled} className="h-7 gap-1 rounded-full px-2 hover:bg-muted" aria-label={`Status: ${current.label}. Change status`} />}>
           <Pill tone={current.tone} className="px-2">{current.label}</Pill>
