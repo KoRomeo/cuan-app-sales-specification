@@ -1,11 +1,13 @@
 'use client'
 
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, AlertTriangle } from 'lucide-react'
+import { useState } from 'react'
 import { useApp } from '@/components/providers'
 import { type Tone, toneDot, toneSoft } from '@/components/common/tone'
 import type { OrderStatus, PaymentStatus, StockStatus } from '@/lib/data'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 export function Pill({ tone, children, className }: { tone: Tone; children: React.ReactNode; className?: string }) {
@@ -56,10 +58,13 @@ export function StatusDropdown<T extends string>({
   disabled?: boolean
   align?: 'start' | 'center' | 'end'
 }) {
+  const [pendingValue, setPendingValue] = useState<T | null>(null)
+  const [saving, setSaving] = useState(false)
   const current = options.find((option) => option.value === value)
+  const pending = options.find((option) => option.value === pendingValue)
   if (!current) return null
   return (
-    <div className="flex justify-end">
+    <div className="flex w-full justify-end">
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button type="button" variant="ghost" size="sm" disabled={disabled} className="h-7 gap-1 rounded-full px-2 hover:bg-muted" aria-label={`Status: ${current.label}. Change status`} />}>
           <Pill tone={current.tone} className="px-2">{current.label}</Pill>
@@ -70,7 +75,7 @@ export function StatusDropdown<T extends string>({
             <DropdownMenuItem
               key={option.value}
               disabled={disabled || option.disabled || option.value === value}
-              onClick={() => onChange(option.value)}
+              onClick={() => setPendingValue(option.value)}
               className="cursor-pointer"
             >
               <Pill tone={option.tone}>{option.label}</Pill>
@@ -78,6 +83,23 @@ export function StatusDropdown<T extends string>({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+      <Dialog open={pendingValue !== null} onOpenChange={(open) => { if (!open && !saving) setPendingValue(null) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <span className="flex size-10 items-center justify-center rounded-full bg-warning/15 text-warning"><AlertTriangle className="size-5" /></span>
+            <DialogTitle>Confirm status change</DialogTitle>
+            <DialogDescription>Change status from <strong>{current.label}</strong> to <strong>{pending?.label}</strong>? The change will only be saved after you confirm.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={saving} onClick={() => setPendingValue(null)}>Cancel</Button>
+            <Button type="button" disabled={saving || !pending} onClick={async () => {
+              if (!pending) return
+              setSaving(true)
+              try { await onChange(pending.value); setPendingValue(null) } finally { setSaving(false) }
+            }}>{saving ? 'Saving…' : 'Save status'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
