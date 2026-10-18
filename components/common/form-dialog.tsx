@@ -16,6 +16,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface FormField {
@@ -32,6 +33,7 @@ export interface FormField {
   min?: number
   max?: number
   onValueChange?: (value: string) => void
+  searchable?: boolean
 }
 
 export const selectClass =
@@ -60,6 +62,7 @@ export function FormDialog({
 }) {
   const { t } = useApp()
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [searchTerms, setSearchTerms] = useState<Record<string, string>>({})
   const [validated, setValidated] = useState(false)
   const [isChecking, setIsChecking] = useState(false)
   const timerRef = useRef<number | null>(null)
@@ -152,7 +155,37 @@ export function FormDialog({
                     {field.label}
                     {required && <span aria-hidden="true" className="ml-1 text-destructive">*</span>}
                   </Label>
-                  {field.type === 'select' || field.type === 'multiselect' ? (
+                  {field.type === 'select' && field.searchable ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          value={searchTerms[field.name] ?? ''}
+                          onChange={(event) => setSearchTerms((previous) => ({ ...previous, [field.name]: event.target.value }))}
+                          placeholder={t('common.search')}
+                          aria-label={`Search ${field.label}`}
+                          className="pl-8"
+                          disabled={isChecking}
+                        />
+                      </div>
+                      <select
+                        id={id}
+                        name={field.name}
+                        defaultValue={field.defaultValue}
+                        required={required}
+                        disabled={isChecking}
+                        aria-invalid={Boolean(errors[field.name])}
+                        aria-describedby={describedBy}
+                        size={Math.min(Math.max((field.options ?? []).filter((option) => option.label.toLowerCase().includes((searchTerms[field.name] ?? '').toLowerCase())).length, 3), 5)}
+                        className={cn(selectClass, 'h-auto min-h-24 py-2')}
+                        onChange={(event) => { clearFieldError(field.name); field.onValueChange?.(event.currentTarget.value) }}
+                      >
+                        {(field.options ?? []).filter((option) => option.label.toLowerCase().includes((searchTerms[field.name] ?? '').toLowerCase())).map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : field.type === 'select' || field.type === 'multiselect' ? (
                     <select
                       id={id}
                       name={field.name}
