@@ -62,6 +62,18 @@ role: text("role").notNull().default("owner"),
 createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 })
 
+export const financialAccounts = pgTable("financial_accounts", {
+  id: text("id").primaryKey(),
+  businessId: text("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  openingBalance: decimal("opening_balance", { precision: 14, scale: 2 }).notNull().default("0"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  businessNameUnique: uniqueIndex("financial_accounts_business_name_idx").on(table.businessId, table.name),
+}))
+
 
 // ============================================================
 // CUSTOMERS
