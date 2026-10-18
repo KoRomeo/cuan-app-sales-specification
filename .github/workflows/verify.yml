@@ -1,0 +1,42 @@
+name: Verify application
+
+on:
+  push:
+    branches:
+      - v0/finished-backend-frontend
+  pull_request:
+    branches:
+      - v0/finished-backend-frontend
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.3.4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript check
+        run: pnpm exec tsc --noEmit
+
+      - name: Production build
+        run: pnpm build
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/cuandb
+          BETTER_AUTH_SECRET: ci-only-not-for-production
+          BETTER_AUTH_URL: http://localhost:3000
