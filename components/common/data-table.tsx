@@ -447,7 +447,6 @@ export function DataTable<T>({
           </Button>
         </nav>
       </div>
-      <p role="note" className="border-t px-4 py-2 text-xs text-muted-foreground">{t('common.demoDataNotice')}</p>
 
       <ConfirmDialog
         open={deleteOpen}
