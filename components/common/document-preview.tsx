@@ -122,29 +122,67 @@ export function DocumentPreview({
               </section>
             </article>
           ) : (
-            <article className="rounded-md bg-white p-6 text-slate-900 shadow-sm ring-1 ring-slate-200 md:p-8">
-              <div className="flex flex-col justify-between gap-6 sm:flex-row">
-                <div>
-                  <p className="text-base font-semibold">CV Cuan Sejahtera</p>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-500">Jl. Pasirkaliki No. 45, Bandung<br />0812-0000-1234</p>
+            <article className="print-area mx-auto min-h-[10.5in] w-full max-w-[7.3in] bg-white px-5 py-6 text-[11px] leading-snug text-black shadow-sm md:px-8 md:py-8 print:min-h-0 print:max-w-none print:px-0 print:py-0 print:shadow-none">
+              <div className="border-t border-black pt-2">
+                <div className="flex items-start justify-between gap-4">
+                  <h1 className="text-[30px] font-black leading-none tracking-tight">{t('deliveries.document').toUpperCase()}</h1>
+                  <span className="text-xs">Page 1 of 1</span>
                 </div>
-                <div className="sm:text-right">
-                  <p className="text-xl font-bold tracking-[0.2em] text-[oklch(0.5_0.2_264)]">{t('deliveries.document')}</p>
-                  <p className="mt-1 font-mono text-xs text-slate-500">{docNo}</p>
-                  <p className="font-mono text-xs text-slate-500">{formatDate(order.delivery?.date ?? order.date)}</p>
+                <div className="mt-2 flex justify-end gap-8 text-xs">
+                  <span>Jumlah Koli: {order.items.reduce((sum, item) => sum + Number(item.qty), 0)}</span>
+                  <span>Tanggal: <strong>{formatDate(order.delivery?.date ?? order.date)}</strong></span>
                 </div>
               </div>
-              <div className="mt-6 grid gap-4 rounded-md bg-slate-50 p-4 text-xs sm:grid-cols-2">
-                <div><p className="font-semibold uppercase tracking-wider text-slate-400">{t('orders.recipient')}</p><p className="mt-1 text-sm font-medium">{order.delivery?.recipient ?? customer?.name}</p><p className="mt-0.5 text-slate-500">{order.delivery?.address ?? customer?.address}</p></div>
-                <div className="sm:text-right"><p className="font-semibold uppercase tracking-wider text-slate-400">{t('orders.id')}</p><p className="mt-1 font-mono text-sm">{order.id}</p></div>
-              </div>
-              <table className="mt-6 w-full text-xs">
-                <thead><tr className="border-b border-slate-200 text-left uppercase tracking-wider text-slate-400"><th className="py-2 font-semibold">{t('common.product')}</th><th className="py-2 text-right font-semibold">{t('common.qty')}</th></tr></thead>
-                <tbody>{order.items.map((it) => <tr key={it.productId} className="border-b border-slate-100"><td className="py-2.5">{productNames?.[it.productId] ?? productById(it.productId)?.name}</td><td className="py-2.5 text-right font-mono">{it.qty}</td></tr>)}</tbody>
+
+              <section className="mt-3 grid grid-cols-2 gap-4 bg-[#ededed] px-5 py-4 text-xs">
+                <div className="self-center">
+                  <p>DIKIRIM KEPADA</p>
+                  <p className="mt-1 text-sm font-bold">{order.delivery?.recipient ?? customer?.name ?? '—'}</p>
+                  <p className="mt-1">{order.delivery?.address ?? customer?.address ?? '—'}</p>
+                </div>
+                <div className="text-right">
+                  <p>No. Surat Jalan: <strong>{docNo}</strong></p>
+                  <p className="mt-1">No. Order: <strong>{order.id}</strong></p>
+                  <p className="mt-1">Metode: <strong>{order.delivery?.method ?? '—'}</strong></p>
+                </div>
+              </section>
+
+              <table className="mt-8 w-full table-fixed border-collapse text-xs">
+                <colgroup><col className="w-[9%]" /><col className="w-[61%]" /><col className="w-[15%]" /><col className="w-[15%]" /></colgroup>
+                <thead>
+                  <tr className="border-y-[3px] border-black text-center text-xs">
+                    <th className="border-r border-black px-1 py-3 font-bold">NO.</th>
+                    <th className="border-r border-black px-2 py-3 text-left font-bold">DESKRIPSI BARANG</th>
+                    <th className="border-r border-black px-2 py-3 font-bold">QTY</th>
+                    <th className="px-2 py-3 font-bold">SATUAN</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: Math.max(12, order.items.length) }, (_, index) => {
+                    const item = order.items[index]
+                    return (
+                      <tr key={item ? item.productId : `blank-${index}`} className="h-[26px] border-b border-black">
+                        <td className="border-r border-black px-1 py-1 text-center">{item ? index + 1 : ''}</td>
+                        <td className="border-r border-black px-1 py-1">{item ? productNames?.[item.productId] ?? productById(item.productId)?.name ?? item.productId : ''}</td>
+                        <td className="border-r border-black px-2 py-1 text-right">{item ? item.qty : ''}</td>
+                        <td className="px-2 py-1 text-center">{item ? 'Pcs' : ''}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
               </table>
-              <div className="mt-10 grid grid-cols-2 gap-8 text-center text-xs text-slate-500"><div><div className="h-16 border-b border-dashed border-slate-300" /><p className="mt-2">Pengirim</p></div><div><div className="h-16 border-b border-dashed border-slate-300" /><p className="mt-2">Penerima</p></div></div>
-            </article>
-          )}
+
+              <section className="mt-2 grid grid-cols-2 gap-5 bg-[#ededed] px-4 py-3 text-xs">
+                <div><p className="font-bold">CATATAN</p><p className="mt-1">{order.notes || 'Barang diterima dalam kondisi baik.'}</p></div>
+                <div className="space-y-1 text-right"><p><strong>Total jenis barang:</strong> {order.items.length}</p><p><strong>Total kuantitas:</strong> {order.items.reduce((sum, item) => sum + Number(item.qty), 0)}</p><p><strong>Biaya transportasi:</strong> {formatIDR(Number(order.delivery?.transportCost ?? 0))}</p></div>
+              </section>
+
+              <section className="mt-12 grid grid-cols-2 gap-8 text-center text-xs">
+                <div><p>Dikirim oleh</p><p className="text-[10px]">(Nama / tanda tangan)</p><div className="mt-16 border-b border-black" /><p className="mt-2">Nama jelas:</p></div>
+                <div><p>Diterima oleh</p><p className="text-[10px]">(Nama / tanda tangan)</p><div className="mt-16 border-b border-black" /><p className="mt-2">{order.delivery?.recipient ?? customer?.name ?? 'Nama jelas:'}</p></div>
+              </section>
+              <p className="mt-8 border-t border-dashed border-gray-400 pt-2 text-center text-[10px] text-gray-600">Mohon periksa jumlah dan kondisi barang sebelum menandatangani surat jalan.</p>
+            </article>}
         </div>
       </DialogContent>
     </Dialog>
