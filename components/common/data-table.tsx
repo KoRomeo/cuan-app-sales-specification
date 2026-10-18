@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Columns3, Eye, MoreHorizontal, Pencil, Plus, Search, Trash2, type LucideIcon } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, Columns3, Eye, MoreHorizontal, Pencil, Plus, Search, Trash2, type LucideIcon } from 'lucide-react'
 import { Children, isValidElement, useMemo, useState, type ReactNode } from 'react'
 import { appToast as toast } from '@/lib/toast'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
@@ -188,35 +188,38 @@ export function DataTable<T>({
           />
         </div>
 
-        {filters && filters.length > 0 && (
-          <div role="group" aria-label={t('common.filter')} className="flex flex-wrap items-center gap-1 rounded-lg bg-muted p-0.5">
-            {filters.map((f) => {
-              const count = rows.filter(f.predicate).length
-              const active = filter === f.value
-              return (
-                <button
-                  key={f.value}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => {
-                    setFilter(f.value)
-                    setPage(1)
-                  }}
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
-                    active ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {f.label}
-                  <span className={cn('font-mono tabular-nums', active ? 'text-primary' : 'opacity-70')}>{count}</span>
-                </button>
-              )
-            })}
-          </div>
-        )}
-
         <div className="flex items-center gap-2 md:ml-auto">
           {toolbarExtra}
+          {filters && filters.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="min-w-36 justify-between gap-3" />}>
+                <span className="flex items-center gap-2">
+                  <span>{filters.find((f) => f.value === filter)?.label ?? t('common.filter')}</span>
+                  <span className="font-mono text-xs text-muted-foreground tabular-nums">{rows.filter((row) => (filters.find((f) => f.value === filter) ?? filters[0]).predicate(row)).length}</span>
+                </span>
+                <ChevronDown className="size-4 opacity-70" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-44">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>{t('common.filter')}</DropdownMenuLabel>
+                  {filters.map((f) => {
+                    const count = rows.filter(f.predicate).length
+                    const active = filter === f.value
+                    return (
+                      <DropdownMenuItem
+                        key={f.value}
+                        onClick={() => { setFilter(f.value); setPage(1) }}
+                        className={cn('flex cursor-pointer items-center justify-between gap-4', active && 'bg-accent')}
+                      >
+                        <span>{f.label}</span>
+                        <span className="font-mono text-xs text-muted-foreground tabular-nums">{count}</span>
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
               <Columns3 />
