@@ -6,6 +6,7 @@ import {
   FileText,
   HandCoins,
   History,
+  Landmark,
   LayoutDashboard,
   type LucideIcon,
   Package,
@@ -69,6 +70,7 @@ export const navigation: NavSection[] = [
     items: [
       { href: '/receivables', label: 'nav.receivables', icon: HandCoins, feature: 'customerCredit' },
       { href: '/payables', label: 'nav.payables', icon: Wallet, feature: 'supplierCredit' },
+      { href: '/financial-accounts', label: 'reports.cash', icon: Landmark },
       { href: '/expenses', label: 'nav.expenses', icon: Receipt },
       { href: '/profit-loss', label: 'nav.profitLoss', icon: PieChart },
     ],
