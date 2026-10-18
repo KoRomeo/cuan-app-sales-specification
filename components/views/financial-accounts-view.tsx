@@ -43,7 +43,7 @@ export function FinancialAccountsView() {
   const ledger = accounting?.ledger ?? {}
   const accounts: CashAccount[] = (savedAccounts ?? []).map((account) => {
     const movement = ledger[account.name]
-    return { ...account, balance: Number(account.openingBalance) + (movement?.debit ?? 0) - (movement?.credit ?? 0) }
+    return { ...account, balance: (movement?.debit ?? 0) - (movement?.credit ?? 0) }
   }).sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name))
   const activeAccounts = accounts.filter((account) => account.active)
   const total = activeAccounts.reduce((sum, account) => sum + account.balance, 0)
