@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
-import { asc, eq } from "drizzle-orm"
+import { and, asc, eq } from "drizzle-orm"
 import { db } from "@/lib/db"
-import { financialAccounts } from "@/lib/db/schema"
+import { financialAccounts, journalEntries, journalEntryLines } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
 
 export async function GET(request: Request) {
@@ -30,10 +30,25 @@ export async function POST(request: Request) {
     }
     const access = await requireBusinessAccess(businessId)
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
-    const id = `FA-${crypto.randomUUID()}`
-    const [created] = await db.insert(financialAccounts).values({
-      id, businessId, name: name.trim(), type, openingBalance: String(openingBalance), active: true,
-    }).returning()
+    const created = await db.transaction(async (tx) => {
+      const id = `FA-${crypto.randomUUID()}`
+      const [account] = await tx.insert(financialAccounts).values({
+        id, businessId, name: name.trim(), type, openingBalance: String(openingBalance), active: true,
+      }).returning()
+      if (openingBalance > 0) {
+        const entryId = `JE-OPENING-${id}`
+        const amount = openingBalance.toFixed(2)
+        await tx.insert(journalEntries).values({
+          id: entryId, businessId, entryDate: new Date().toISOString().slice(0, 10),
+          kind: "opening", reference: id, description: `Opening balance for ${name.trim()}`,
+        })
+        await tx.insert(journalEntryLines).values([
+          { id: `${entryId}-debit`, journalEntryId: entryId, account: name.trim(), debit: amount, credit: "0" },
+          { id: `${entryId}-credit`, journalEntryId: entryId, account: "Opening Balance Equity", debit: "0", credit: amount },
+        ])
+      }
+      return account
+    })
     return NextResponse.json(created, { status: 201 })
   } catch (error) {
     console.error("Failed to create financial account", error)
@@ -51,8 +66,8 @@ export async function PATCH(request: Request) {
     }
     const access = await requireBusinessAccess(businessId)
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
-    const [updated] = await db.update(financialAccounts).set({ active }).where(eq(financialAccounts.id, id)).returning()
-    if (!updated || updated.businessId !== businessId) return NextResponse.json({ error: "Financial account not found" }, { status: 404 })
+    const [updated] = await db.update(financialAccounts).set({ active }).where(and(eq(financialAccounts.id, id), eq(financialAccounts.businessId, businessId))).returning()
+    if (!updated) return NextResponse.json({ error: "Financial account not found" }, { status: 404 })
     return NextResponse.json(updated)
   } catch (error) {
     console.error("Failed to update financial account", error)
