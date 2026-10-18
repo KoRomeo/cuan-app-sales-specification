@@ -66,6 +66,7 @@ function PersistedPaymentHistory({ businessId, kind }: { businessId: string | un
       )}
       <button type="button" className="sr-only" onClick={() => mutate()}>Refresh payment history</button>
     </SectionCard>
+    </div>
   )
 }
 
