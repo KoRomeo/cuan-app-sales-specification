@@ -1,0 +1,11 @@
+warning: in the working copy of 'pnpm-workspace.yaml', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/pnpm-workspace.yaml b/pnpm-workspace.yaml[m
+[1mindex 4f2c9c6..0e78b55 100644[m
+[1m--- a/pnpm-workspace.yaml[m
+[1m+++ b/pnpm-workspace.yaml[m
+[36m@@ -5,4 +5,4 @@[m [mminimumReleaseAgeExclude:[m
+   - next[m
+ [m
+ allowBuilds:[m
+[31m-  esbuild: set this to true or false[m
+[32m+[m[32m  esbuild: true[m
