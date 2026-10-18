@@ -182,7 +182,8 @@ export function DocumentPreview({
                 <div><p>Diterima oleh</p><p className="text-[10px]">(Nama / tanda tangan)</p><div className="mt-16 border-b border-black" /><p className="mt-2">{order.delivery?.recipient ?? customer?.name ?? 'Nama jelas:'}</p></div>
               </section>
               <p className="mt-8 border-t border-dashed border-gray-400 pt-2 text-center text-[10px] text-gray-600">Mohon periksa jumlah dan kondisi barang sebelum menandatangani surat jalan.</p>
-            </article>}
+            </article>
+          )}
         </div>
       </DialogContent>
     </Dialog>
