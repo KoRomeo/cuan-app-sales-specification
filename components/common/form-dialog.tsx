@@ -260,7 +260,7 @@ export function FormDialog({
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={isChecking} aria-label={isChecking ? t('form.checking') : submitLabel ?? t('form.validateAction')}>
+            <Button type="submit" disabled={isChecking} aria-label={isChecking ? (persisted ? 'Saving…' : t('form.checking')) : submitLabel ?? (persisted ? t('common.save') : t('form.validateAction'))}>
               {isChecking && <LoaderCircle data-icon="inline-start" className="animate-spin" aria-hidden="true" />}
               {isChecking ? t('form.checking') : submitLabel ?? t('form.validateAction')}
             </Button>
