@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth"
 import { businessMembers, customers, journalEntries, journalEntryLines, orderItems, orders, payments, products, stockMovements } from "@/lib/db/schema"
 import { headers } from "next/headers"
 import { generateEntityId } from "@/lib/db/ids"
+import { writeAudit } from "@/lib/audit"
 
 const STATUSES = ["requested", "ready", "delivered", "cancelled"] as const
 type Status = (typeof STATUSES)[number]
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
       }
       return generatedId
     })
+    await writeAudit({ businessId, page: "Orders", action: "Created order", reference: id })
     return NextResponse.json({ message: "Order created successfully", id }, { status: 201 })
   } catch (error) { return fail(error) }
 }
@@ -141,6 +143,7 @@ export async function PATCH(request: NextRequest) {
       }
             await tx.update(orders).set({ ...(orderDate !== undefined ? { date: orderDate } : {}), ...(customerId !== undefined ? { customerId } : {}), ...(dueDate !== undefined ? { dueDate: dueDate || null } : {}), ...(notes !== undefined ? { notes: notes || null } : {}), status: next }).where(and(eq(orders.id, id), eq(orders.businessId, businessId)))
     })
+    await writeAudit({ businessId, page: "Orders", action: `Updated order (${status ?? "details"})`, reference: id })
     return NextResponse.json({ message: "Order updated successfully", id })
   } catch (error) { return fail(error) }
 }
