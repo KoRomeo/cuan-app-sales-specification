@@ -239,7 +239,7 @@ export function FormDialog({
                         max={field.max}
                         aria-invalid={Boolean(errors[field.name])}
                         aria-describedby={describedBy}
-                        onChange={() => clearFieldError(field.name)}
+                        onChange={(event) => { clearFieldError(field.name); field.onValueChange?.(event.currentTarget.value) }}
                         className={cn(field.prefix && 'pl-8', field.type === 'number' && 'font-mono tabular-nums')}
                       />
                     </div>
