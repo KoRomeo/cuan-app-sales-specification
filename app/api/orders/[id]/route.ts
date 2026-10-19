@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { businessMembers, customers, deliveries, journalEntries, orderItems, orders, payments, products, replacements, stockMovements } from "@/lib/db/schema"
+import { writeAudit } from "@/lib/audit"
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -48,17 +49,21 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       const [payment] = await tx.select({ id: payments.id }).from(payments).where(and(eq(payments.orderId, id), eq(payments.businessId, businessId))).limit(1)
       const [delivery] = await tx.select({ id: deliveries.id }).from(deliveries).where(eq(deliveries.orderId, id)).limit(1)
       const [replacement] = await tx.select({ id: replacements.id }).from(replacements).where(and(eq(replacements.orderId, id), eq(replacements.businessId, businessId))).limit(1)
-      const [movement] = await tx.select({ id: stockMovements.id }).from(stockMovements).where(and(eq(stockMovements.businessId, businessId), eq(stockMovements.reference, `order:${id}:sale`))).limit(1)
-      const [journal] = await tx.select({ id: journalEntries.id }).from(journalEntries).where(and(eq(journalEntries.businessId, businessId), eq(journalEntries.reference, id))).limit(1)
-      if (payment || delivery || replacement || movement || journal) throw new Error("ORDER_HAS_HISTORY")
+      if (payment) throw new Error("ORDER_PAID")
+      if (delivery || replacement) throw new Error("ORDER_HAS_HISTORY")
+      await tx.delete(stockMovements).where(and(eq(stockMovements.businessId, businessId), eq(stockMovements.reference, `order:${id}:sale`)))
+      await tx.delete(journalEntries).where(and(eq(journalEntries.businessId, businessId), eq(journalEntries.reference, id)))
+      await tx.delete(orderItems).where(eq(orderItems.orderId, id))
       await tx.delete(orders).where(and(eq(orders.id, id), eq(orders.businessId, businessId)))
     })
+    await writeAudit({ businessId, page: "Orders", action: "Deleted unpaid order; outstanding receivable reversed", reference: id })
     return NextResponse.json({ message: "Order deleted successfully", id })
   } catch (error) {
     const message = error instanceof Error ? error.message : ""
     if (message === "ORDER_NOT_FOUND") return NextResponse.json({ error: "Order not found" }, { status: 404 })
     if (message === "ORDER_NOT_DELETABLE") return NextResponse.json({ error: "Only requested orders with no related activity can be deleted. Cancel or retain this order instead." }, { status: 409 })
-    if (message === "ORDER_HAS_HISTORY") return NextResponse.json({ error: "This order has related payment, delivery, replacement, stock, or accounting history and cannot be deleted." }, { status: 409 })
+    if (message === "ORDER_PAID") return NextResponse.json({ error: "An order with any partial or full payment cannot be deleted." }, { status: 409 })
+    if (message === "ORDER_HAS_HISTORY") return NextResponse.json({ error: "Orders with an existing delivery or replacement cannot be deleted." }, { status: 409 })
     console.error("Order deletion failed", error)
     return NextResponse.json({ error: "Unable to delete order" }, { status: 500 })
   }
