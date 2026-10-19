@@ -58,13 +58,13 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
       </div>
       <div className="flex flex-col gap-4">
         <SectionCard title="Purchase summary">
-          <DetailRow label="Purchase date" value={formatDate(data.date)} />
-          <DetailRow label="Supplier" value={data.supplier?.name ?? data.supplierId} />
-          <DetailRow label="Due date" value={data.dueDate ? formatDate(data.dueDate) : 'No due date'} />
-          <DetailRow label="Total" value={formatIDR(total)} />
-          <DetailRow label="Paid" value={formatIDR(paid)} />
-          <DetailRow label="Outstanding" value={formatIDR(outstanding)} />
-          {data.notes && <DetailRow label="Notes" value={data.notes} />}
+          <DetailRow label="Purchase date">{formatDate(data.date)}</DetailRow>
+          <DetailRow label="Supplier">{data.supplier?.name ?? data.supplierId}</DetailRow>
+          <DetailRow label="Due date">{data.dueDate ? formatDate(data.dueDate) : 'No due date'}</DetailRow>
+          <DetailRow label="Total">{formatIDR(total)}</DetailRow>
+          <DetailRow label="Paid">{formatIDR(paid)}</DetailRow>
+          <DetailRow label="Outstanding">{formatIDR(outstanding)}</DetailRow>
+          {data.notes && <DetailRow label="Notes">{data.notes}</DetailRow>}
         </SectionCard>
       </div>
     </div>
