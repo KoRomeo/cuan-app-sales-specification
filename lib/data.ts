@@ -49,6 +49,7 @@ export interface Delivery {
   date: string
   method: DeliveryMethod
   recipient: string
+  driverName?: string
   address: string
   transportCost: number
 }
