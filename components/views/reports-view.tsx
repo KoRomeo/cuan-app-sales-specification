@@ -16,6 +16,7 @@ type ReportData = {
   sales: any[]; purchases: any[]; inventory: any[]; payments: any[]; expenses: any[]
   deliveries: any[]; replacements: any[]; journals: any[]; ledger: any[]; history: any[]
 }
+const businessFetcher = async (url: string): Promise<{id:string}> => { const response = await fetch(url); if (!response.ok) throw new Error('Unable to load business'); return response.json() }
 const fetcher = async (url: string): Promise<ReportData> => {
   const response = await fetch(url)
   if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error ?? 'Unable to load reports')
@@ -62,7 +63,7 @@ export function ReportsView() {
   const [from,setFrom] = useState(monthStart)
   const [to,setTo] = useState(todayISO)
   const [search,setSearch] = useState('')
-  const {data:business} = useSWR<{id:string}>('/api/businesses/current', fetcher)
+  const {data:business} = useSWR<{id:string}>('/api/businesses/current', businessFetcher)
   const query = business?.id && from && to && from <= to ? '/api/reports?businessId='+encodeURIComponent(business.id)+'&from='+from+'&to='+to : null
   const {data,error,isLoading,mutate} = useSWR<ReportData>(query,fetcher)
   const s = data?.summary ?? {}
