@@ -122,7 +122,7 @@ export function DocumentPreview({
               </section>
             </article>
           ) : (
-            <article className="print-area mx-auto min-h-[10.5in] w-full max-w-[7.3in] bg-white px-5 py-6 text-[11px] leading-snug text-black shadow-sm md:px-8 md:py-8 print:min-h-0 print:max-w-none print:px-0 print:py-0 print:shadow-none">
+            <article className="print-area mx-auto aspect-[105/148] w-full max-w-[105mm] overflow-hidden bg-white px-4 py-4 text-[9px] leading-tight text-black shadow-sm print:aspect-[105/148] print:h-[148mm] print:w-[105mm] print:max-w-none print:px-[5mm] print:py-[5mm] print:shadow-none">
               <div className="border-t border-black pt-2">
                 <div className="flex items-start justify-between gap-4">
                   <h1 className="text-[30px] font-black leading-none tracking-tight">{t('deliveries.document').toUpperCase()}</h1>
