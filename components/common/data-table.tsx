@@ -106,6 +106,9 @@ interface DataTableProps<T> {
   toolbarExtra?: React.ReactNode
   footer?: React.ReactNode
   scrollable?: boolean
+  selectable?: boolean
+  selectedRowIds?: string[]
+  onSelectedRowIdsChange?: (ids: string[]) => void
 }
 
 export function DataTable<T>({
@@ -127,6 +130,9 @@ export function DataTable<T>({
   toolbarExtra,
   footer,
   scrollable = true,
+  selectable = false,
+  selectedRowIds = [],
+  onSelectedRowIdsChange,
 }: DataTableProps<T>) {
   const { t } = useApp()
   const router = useRouter()
@@ -262,6 +268,7 @@ export function DataTable<T>({
         <table aria-label={t('common.dataTable')} aria-busy={loading} className={cn('w-full text-sm', scrollable ? 'min-w-[720px]' : 'table-fixed')}>
           <thead>
             <tr className="border-b bg-muted/40">
+              {selectable && <th className="w-10 px-3"><input aria-label="Select all visible rows" type="checkbox" checked={visibleRows.length > 0 && visibleRows.every((row) => selectedRowIds.includes(getRowId(row)))} onChange={(event) => { const ids = new Set(selectedRowIds); visibleRows.forEach((row) => event.target.checked ? ids.add(getRowId(row)) : ids.delete(getRowId(row))); onSelectedRowIdsChange?.([...ids]) }} /></th>}
               {visibleColumns.map((c) => {
                 const sortable = c.sortable !== false
                 const direction = sort?.key === c.key ? sort.dir : null
