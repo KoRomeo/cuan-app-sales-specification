@@ -18,7 +18,6 @@ export async function GET(request: Request) {
       .leftJoin(user, eq(auditLogs.userId, user.id))
       .where(eq(auditLogs.businessId, businessId))
       .orderBy(desc(auditLogs.date), desc(auditLogs.time))
-      .limit(200)
     const ids = logs.map((log) => log.id)
     const changes = ids.length
       ? await db.select().from(auditLogChanges).where(inArray(auditLogChanges.auditLogId, ids))
