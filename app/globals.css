@@ -206,12 +206,23 @@
     break-inside: avoid !important;
   }
   .print-area table {
-    margin-top: 4mm !important;
-    font-size: 7pt !important;
+    margin-top: 2mm !important;
+    font-size: 6.5pt !important;
+  }
+  .print-area tr {
+    height: 4mm !important;
   }
   .print-area th, .print-area td {
-    padding: 1.2mm !important;
+    height: 4mm !important;
+    padding: 0.6mm !important;
+    line-height: 1.1 !important;
   }
+  .print-area .mt-10 { margin-top: 3mm !important; }
+  .print-area .mt-12 { margin-top: 3mm !important; }
+  .print-area .mt-20 { margin-top: 4mm !important; }
+  .print-area .mt-8 { margin-top: 2mm !important; }
+  .print-area .py-5 { padding-top: 2mm !important; padding-bottom: 2mm !important; }
+  .print-area .py-4 { padding-top: 2mm !important; padding-bottom: 2mm !important; }
   .print-area h1 {
     font-size: 19pt !important;
   }
