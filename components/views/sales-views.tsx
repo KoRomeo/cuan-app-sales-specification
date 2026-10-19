@@ -370,6 +370,7 @@ type PersistedDelivery = {
   date: string
   method: 'own' | 'expedition' | 'pickup'
   recipient: string
+  driverName: string
   address: string
   transportCost: string | number
   orders: Array<{ id: string; customerId: string; customerName: string }>
@@ -397,6 +398,7 @@ export function DeliveriesView() {
     { key: 'customer', header: t('common.customer'), cell: (d) => <span className="font-medium">{[...new Set(d.orders.map((o) => o.customerName))].join(', ')}</span> },
     { key: 'method', header: t('orders.method'), cell: (d) => <Pill tone={d.method === 'pickup' ? 'neutral' : 'primary'}>{t(`method.${d.method}`)}</Pill> },
     { key: 'recipient', header: t('orders.recipient'), cell: (d) => d.recipient || '—' },
+    { key: 'driver', header: 'Driver name', cell: (d) => d.driverName || '—' },
     { key: 'transport', header: t('orders.transportCost'), align: 'right', cell: (d) => <Money value={Number(d.transportCost)} className={Number(d.transportCost) === 0 ? 'text-muted-foreground' : ''} /> },
   ]
   const saveDelivery = async (values: Record<string, string>) => {
@@ -408,7 +410,7 @@ export function DeliveriesView() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         businessId: business.id, orderIds, date: values.date, method: values.method,
-        recipient: values.recipient?.trim() ?? '', address: values.address?.trim() ?? '',
+        recipient: values.recipient?.trim() ?? '', driverName: values.driverName?.trim() ?? '', address: values.address?.trim() ?? '',
         transportCost: Number(values.transportCost || 0),
       }),
     })
@@ -431,7 +433,7 @@ export function DeliveriesView() {
           rows={delivered}
           columns={columns}
           getRowId={(d) => d.id}
-          searchText={(d) => `${d.id} ${d.orders.map((o) => o.id + ' ' + o.customerName).join(' ')} ${d.recipient}`}
+          searchText={(d) => `${d.id} ${d.orders.map((o) => o.id + ' ' + o.customerName).join(' ')} ${d.recipient} ${d.driverName}`}
           filters={[
             { value: 'all', label: t('common.all'), predicate: () => true },
             { value: 'own', label: t('method.own'), predicate: (d) => d.method === 'own' },
