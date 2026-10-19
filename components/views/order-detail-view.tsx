@@ -230,6 +230,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
                 <DetailRow label={t('orders.method')}>{t(`method.${order.delivery.method}`)}</DetailRow>
                 <DetailRow label={t('orders.transportCost')}><span className="font-mono">{formatIDR(order.delivery.transportCost)}</span></DetailRow>
                 <DetailRow label={t('orders.recipient')}>{order.delivery.recipient}</DetailRow>
+                <DetailRow label="Driver name">{order.delivery.driverName || '—'}</DetailRow>
                 <DetailRow label={t('common.address')}>{order.delivery.address}</DetailRow>
               </dl>
             ) : (
@@ -397,6 +398,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
               date: values.date,
               method: values.method,
               recipient: values.recipient,
+              driverName: values.driverName,
               address: values.address,
               transportCost: Number(values.transport || 0),
             }),
@@ -415,6 +417,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
           { name: 'method', label: t('orders.method'), type: 'select', defaultValue: methodOptions[0]?.value ?? 'pickup', half: true, options: methodOptions },
           { name: 'recipient', label: t('orders.recipient'), defaultValue: customer?.name ?? '', half: true },
+          { name: 'driverName', label: 'Driver name', placeholder: 'Enter driver name', half: true },
           { name: 'transport', label: t('orders.transportCost'), type: 'number', prefix: 'Rp', defaultValue: '0', min: 0, half: true },
           { name: 'address', label: t('common.address'), type: 'textarea', defaultValue: customer?.address ?? '', required: false },
         ]}
