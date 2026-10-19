@@ -160,7 +160,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
                         <td className="px-4 py-3 md:px-5">
                           <p className="font-medium">{p?.name}</p>
                           <p className="font-mono text-[11px] text-muted-foreground">{p?.id} · {t('orders.cogs')} {formatIDR(it.unitCost)}</p>
-                          <p className={`mt-1 text-xs ${p && p.stock < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>Stock now: {p ? p.stock : '—'} · After this order: {p ? p.stock - Number(it.qty) : '—'}</p>
+                          <p className={`mt-1 text-xs ${p && p.stock < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>Stock before order: {p ? p.stock + Number(it.qty) : '—'} · After order: {p ? p.stock : '—'}</p>
                         </td>
                         <td className="px-4 py-3 text-right font-mono tabular-nums">{it.qty}</td>
                         <td className="px-4 py-3 text-right font-mono tabular-nums">{formatIDR(it.price)}</td>
