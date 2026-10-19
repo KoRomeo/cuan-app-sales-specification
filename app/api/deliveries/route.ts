@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     const allowed = await access(businessId)
     if (!allowed.ok) return NextResponse.json({ error: allowed.error }, { status: allowed.status })
 
-    const id = await db.transaction(async (tx) => {
+    const deliveryIds = await db.transaction(async (tx) => {
       const foundOrders = await tx.select().from(orders)
         .where(and(eq(orders.businessId, businessId), inArray(orders.id, orderIds))).for("update")
       if (foundOrders.length !== orderIds.length) throw new Error("ORDER_NOT_FOUND")
@@ -92,8 +92,8 @@ export async function POST(request: Request) {
         .where(and(eq(orders.businessId, businessId), inArray(orders.id, orderIds)))
       return deliveryIds
     })
-    await writeAudit({ businessId, page: "Deliveries", action: "Created delivery", reference: id })
-    return NextResponse.json({ message: "Delivery recorded successfully", ids: id, orderIds }, { status: 201 })
+    await writeAudit({ businessId, page: "Deliveries", action: "Created delivery", reference: deliveryIds.join(", ") })
+    return NextResponse.json({ message: "Delivery recorded successfully", ids: deliveryIds, orderIds }, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : ""
     const map: Record<string, [string, number]> = {
