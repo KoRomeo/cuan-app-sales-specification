@@ -102,11 +102,18 @@ export function PurchasesView() {
         title={t('purchases.add')}
         onSubmit={async (values) => {
           const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
+          const qty = Number(values.qty)
+          const unitCost = Number(values.price)
+          const total = qty * unitCost
+          const paidAmount = Number(values.paid || 0)
+          if (!Number.isFinite(total) || total < 0 || !Number.isFinite(paidAmount) || paidAmount < 0) throw new Error('Enter a valid quantity and amount.')
+          if (paidAmount > total) throw new Error('Amount paid cannot exceed the purchase total (' + formatIDR(total) + ').')
+          const stamp = crypto.randomUUID()
           const response = await fetch('/api/purchases', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-            id: `PUR-${Date.now()}`, businessId: business.id, date: values.date, supplierId: values.supplier, dueDate: values.due || null,
-            paidAmount: Number(values.paid || 0), paymentId: Number(values.paid || 0) > 0 ? `PAY-S-${Date.now()}` : undefined,
+            businessId: business.id, date: values.date, supplierId: values.supplier, dueDate: values.due || null,
+            paidAmount, paymentId: paidAmount > 0 ? 'PAY-' + stamp : undefined,
             paymentDate: values.date, paymentAccount: 'Cash',
-            items: [{ id: `PI-${Date.now()}`, productId: values.product, qty: Number(values.qty), unitCost: Number(values.price) }],
+            items: [{ id: 'PI-' + stamp, productId: values.product, qty, unitCost }],
           }) })
           const result = await response.json()
           if (!response.ok) throw new Error(result.error ?? 'Unable to save purchase')
@@ -126,8 +133,8 @@ export function PurchasesView() {
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
           { name: 'product', label: t('common.product'), type: 'select', options: persistedProducts.map((p) => ({ value: p.id, label: `${p.name}${p.stock === undefined ? '' : ` (${p.stock})`}` })) },
           { name: 'qty', label: t('common.qty'), type: 'number', min: 1, placeholder: 'Quantity', half: true, onValueChange: setPurchaseQty },
-          { name: 'price', label: 'Unit purchase cost', type: 'number', prefix: 'Rp', min: 0, placeholder: 'Cost per unit', half: true, hint: 'Total purchase = quantity × unit cost.', onValueChange: setPurchaseUnitCost },
-          { name: 'paid', label: 'Amount paid now', type: 'number', prefix: 'Rp', min: 0, defaultValue: '0', half: true, hint: 'Enter 0 for unpaid, the full total for paid, or a partial amount.', onValueChange: setPurchasePaid },
+          { name: 'price', label: 'Unit purchase cost', type: 'number', prefix: 'Rp', min: 0, placeholder: '40000', half: true, onValueChange: setPurchaseUnitCost },
+          { name: 'paid', label: 'Amount paid now', type: 'number', prefix: 'Rp', min: 0, max: purchaseTotalPreview, defaultValue: '0', half: true, onValueChange: setPurchasePaid },
           { name: 'due', label: t('common.dueDate'), type: 'date', required: false, half: true },
         ]}
         persisted
