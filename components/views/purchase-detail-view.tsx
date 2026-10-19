@@ -3,11 +3,12 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
-import { ArrowLeft, Wallet } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FormDialog } from '@/components/common/form-dialog'
 import { PageHeader } from '@/components/common/page-header'
 import { DetailRow, SectionCard } from '@/components/common/section-card'
+import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { PaymentStatusBadge } from '@/components/common/status-badge'
 import { useApp } from '@/components/providers'
 import { purchaseOutstanding, purchasePaid, purchasePaymentStatus, purchaseTotal, TODAY } from '@/lib/data'
@@ -34,6 +35,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
   const { t } = useApp()
   const { mutate: globalMutate } = useSWRConfig()
   const [payOpen, setPayOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: accounts } = useSWR<Array<{ id: string; name: string; active: boolean }>>(business?.id ? '/api/financial-accounts?businessId=' + encodeURIComponent(business.id) : null, fetcher)
   const { data, error, mutate } = useSWR<PurchaseDetail>(business?.id ? '/api/purchases/' + encodeURIComponent(purchaseId) + '?businessId=' + encodeURIComponent(business.id) : null, fetcher)
@@ -46,7 +48,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
   const outstanding = purchaseOutstanding(purchase as any)
   const productById = new Map(data.products.map((product) => [product.id, product]))
   return <>
-    <PageHeader breadcrumbs={[{ label: t('nav.purchasing') }, { label: t('nav.purchases'), href: '/purchases' }, { label: data.id }]} title={<span className="font-mono">{data.id}</span>} description={data.supplier?.name ?? data.supplierId} meta={<PaymentStatusBadge status={purchasePaymentStatus(purchase as any)} />} actions={<Button variant="outline" size="sm" nativeButton={false} render={<Link href="/purchases" />}><ArrowLeft /> Back to purchases</Button>} />
+    <PageHeader breadcrumbs={[{ label: t('nav.purchasing') }, { label: t('nav.purchases'), href: '/purchases' }, { label: data.id }]} title={<span className="font-mono">{data.id}</span>} meta={<PaymentStatusBadge status={purchasePaymentStatus(purchase as any)} />} actions={<><Button variant="outline" size="sm" nativeButton={false} render={<Link href={'/purchases?edit=' + encodeURIComponent(data.id)} />}><Pencil /> {t('common.edit')}</Button><Button variant="outline" size="sm" nativeButton={false} render={<Link href="/purchases" />}><ArrowLeft /> Back to purchases</Button><Button variant="outline" size="sm" className="text-destructive hover:bg-pink-100 hover:text-red-700 dark:hover:bg-red-950/40" disabled={paid > 0} onClick={() => setDeleteOpen(true)}><Trash2 /> Delete purchase</Button></>} />
     <div className="grid gap-4 lg:grid-cols-3">
       <div className="flex flex-col gap-4 lg:col-span-2">
         <SectionCard title="Purchase items" bodyClassName="p-0 md:p-0">
@@ -57,9 +59,8 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
         </SectionCard>
       </div>
       <div className="flex flex-col gap-4">
-        <SectionCard title="Purchase summary">
+        <SectionCard title="Purchase information">
           <DetailRow label="Purchase date">{formatDate(data.date)}</DetailRow>
-          <DetailRow label="Supplier">{data.supplier?.name ?? data.supplierId}</DetailRow>
           <DetailRow label="Due date">{data.dueDate ? formatDate(data.dueDate) : 'No due date'}</DetailRow>
           <DetailRow label="Total">{formatIDR(total)}</DetailRow>
           <DetailRow label="Paid">{formatIDR(paid)}</DetailRow>
@@ -68,6 +69,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
         </SectionCard>
       </div>
     </div>
+    <ConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} title="Delete purchase" description={paid > 0 ? 'Purchases with any payment cannot be deleted.' : 'Delete this purchase? This action cannot be undone.'} confirmLabel="Delete purchase" onConfirm={async () => { if (!business?.id || paid > 0) return; const response = await fetch('/api/purchases/' + encodeURIComponent(data.id) + '?businessId=' + encodeURIComponent(business.id), { method: 'DELETE' }); const result = await response.json(); if (!response.ok) throw new Error(result.error ?? 'Unable to delete purchase'); await globalMutate('/api/purchases?businessId=' + encodeURIComponent(business.id)); window.location.href = '/purchases'; }} />
     <FormDialog open={payOpen} onOpenChange={setPayOpen} title={t('orders.addPayment')} description={'Purchase ' + data.id + ' · Outstanding: ' + formatIDR(outstanding)} persisted onSubmit={async (values) => {
       if (!business?.id) throw new Error('Business access required')
       const response = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: 'PAY-' + crypto.randomUUID(), businessId: business.id, purchaseId: data.id, date: values.date, amount: Number(values.amount), account: values.account }) })
