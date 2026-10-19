@@ -102,6 +102,7 @@ export async function POST(request: Request) {
         { id: `${entryId}-credit`, journalEntryId: entryId, account: account.trim(), debit: "0", credit: amount.toFixed(2) },
       ])
     })
+    await writeAudit({ businessId, page: "Payments", action: orderId ? "Recorded customer payment" : "Recorded supplier payment", reference: id })
     return NextResponse.json({ message: "Payment recorded successfully", id }, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : ""
