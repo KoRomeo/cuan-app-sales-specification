@@ -169,6 +169,7 @@ export function FormDialog({
                         />
                       </div>
                       <select
+                        key={field.name + '-' + (field.defaultValue ?? '')}
                         id={id}
                         name={field.name}
                         defaultValue={field.defaultValue}
@@ -187,6 +188,7 @@ export function FormDialog({
                     </div>
                   ) : field.type === 'select' || field.type === 'multiselect' ? (
                     <select
+                      key={field.name + '-' + (field.defaultValue ?? '')}
                       id={id}
                       name={field.name}
                       defaultValue={field.defaultValue}
@@ -205,6 +207,7 @@ export function FormDialog({
                     </select>
                   ) : field.type === 'textarea' ? (
                     <Textarea
+                      key={field.name + '-' + (field.defaultValue ?? '')}
                       id={id}
                       name={field.name}
                       defaultValue={field.defaultValue}
@@ -224,6 +227,7 @@ export function FormDialog({
                         </span>
                       )}
                       <Input
+                        key={field.name + '-' + (field.defaultValue ?? '')}
                         id={id}
                         name={field.name}
                         type={field.type ?? 'text'}
