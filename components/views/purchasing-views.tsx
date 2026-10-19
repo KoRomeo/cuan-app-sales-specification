@@ -34,11 +34,6 @@ function mapPurchase(row: PersistedPurchase, payments: PersistedPayment[]): Purc
 
 export function PurchasesView() {
   const { t } = useApp()
-  const [open, setOpen] = useState(false)
-  const [purchaseQty, setPurchaseQty] = useState('')
-  const [purchaseUnitCost, setPurchaseUnitCost] = useState('')
-  const [purchasePaidAmount, setPurchasePaid] = useState('0')
-  const purchaseTotalPreview = Math.max(0, Number(purchaseQty) || 0) * Math.max(0, Number(purchaseUnitCost) || 0)
   const { mutate: globalMutate } = useSWRConfig()
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: persistedPurchases, error: purchasesError, mutate: mutatePurchases } = useSWR<PersistedPurchase[]>(business?.id ? `/api/purchases?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
@@ -94,57 +89,9 @@ export function PurchasesView() {
           { value: 'paid', label: t('pay.paid'), predicate: (p) => purchasePaymentStatus(p) === 'paid' },
         ]}
         addLabel={t('purchases.add')}
-        onAdd={() => { setPurchaseQty(''); setPurchaseUnitCost(''); setPurchasePaid('0'); setOpen(true) }}
+        onAdd={() => { window.location.href = '/purchases/new' }}
       />
-      <FormDialog
-        open={open}
-        onOpenChange={(nextOpen) => { setOpen(nextOpen); if (!nextOpen) { setPurchaseQty(''); setPurchaseUnitCost(''); setPurchasePaid('0') } }}
-        title={t('purchases.add')}
-        onSubmit={async (values) => {
-          const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
-          const qty = Number(values.qty)
-          const unitCost = Number(values.price)
-          const total = qty * unitCost
-          const paidAmount = Number(values.paid || 0)
-          if (!Number.isFinite(total) || total < 0 || !Number.isFinite(paidAmount) || paidAmount < 0) throw new Error('Enter a valid quantity and amount.')
-          if (paidAmount > total) throw new Error('Amount paid cannot exceed the purchase total (' + formatIDR(total) + ').')
-          const stamp = crypto.randomUUID()
-          const response = await fetch('/api/purchases', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-            businessId: business.id, date: values.date, supplierId: values.supplier, dueDate: values.due || null,
-            paidAmount, paymentId: paidAmount > 0 ? 'PAY-' + stamp : undefined,
-            paymentDate: values.date, paymentAccount: 'Cash',
-            items: [{ id: 'PI-' + stamp, productId: values.product, qty, unitCost }],
-          }) })
-          const result = await response.json()
-          if (!response.ok) throw new Error(result.error ?? 'Unable to save purchase')
-          setOpen(false)
-          await Promise.all([
-            mutatePurchases(),
-            mutatePayments(),
-            globalMutate(`/api/products?businessId=${encodeURIComponent(business.id)}`),
-            globalMutate(`/api/stock?businessId=${encodeURIComponent(business.id)}`),
-            globalMutate(`/api/accounting?businessId=${encodeURIComponent(business.id)}`),
-            globalMutate(`/api/dashboard?businessId=${encodeURIComponent(business.id)}`),
-          ])
-          toast.success(t('form.savedFeedback'))
-        }}
-        fields={[
-          { name: 'supplier', label: t('common.supplier'), type: 'select', half: true, options: persistedSuppliers.map((s) => ({ value: s.id, label: s.name })) },
-          { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'product', label: t('common.product'), type: 'select', options: persistedProducts.map((p) => ({ value: p.id, label: `${p.name}${p.stock === undefined ? '' : ` (${p.stock})`}` })) },
-          { name: 'qty', label: t('common.qty'), type: 'number', min: 1, placeholder: 'Quantity', half: true, onValueChange: setPurchaseQty },
-          { name: 'price', label: 'Unit purchase cost', type: 'number', prefix: 'Rp', min: 0, placeholder: '40000', half: true, onValueChange: setPurchaseUnitCost },
-          { name: 'paid', label: 'Amount paid now', type: 'number', prefix: 'Rp', min: 0, max: purchaseTotalPreview, defaultValue: '0', half: true, onValueChange: setPurchasePaid },
-          { name: 'due', label: t('common.dueDate'), type: 'date', required: false, half: true },
-        ]}
-        persisted
-      >
-        <div className="rounded-lg border bg-muted/30 px-3 py-3">
-          <p className="text-xs text-muted-foreground">Total purchase payable</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums">{formatIDR(purchaseTotalPreview)}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Outstanding after payment: {formatIDR(Math.max(0, purchaseTotalPreview - (Number(purchasePaidAmount) || 0)))}</p>
-        </div>
-      </FormDialog>
+
     </>
   )
 }
