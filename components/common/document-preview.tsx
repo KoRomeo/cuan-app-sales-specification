@@ -38,7 +38,7 @@ export function DocumentPreview({
             <DialogTitle className="text-sm">{isInvoice ? t('orders.viewInvoice') : t('orders.suratJalan')}</DialogTitle>
             <DialogDescription className="font-mono text-xs">{docNo}</DialogDescription>
           </div>
-          <Button size="sm" variant="outline" className="mr-8" onClick={() => { onOpenChange(false); window.setTimeout(() => window.print(), 250) }}>
+          <Button size="sm" variant="outline" className="mr-8" onClick={() => window.print()}>
             <Printer />
             {t('common.print')}
           </Button>
