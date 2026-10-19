@@ -371,13 +371,13 @@ export function DataTable<T>({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
                           {href && (
-                            <DropdownMenuItem onClick={() => router.push(href)}>
+                            <DropdownMenuItem className="cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300 dark:focus:bg-blue-950/40" onClick={() => router.push(href)}>
                               <Eye />
                               {t('common.view')}
                             </DropdownMenuItem>
                           )}
                           {editable && !extra.some((action) => action.label === t('common.edit')) && (
-                            <DropdownMenuItem onClick={() => toast.info(t('form.editUnavailable'))}>
+                            <DropdownMenuItem className="cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300 dark:focus:bg-blue-950/40" onClick={() => toast.info(t('form.editUnavailable'))}>
                               <Pencil />
                               {t('common.edit')}
                             </DropdownMenuItem>
@@ -388,14 +388,20 @@ export function DataTable<T>({
                             return (
                               <DropdownMenuItem
                                 key={a.label}
+                                variant={/cancel|delete|remove/i.test(a.label) ? 'destructive' : 'default'}
+                                className={/cancel|delete|remove/i.test(a.label)
+                                  ? 'cursor-pointer transition-colors hover:bg-pink-100 hover:text-red-700 focus:bg-pink-100 focus:text-red-700 dark:hover:bg-red-950/50 dark:hover:text-red-300 dark:focus:bg-red-950/50'
+                                  : /view|preview|edit/i.test(a.label)
+                                    ? 'cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300 dark:focus:bg-blue-950/40'
+                                    : undefined}
                                 disabled={a.disabled}
                                 onClick={() => {
                                   if (a.onSelect) a.onSelect()
                                   else if (a.href) router.push(a.href)
                                 }}
                               >
-                                {Icon && <Icon />}
-                                {a.label}
+                                {Icon ? <Icon className="size-4" /> : /cancel|delete|remove/i.test(a.label) ? <Trash2 className="size-4" /> : /edit/i.test(a.label) ? <Pencil className="size-4" /> : /view|preview/i.test(a.label) ? <Eye className="size-4" /> : null}
+                                {/cancel/i.test(a.label) ? t('common.delete') : a.label}
                               </DropdownMenuItem>
                             )
                           })}
