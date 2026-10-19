@@ -446,6 +446,7 @@ export function DeliveriesView() {
             { value: 'pickup', label: t('method.pickup'), predicate: (d) => d.method === 'pickup' },
           ]}
           rowHref={(d) => `/orders/${d.orders[0]?.id ?? ''}`}
+          contextActions={(d) => [{ label: 'Delivery Note', icon: Printer, onSelect: () => { const orderId = d.orders[0]?.id; if (orderId) window.location.href = `/orders/${encodeURIComponent(orderId)}` } }]}
           addLabel={t('deliveries.title')}
           onAdd={() => setOpen(true)}
         />
