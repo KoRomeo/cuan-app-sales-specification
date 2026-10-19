@@ -15,6 +15,7 @@ import {
 } from "@/lib/db/schema"
 import { headers } from "next/headers"
 import { generateEntityId } from "@/lib/db/ids"
+import { writeAudit } from "@/lib/audit"
 
 type PurchaseInputItem = {
   id: string
@@ -267,6 +268,7 @@ export async function POST(request: NextRequest) {
       return id
     })
 
+    await writeAudit({ businessId, page: "Purchases", action: "Created purchase", reference: id })
     return NextResponse.json({ message: "Purchase created successfully", id }, { status: 201 })
   } catch (error) {
     return failure(error)
