@@ -3,6 +3,7 @@ import { and, desc, eq } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { expenses, journalEntries, journalEntryLines, financialAccounts } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
+import { writeAudit } from "@/lib/audit"
 import { generateEntityId } from "@/lib/db/ids"
 
 function validDate(value: unknown): value is string {
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
       ])
       return created
     })
+    await writeAudit({ businessId, page: "Expenses", action: "Created expense", reference: expense.id })
     return NextResponse.json(expense, { status: 201 })
   } catch (error) {
     if (error instanceof Error && error.message === "INVALID_FINANCIAL_ACCOUNT") {
