@@ -142,6 +142,7 @@ export function DataTable<T>({
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [sort, setSort] = useState<SortState>(null)
+  const [selectionMode, setSelectionMode] = useState(false)
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -268,7 +269,7 @@ export function DataTable<T>({
         <table aria-label={t('common.dataTable')} aria-busy={loading} className={cn('w-full text-sm', scrollable ? 'min-w-[720px]' : 'table-fixed')}>
           <thead>
             <tr className="border-b bg-muted/40">
-              {selectable && <th className="w-10 px-3"><input aria-label="Select all visible rows" type="checkbox" checked={visibleRows.length > 0 && visibleRows.every((row) => selectedRowIds.includes(getRowId(row)))} onChange={(event) => { const ids = new Set(selectedRowIds); visibleRows.forEach((row) => event.target.checked ? ids.add(getRowId(row)) : ids.delete(getRowId(row))); onSelectedRowIdsChange?.([...ids]) }} /></th>}
+              {selectable && selectionMode && <th className="w-10 px-3"><input aria-label="Select all visible rows" type="checkbox" checked={visibleRows.length > 0 && visibleRows.every((row) => selectedRowIds.includes(getRowId(row)))} onChange={(event) => { const ids = new Set(selectedRowIds); visibleRows.forEach((row) => event.target.checked ? ids.add(getRowId(row)) : ids.delete(getRowId(row))); onSelectedRowIdsChange?.([...ids]) }} /></th>}
               {visibleColumns.map((c) => {
                 const sortable = c.sortable !== false
                 const direction = sort?.key === c.key ? sort.dir : null
@@ -346,7 +347,7 @@ export function DataTable<T>({
                   onClick={href ? () => router.push(href) : undefined}
                   className={cn('border-b transition-colors last:border-0 hover:bg-muted/40', href && 'cursor-pointer')}
                 >
-                  {selectable && <td className="w-10 px-3"><input aria-label={`Select ${getRowId(row)}`} type="checkbox" checked={selectedRowIds.includes(getRowId(row))} onClick={(event) => event.stopPropagation()} onChange={(event) => { const ids = new Set(selectedRowIds); event.target.checked ? ids.add(getRowId(row)) : ids.delete(getRowId(row)); onSelectedRowIdsChange?.([...ids]) }} /></td>}
+                  {selectable && selectionMode && <td className="w-10 px-3"><input aria-label={`Select ${getRowId(row)}`} type="checkbox" checked={selectedRowIds.includes(getRowId(row))} onClick={(event) => event.stopPropagation()} onChange={(event) => { const ids = new Set(selectedRowIds); event.target.checked ? ids.add(getRowId(row)) : ids.delete(getRowId(row)); onSelectedRowIdsChange?.([...ids]) }} /></td>}
                   {visibleColumns.map((c, index) => {
                     const content = c.cell(row)
                     return (
@@ -390,6 +391,7 @@ export function DataTable<T>({
                               {t('common.edit')}
                             </DropdownMenuItem>
                           )}
+                          {selectable && <DropdownMenuItem onClick={() => setSelectionMode((current) => !current)} className="cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"><Eye className="size-4" />{selectionMode ? 'Hide selection' : 'Select'}</DropdownMenuItem>}
                           {extra.length > 0 && <DropdownMenuSeparator />}
                           {extra.map((a) => {
                             const Icon = a.icon
