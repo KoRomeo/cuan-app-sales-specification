@@ -86,6 +86,7 @@ export function PurchasesView() {
         columns={columns}
         getRowId={(p) => p.id}
         searchText={(p) => `${p.id} ${supplierByIdMap.get(p.supplierId)?.name} ${p.items.map((i) => productByIdMap.get(i.productId)?.name).join(' ')}`}
+        rowHref={(p) => `/purchases/${encodeURIComponent(p.id)}`}
         filters={[
           { value: 'all', label: t('common.all'), predicate: () => true },
           { value: 'unpaid', label: t('pay.unpaid'), predicate: (p) => purchasePaymentStatus(p) === 'unpaid' },
