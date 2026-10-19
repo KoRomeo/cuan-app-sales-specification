@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { businessMembers, customers } from "@/lib/db/schema";
 import { generateEntityId } from "@/lib/db/ids";
+import { writeAudit } from "@/lib/audit";
 
 async function getBusinessAccess(businessId: string) {
   const session = await auth.api.getSession({
@@ -146,6 +147,7 @@ export async function POST(request: Request) {
       return created;
     });
 
+    await writeAudit({ businessId, page: "Customers", action: "Created customer", reference: customer.id });
     return NextResponse.json(customer, { status: 201 });
   } catch (error) {
     return errorResponse(error, "create");
@@ -204,6 +206,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Customer not found" }, { status: 404 });
     }
 
+    await writeAudit({ businessId, page: "Customers", action: "Updated customer", reference: String(id) });
     return NextResponse.json(updated);
   } catch (error) {
     return errorResponse(error, "update");
@@ -249,6 +252,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Customer not found" }, { status: 404 });
     }
 
+    await writeAudit({ businessId, page: "Customers", action: "Deleted customer", reference: deleted.id });
     return NextResponse.json({ success: true, id: deleted.id });
   } catch (error) {
     return errorResponse(error, "delete");
