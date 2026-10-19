@@ -50,6 +50,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
   const { t, features } = useApp()
   const { data, error, mutate } = useSWR<DetailResponse>(`/api/orders/${encodeURIComponent(orderId)}`, fetcher)
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { data: financialAccounts } = useSWR<Array<{ id: string; name: string; active: boolean }>>(business?.id ? `/api/financial-accounts?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const [doc, setDoc] = useState<'invoice' | 'delivery' | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
@@ -363,9 +364,19 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
         open={payOpen}
         onOpenChange={setPayOpen}
         title={t('orders.addPayment')}
+        persisted
+        onSubmit={async (values) => {
+          if (!business?.id) throw new Error('Business access required')
+          const response = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: `PAY-${crypto.randomUUID()}`, businessId: business.id, orderId: order.id, date: values.date, amount: Number(values.amount), account: values.account }) })
+          const result = await response.json()
+          if (!response.ok) throw new Error(result.error ?? 'Unable to record payment')
+          await Promise.all([mutate(), fetch(`/api/accounting?businessId=${encodeURIComponent(business.id)}`), fetch(`/api/cash-transactions?businessId=${encodeURIComponent(business.id)}`)])
+          setPayOpen(false)
+          toast.success('Payment recorded successfully')
+        }}
         fields={[
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'account', label: t('receivables.receiveTo'), type: 'select', half: true, options: ['Cash', 'Bank BCA', 'Bank Mandiri'].map((value) => ({ value, label: translateAccountName(value, t) })) },
+          { name: 'account', label: t('receivables.receiveTo'), type: 'select', half: true, options: (financialAccounts ?? []).filter((item) => item.active).map((item) => ({ value: item.name, label: translateAccountName(item.name, t) })) },
           { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', min: 1, defaultValue: String(outstanding), hint: `${t('common.outstanding')}: ${formatIDR(outstanding)}` },
         ]}
       />
