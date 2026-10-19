@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { AlertTriangle, Ban, FileText, History, Pencil, Plus, Printer, Truck, User, Wallet } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Ban, FileText, History, Pencil, Plus, Printer, Trash2, Truck, User, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import useSWR from 'swr'
 import { appToast as toast } from '@/lib/toast'
@@ -53,6 +53,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
   const { data: financialAccounts } = useSWR<Array<{ id: string; name: string; active: boolean }>>(business?.id ? `/api/financial-accounts?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const [doc, setDoc] = useState<'invoice' | 'delivery' | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
   const [deliveryOpen, setDeliveryOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -111,9 +112,13 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
                   <Pencil />
                   {t('common.edit')}
                 </Button>
-                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setCancelOpen(true)}>
-                  <Ban />
-                  {t('orders.cancelOrder')}
+                <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/orders" />}>
+                  <ArrowLeft />
+                  Back to orders
+                </Button>
+                <Button variant="outline" size="sm" className="text-destructive hover:bg-pink-100 hover:text-red-700 dark:hover:bg-red-950/40" disabled={paid > 0 || order.status !== 'requested'} onClick={() => setDeleteOpen(true)}>
+                  <Trash2 />
+                  Delete order
                 </Button>
               </>
             )}
@@ -349,6 +354,21 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
           await mutate()
           setEditOpen(false)
           toast.success(t('form.savedFeedback'))
+        }}
+      />
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Delete order"
+        description="Only unpaid orders in Requested status with no delivery, stock, replacement, or accounting activity can be deleted."
+        confirmLabel="Delete order"
+        onConfirm={async () => {
+          if (!business?.id || paid > 0 || order.status !== 'requested') return
+          const response = await fetch(`/api/orders/${encodeURIComponent(order.id)}?businessId=${encodeURIComponent(business.id)}`, { method: 'DELETE' })
+          const result = await response.json()
+          if (!response.ok) { toast.error(result.error ?? 'Unable to delete order'); return }
+          toast.success('Order deleted')
+          window.location.href = '/orders'
         }}
       />
       <ConfirmDialog
