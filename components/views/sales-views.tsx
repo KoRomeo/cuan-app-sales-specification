@@ -457,7 +457,8 @@ export function DeliveriesView() {
           { name: 'orderIds', label: 'Orders (select multiple with Ctrl/Cmd)', type: 'multiselect', options: awaiting.map((o) => ({ value: o.id, label: `${o.id} — ${customerById(o.customerId)?.name ?? o.customerId}` })), required: true, hint: 'On mobile, use the multi-select control to choose multiple Orders.' },
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
           { name: 'method', label: t('orders.method'), type: 'select', defaultValue: 'own', options: [{ value: 'own', label: t('method.own') }, { value: 'expedition', label: t('method.expedition') }, { value: 'pickup', label: t('method.pickup') }], half: true },
-          { name: 'recipient', label: t('orders.recipient'), required: false, placeholder: 'Recipient name' },
+          { name: 'recipient', label: t('orders.recipient'), required: false, placeholder: 'Recipient name', half: true },
+          { name: 'driverName', label: 'Driver name', placeholder: 'Enter driver name', half: true },
           { name: 'address', label: t('common.address'), type: 'textarea', required: false },
           { name: 'transportCost', label: t('orders.transportCost'), type: 'number', defaultValue: '0', min: 0 },
         ]}
