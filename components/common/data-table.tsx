@@ -84,6 +84,7 @@ export interface RowAction {
   icon?: LucideIcon
   href?: string
   onSelect?: () => void
+  disabled?: boolean
 }
 
 interface DataTableProps<T> {
@@ -387,6 +388,7 @@ export function DataTable<T>({
                             return (
                               <DropdownMenuItem
                                 key={a.label}
+                                disabled={a.disabled}
                                 onClick={() => {
                                   if (a.onSelect) a.onSelect()
                                   else if (a.href) router.push(a.href)
