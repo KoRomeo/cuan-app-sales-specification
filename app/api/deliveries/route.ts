@@ -5,6 +5,7 @@ import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import { businessMembers, customers, deliveries, orders } from "@/lib/db/schema"
 import { generateEntityId } from "@/lib/db/ids"
+import { writeAudit } from "@/lib/audit"
 
 async function access(businessId: string) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -91,6 +92,7 @@ export async function POST(request: Request) {
         .where(and(eq(orders.businessId, businessId), inArray(orders.id, orderIds)))
       return deliveryIds
     })
+    await writeAudit({ businessId, page: "Deliveries", action: "Created delivery", reference: id })
     return NextResponse.json({ message: "Delivery recorded successfully", ids: id, orderIds }, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : ""
