@@ -316,6 +316,7 @@ type InvoiceProductRow = { id: string; name: string }
 export function InvoicesView() {
   const { t } = useApp()
   const [preview, setPreview] = useState<Order | null>(null)
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([])
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', customersFetcher)
   const { data: orderRows, error: ordersError, isLoading } = useSWR<InvoiceOrderRow[]>(business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null, customersFetcher)
   const { data: paymentRows, error: paymentsError } = useSWR<InvoicePaymentRow[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, customersFetcher)
@@ -350,7 +351,9 @@ export function InvoicesView() {
           <KpiCard label={t('pay.partial')} value={invoices.filter((o) => orderPaymentStatus(o) === 'partial').length} icon={HandCoins} tone="warning" />
           <KpiCard label={t('pay.unpaid')} value={invoices.filter((o) => orderPaymentStatus(o) === 'unpaid').length} icon={HandCoins} tone="destructive" />
         </KpiGrid>
-        <DataTable rows={invoices} columns={columns} getRowId={(o) => o.id} searchText={(o) => `${o.id} ${customerMap.get(o.customerId)?.name ?? ''}`}
+        <DataTable rows={invoices} columns={columns} getRowId={(o) => o.id}
+          selectable selectedRowIds={selectedInvoiceIds} onSelectedRowIdsChange={setSelectedInvoiceIds}
+          toolbarExtra={<button type="button" disabled={selectedInvoiceIds.length !== 1} onClick={() => { const selected = invoices.find((o) => o.id === selectedInvoiceIds[0]); if (selected) setPreview(selected) }} className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm transition-colors hover:bg-blue-50 hover:text-blue-700 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-blue-950/40"><Printer className="size-4" />Print invoice</button>} searchText={(o) => `${o.id} ${customerMap.get(o.customerId)?.name ?? ''}`}
           filters={[
             { value: 'all', label: t('common.all'), predicate: () => true },
             { value: 'unpaid', label: t('pay.unpaid'), predicate: (o) => orderPaymentStatus(o) === 'unpaid' },
@@ -379,6 +382,7 @@ type DeliveryOrderOption = { id: string; status: string; customerId: string; dat
 
 export function DeliveriesView() {
   const { t } = useApp()
+  const [selectedDeliveryIds, setSelectedDeliveryIds] = useState<string[]>([])
   const [open, setOpen] = useState(false)
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', customersFetcher)
   const { data: rows, error, isLoading, mutate } = useSWR<PersistedDelivery[]>(
@@ -433,6 +437,7 @@ export function DeliveriesView() {
           rows={delivered}
           columns={columns}
           getRowId={(d) => d.id}
+          selectable selectedRowIds={selectedDeliveryIds} onSelectedRowIdsChange={setSelectedDeliveryIds}
           searchText={(d) => `${d.id} ${d.orders.map((o) => o.id + ' ' + o.customerName).join(' ')} ${d.recipient} ${d.driverName}`}
           filters={[
             { value: 'all', label: t('common.all'), predicate: () => true },
