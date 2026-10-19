@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
-import { businessMembers, payments, products, purchaseItems, purchases, stockMovements, suppliers } from "@/lib/db/schema"
+import { businessMembers, journalEntries, payments, products, purchaseItems, purchases, stockMovements, suppliers } from "@/lib/db/schema"
 import { headers } from "next/headers"
 
 type Context = { params: Promise<{ id: string }> }
@@ -19,5 +19,33 @@ export async function GET(request: Request, { params }: Context) {
     const paymentRows = await db.select().from(payments).where(and(eq(payments.businessId, businessId), eq(payments.purchaseId, id)))
     return NextResponse.json({ ...purchase, items, supplier: supplier ?? null, products: productRows, payments: paymentRows, stockMovements: movements })
   } catch (error) { console.error("GET /api/purchases/[id]", error); return NextResponse.json({ error: "Failed to fetch purchase details" }, { status: 500 })
+  }
+}
+
+
+export async function DELETE(request: Request, { params }: Context) {
+  try {
+    const { id } = await params
+    const businessId = new URL(request.url).searchParams.get("businessId")
+    if (!businessId) return NextResponse.json({ error: "businessId is required" }, { status: 400 })
+    const session = await auth.api.getSession({ headers: await headers() })
+    if (!session?.user) return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    const [member] = await db.select({ role: businessMembers.role }).from(businessMembers).where(and(eq(businessMembers.businessId, businessId), eq(businessMembers.userId, session.user.id))).limit(1)
+    if (!member) return NextResponse.json({ error: "You do not have access to this business" }, { status: 403 })
+    return await db.transaction(async (tx) => {
+      const [purchase] = await tx.select().from(purchases).where(and(eq(purchases.id, id), eq(purchases.businessId, businessId))).for("update").limit(1)
+      if (!purchase) return NextResponse.json({ error: "Purchase not found" }, { status: 404 })
+      const [payment] = await tx.select({ id: payments.id }).from(payments).where(and(eq(payments.businessId, businessId), eq(payments.purchaseId, id))).limit(1)
+      if (payment) return NextResponse.json({ error: "Purchases with any partial or full payment cannot be deleted." }, { status: 409 })
+      const [movement] = await tx.select({ id: stockMovements.id }).from(stockMovements).where(and(eq(stockMovements.businessId, businessId), eq(stockMovements.reference, `purchase:${id}:receive`))).limit(1)
+      const [journal] = await tx.select({ id: journalEntries.id }).from(journalEntries).where(and(eq(journalEntries.businessId, businessId), eq(journalEntries.reference, id))).limit(1)
+      if (movement || journal) return NextResponse.json({ error: "This purchase has already affected inventory or accounting. It cannot be deleted without reversing those entries." }, { status: 409 })
+      await tx.delete(purchaseItems).where(eq(purchaseItems.purchaseId, id))
+      await tx.delete(purchases).where(and(eq(purchases.id, id), eq(purchases.businessId, businessId)))
+      return NextResponse.json({ message: "Purchase deleted successfully", id })
+    })
+  } catch (error) {
+    console.error("DELETE /api/purchases/[id]", error)
+    return NextResponse.json({ error: "Failed to delete purchase" }, { status: 500 })
   }
 }
