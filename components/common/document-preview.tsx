@@ -49,7 +49,7 @@ export function DocumentPreview({
             <article className="print-area mx-auto aspect-[105/148] w-full max-w-[105mm] overflow-hidden bg-white px-4 py-4 text-[9px] leading-tight text-black shadow-sm print:aspect-[105/148] print:h-[148mm] print:w-[105mm] print:max-w-none print:px-[5mm] print:py-[5mm] print:shadow-none">
               <div className="border-t border-black pt-2">
                 <div className="flex items-start justify-between gap-4">
-                  <h1 className="text-[34px] font-black leading-none tracking-tight">INVOICE</h1>
+                  <h1 className="text-[20px] font-black leading-none tracking-tight">INVOICE</h1>
                   <span className="text-xs">Page 1 of 1</span>
                 </div>
                 <div className="mt-[-2px] flex justify-end gap-8 text-xs">
@@ -76,7 +76,7 @@ export function DocumentPreview({
                 <thead>
                   <tr className="border-y-[3px] border-black text-center text-sm">
                     <th className="border-r border-black px-1 py-3 font-bold">QTY</th>
-                    <th className="border-r border-black px-2 py-3 font-bold">DESKRIPSI</th>
+                    <th className="border-r border-black px-1 py-1 font-bold">DESKRIPSI</th>
                     <th className="border-r border-black px-2 py-3 font-bold">HARGA</th>
                     <th className="px-2 py-3 font-bold">JUMLAH</th>
                   </tr>
@@ -85,9 +85,9 @@ export function DocumentPreview({
                   {Array.from({ length: Math.max(12, order.items.length) }, (_, index) => {
                     const item = order.items[index]
                     return (
-                      <tr key={item ? item.productId : `blank-${index}`} className="h-[26px] border-b border-black">
+                      <tr key={item ? item.productId : `blank-${index}`} className="h-[5mm] border-b border-black">
                         <td className="border-r border-black px-1 py-1 text-right">{item ? item.qty : ''}</td>
-                        <td className="border-r border-black px-1 py-1">{item ? productNames?.[item.productId] ?? productById(item.productId)?.name ?? item.productId : ''}</td>
+                        <td className="border-r border-black px-1 py-1">{item ? productNames?.[item.productId] ?? productById(item.productId)?.name ?? 'Unknown product' : ''}</td>
                         <td className="border-r border-black px-2 py-1 text-right">{item ? formatIDR(item.price) : ''}</td>
                         <td className="px-2 py-1 text-right">{item ? formatIDR(lineSubtotal(item)) : ''}</td>
                       </tr>
@@ -99,7 +99,7 @@ export function DocumentPreview({
               <section className="mt-1 grid grid-cols-[1fr_1fr] gap-5">
                 <div>
                   <p className="pt-7 text-xs font-bold">TOTAL TAGIHAN</p>
-                  <div className="mt-1 bg-[repeating-linear-gradient(135deg,#e5e5e5_0px,#e5e5e5_1px,#fff_1px,#fff_3px)] px-2 py-2 text-center text-[28px] font-black leading-none">
+                  <div className="mt-1 bg-[repeating-linear-gradient(135deg,#e5e5e5_0px,#e5e5e5_1px,#fff_1px,#fff_3px)] px-2 py-2 text-center text-[16px] font-bold leading-tight">
                     {formatIDR(total)}
                   </div>
                 </div>
@@ -125,7 +125,7 @@ export function DocumentPreview({
             <article className="print-area mx-auto aspect-[105/148] w-full max-w-[105mm] overflow-hidden bg-white px-4 py-4 text-[9px] leading-tight text-black shadow-sm print:aspect-[105/148] print:h-[148mm] print:w-[105mm] print:max-w-none print:px-[5mm] print:py-[5mm] print:shadow-none">
               <div className="border-t border-black pt-2">
                 <div className="flex items-start justify-between gap-4">
-                  <h1 className="text-[30px] font-black leading-none tracking-tight">{t('deliveries.document').toUpperCase()}</h1>
+                  <h1 className="text-[18px] font-black leading-none tracking-tight">{t('deliveries.document').toUpperCase()}</h1>
                   <span className="text-xs">Page 1 of 1</span>
                 </div>
                 <div className="mt-2 flex justify-end gap-8 text-xs">
@@ -148,12 +148,12 @@ export function DocumentPreview({
                 </div>
               </section>
 
-              <table className="mt-8 w-full table-fixed border-collapse text-xs">
+              <table className="mt-3 w-full table-fixed border-collapse text-[8px]">
                 <colgroup><col className="w-[9%]" /><col className="w-[61%]" /><col className="w-[15%]" /><col className="w-[15%]" /></colgroup>
                 <thead>
                   <tr className="border-y-[3px] border-black text-center text-xs">
                     <th className="border-r border-black px-1 py-3 font-bold">NO.</th>
-                    <th className="border-r border-black px-2 py-3 text-left font-bold">DESKRIPSI BARANG</th>
+                    <th className="border-r border-black px-1 py-1 text-left font-bold">DESKRIPSI BARANG</th>
                     <th className="border-r border-black px-2 py-3 font-bold">QTY</th>
                     <th className="px-2 py-3 font-bold">SATUAN</th>
                   </tr>
@@ -178,11 +178,11 @@ export function DocumentPreview({
                 <div className="space-y-1 text-right"><p><strong>Total jenis barang:</strong> {order.items.length}</p><p><strong>Total kuantitas:</strong> {order.items.reduce((sum, item) => sum + Number(item.qty), 0)}</p><p><strong>Biaya transportasi:</strong> {formatIDR(Number(order.delivery?.transportCost ?? 0))}</p></div>
               </section>
 
-              <section className="mt-12 grid grid-cols-2 gap-8 text-center text-xs">
-                <div><p>Dikirim oleh</p><p className="text-[10px]">(Nama / tanda tangan)</p><div className="mt-10 border-b border-black" /><p className="mt-1">{order.delivery?.driverName || 'Nama sopir:'}</p></div>
-                <div><p>Diterima oleh</p><p className="text-[10px]">(Nama / tanda tangan)</p><div className="mt-16 border-b border-black" /><p className="mt-2">{order.delivery?.recipient ?? customer?.name ?? 'Nama jelas:'}</p></div>
+              <section className="mt-5 grid grid-cols-2 gap-4 text-center text-[8px]">
+                <div><p>Dikirim oleh</p><p className="text-[10px]">(Nama / tanda tangan)</p><div className="mt-5 border-b border-black" /><p className="mt-1">{order.delivery?.driverName || 'Nama sopir:'}</p></div>
+                <div><p>Diterima oleh</p><p className="text-[10px]">(Nama / tanda tangan)</p><div className="mt-7 border-b border-black" /><p className="mt-2">{order.delivery?.recipient ?? customer?.name ?? 'Nama jelas:'}</p></div>
               </section>
-              <p className="mt-8 border-t border-dashed border-gray-400 pt-2 text-center text-[10px] text-gray-600">Mohon periksa jumlah dan kondisi barang sebelum menandatangani surat jalan.</p>
+              <p className="mt-3 border-t border-dashed border-gray-400 pt-1 text-center text-[7px] text-gray-600">Mohon periksa jumlah dan kondisi barang sebelum menandatangani surat jalan.</p>
             </article>
           )}
         </div>
