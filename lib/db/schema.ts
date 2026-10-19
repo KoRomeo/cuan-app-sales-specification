@@ -220,6 +220,7 @@ orderId: text("order_id")
 date: date("date").notNull(),
 method: deliveryMethodEnum("method").notNull(),
 recipient: text("recipient").notNull(),
+driverName: text("driver_name").notNull().default(""),
 address: text("address").notNull(),
 transportCost: decimal("transport_cost", {
     precision: 14,
