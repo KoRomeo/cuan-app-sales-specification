@@ -11,6 +11,7 @@ import {
   stockMovements,
 } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
+import { writeAudit } from "@/lib/audit"
 import { generateEntityId } from "@/lib/db/ids"
 
 function validDate(value: unknown): value is string {
@@ -94,6 +95,7 @@ export async function POST(request: Request) {
       ])
       return { ...created, returnValue: Math.max(0, Number(soldLine.price) * qty - Number(soldLine.discount)) }
     })
+    await writeAudit({ businessId, page: "Replacements", action: "Created replacement", reference: replacement.id })
     return NextResponse.json(replacement, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : ""
