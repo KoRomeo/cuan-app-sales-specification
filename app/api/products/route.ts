@@ -4,6 +4,7 @@ import { products, stockMovements } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
 import { asc, eq } from "drizzle-orm"
 import { generateEntityId } from "@/lib/db/ids"
+import { writeAudit } from "@/lib/audit"
 
 export async function GET(request: Request) {
   try {
@@ -51,6 +52,7 @@ export async function POST(request: Request) {
       }
       return created
     })
+    await writeAudit({ businessId, page: "Products", action: "Created product", reference: product.id })
     return NextResponse.json(product, { status: 201 })
   } catch (error) {
     console.error("Failed to create product", error)
