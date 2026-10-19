@@ -6,6 +6,7 @@ import {
   journalEntries, journalEntryLines, financialAccounts,
 } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
+import { writeAudit } from "@/lib/audit"
 
 function validDate(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
