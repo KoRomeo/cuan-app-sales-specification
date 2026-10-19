@@ -144,6 +144,7 @@ export function DocumentPreview({
                   <p>No. Surat Jalan: <strong>{docNo}</strong></p>
                   <p className="mt-1">No. Order: <strong>{order.id}</strong></p>
                   <p className="mt-1">Metode: <strong>{order.delivery?.method ?? '—'}</strong></p>
+                  <p className="mt-1">Nama sopir: <strong>{order.delivery?.driverName || '—'}</strong></p>
                 </div>
               </section>
 
@@ -178,7 +179,7 @@ export function DocumentPreview({
               </section>
 
               <section className="mt-12 grid grid-cols-2 gap-8 text-center text-xs">
-                <div><p>Dikirim oleh</p><p className="text-[10px]">(Nama / tanda tangan)</p><div className="mt-16 border-b border-black" /><p className="mt-2">Nama jelas:</p></div>
+                <div><p>Dikirim oleh</p><p className="text-[10px]">(Nama / tanda tangan)</p><div className="mt-10 border-b border-black" /><p className="mt-1">{order.delivery?.driverName || 'Nama sopir:'}</p></div>
                 <div><p>Diterima oleh</p><p className="text-[10px]">(Nama / tanda tangan)</p><div className="mt-16 border-b border-black" /><p className="mt-2">{order.delivery?.recipient ?? customer?.name ?? 'Nama jelas:'}</p></div>
               </section>
               <p className="mt-8 border-t border-dashed border-gray-400 pt-2 text-center text-[10px] text-gray-600">Mohon periksa jumlah dan kondisi barang sebelum menandatangani surat jalan.</p>
