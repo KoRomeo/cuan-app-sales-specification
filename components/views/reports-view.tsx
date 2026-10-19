@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/common/page-header'
 import { SectionCard } from '@/components/common/section-card'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
-import { formatDate, formatIDR, formatNumber } from '@/lib/format'
+import { formatIDR, formatNumber } from '@/lib/format'
 
 type ReportTab = 'sales' | 'purchases' | 'inventory' | 'financial' | 'receivables' | 'delivery' | 'history'
 type ReportData = {
@@ -73,7 +73,7 @@ export function ReportsView() {
       case 'sales': return data.sales
       case 'purchases': return data.purchases
       case 'inventory': return data.inventory
-      case 'financial': return [...data.journals.map(x=>({...x, lines:undefined})), ...data.expenses.map(x=>({...x, kind:'expense'}))]
+      case 'financial': return [...data.ledger, ...data.expenses.map(x=>({...x, kind:'expense', debit: x.amount, credit: 0}))]
       case 'receivables': return [...data.sales.filter(x=>x.outstanding>0).map(x=>({id:x.id,date:x.date,party:x.customer,total:x.total,paid:x.paid,outstanding:x.outstanding,type:'receivable'})), ...data.purchases.filter(x=>x.outstanding>0).map(x=>({id:x.id,date:x.date,party:x.supplier,total:x.total,paid:x.paid,outstanding:x.outstanding,type:'payable'}))]
       case 'delivery': return [...data.deliveries.map(x=>({...x,type:'delivery'})), ...data.replacements.map(x=>({...x,type:'replacement'}))]
       case 'history': return data.history
