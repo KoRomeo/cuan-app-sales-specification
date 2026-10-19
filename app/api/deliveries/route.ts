@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { businessId, date, method, recipient = "", address = "", transportCost = 0 } = body
     const rawOrderIds = Array.isArray(body.orderIds) ? body.orderIds : typeof body.orderId === "string" ? [body.orderId] : []
-    const orderIds = [...new Set(rawOrderIds.filter((id: unknown): id is string => typeof id === "string" && id.trim()).map((id: string) => id.trim()))]
+    const orderIds: string[] = Array.from(new Set<string>(rawOrderIds.filter((id: unknown): id is string => typeof id === "string" && !!id.trim()).map((id: string) => id.trim())))
     if (typeof businessId !== "string" || !businessId.trim() || orderIds.length === 0 ||
       !validDate(date) || typeof method !== "string" || !["own", "expedition", "pickup"].includes(method) ||
       !Number.isFinite(Number(transportCost)) || Number(transportCost) < 0) {
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         await tx.insert(deliveries).values({
           id: deliveryId,
           orderId,
-          date, method, recipient: String(recipient), address: String(address),
+          date, method: method as "own" | "expedition" | "pickup", recipient: String(recipient), address: String(address),
           transportCost: (Number(transportCost) / orderIds.length).toFixed(2),
         })
         deliveryIds.push(deliveryId)
