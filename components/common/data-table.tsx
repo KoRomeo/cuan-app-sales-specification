@@ -196,7 +196,6 @@ export function DataTable<T>({
         </div>
 
         <div className="flex items-center gap-2 md:ml-auto">
-          {toolbarExtra}
           {filters && filters.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="min-w-36 justify-between gap-3" />}>
@@ -227,6 +226,7 @@ export function DataTable<T>({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+          {toolbarExtra}
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
               <Columns3 />
