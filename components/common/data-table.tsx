@@ -346,6 +346,7 @@ export function DataTable<T>({
                   onClick={href ? () => router.push(href) : undefined}
                   className={cn('border-b transition-colors last:border-0 hover:bg-muted/40', href && 'cursor-pointer')}
                 >
+                  {selectable && <td className="w-10 px-3"><input aria-label={`Select ${getRowId(row)}`} type="checkbox" checked={selectedRowIds.includes(getRowId(row))} onClick={(event) => event.stopPropagation()} onChange={(event) => { const ids = new Set(selectedRowIds); event.target.checked ? ids.add(getRowId(row)) : ids.delete(getRowId(row)); onSelectedRowIdsChange?.([...ids]) }} /></td>}
                   {visibleColumns.map((c, index) => {
                     const content = c.cell(row)
                     return (
