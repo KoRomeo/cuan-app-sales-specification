@@ -27,18 +27,18 @@ export async function GET(request: Request) {
     // Use deliveries.orderId, which is the persisted relationship supported by the current database schema.
     const rows = await db.select({
       id: deliveries.id, date: deliveries.date, method: deliveries.method,
-      recipient: deliveries.recipient, address: deliveries.address, transportCost: deliveries.transportCost,
+      recipient: deliveries.recipient, driverName: deliveries.driverName, address: deliveries.address, transportCost: deliveries.transportCost,
       orderId: orders.id, customerId: orders.customerId, customerName: customers.name,
     }).from(deliveries)
       .innerJoin(orders, and(eq(orders.id, deliveries.orderId), eq(orders.businessId, businessId)))
       .innerJoin(customers, eq(customers.id, orders.customerId))
       .where(eq(orders.businessId, businessId)).orderBy(desc(deliveries.date))
 
-    const grouped = new Map<string, { id: string; date: string; method: string; recipient: string; address: string; transportCost: string; orders: Array<{ id: string; customerId: string; customerName: string }> }>()
+    const grouped = new Map<string, { id: string; date: string; method: string; recipient: string; driverName: string; address: string; transportCost: string; orders: Array<{ id: string; customerId: string; customerName: string }> }>()
     for (const row of rows) {
       let delivery = grouped.get(row.id)
       if (!delivery) {
-        delivery = { id: row.id, date: row.date, method: row.method, recipient: row.recipient, address: row.address, transportCost: row.transportCost, orders: [] }
+        delivery = { id: row.id, date: row.date, method: row.method, recipient: row.recipient, driverName: row.driverName, address: row.address, transportCost: row.transportCost, orders: [] }
         grouped.set(row.id, delivery)
       }
       delivery.orders.push({ id: row.orderId, customerId: row.customerId, customerName: row.customerName })
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { businessId, date, method, recipient = "", address = "", transportCost = 0 } = body
+    const { businessId, date, method, recipient = "", driverName = "", address = "", transportCost = 0 } = body
     const rawOrderIds = Array.isArray(body.orderIds) ? body.orderIds : typeof body.orderId === "string" ? [body.orderId] : []
     const orderIds: string[] = Array.from(new Set<string>(rawOrderIds.filter((id: unknown): id is string => typeof id === "string" && !!id.trim()).map((id: string) => id.trim())))
     if (typeof businessId !== "string" || !businessId.trim() || orderIds.length === 0 ||
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         await tx.insert(deliveries).values({
           id: deliveryId,
           orderId,
-          date, method: method as "own" | "expedition" | "pickup", recipient: String(recipient), address: String(address),
+          date, method: method as "own" | "expedition" | "pickup", recipient: String(recipient), driverName: String(driverName).trim(), address: String(address),
           transportCost: (Number(transportCost) / orderIds.length).toFixed(2),
         })
         deliveryIds.push(deliveryId)
