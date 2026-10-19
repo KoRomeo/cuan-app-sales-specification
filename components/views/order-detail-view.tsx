@@ -384,12 +384,39 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
         open={deliveryOpen}
         onOpenChange={setDeliveryOpen}
         title={t('orders.createDelivery')}
+        description={order.id}
+        persisted
+        onSubmit={async (values) => {
+          if (!business?.id) throw new Error('Business access required')
+          const response = await fetch('/api/deliveries', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              businessId: business.id,
+              orderId: order.id,
+              date: values.date,
+              method: values.method,
+              recipient: values.recipient,
+              address: values.address,
+              transportCost: Number(values.transport || 0),
+            }),
+          })
+          const result = await response.json()
+          if (!response.ok) throw new Error(result.error ?? 'Unable to create delivery')
+          await Promise.all([
+            mutate(),
+            fetch('/api/deliveries?businessId=' + encodeURIComponent(business.id)),
+            fetch('/api/accounting?businessId=' + encodeURIComponent(business.id)),
+          ])
+          setDeliveryOpen(false)
+          toast.success('Delivery created successfully')
+        }}
         fields={[
           { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'method', label: t('orders.method'), type: 'select', half: true, options: methodOptions },
-          { name: 'recipient', label: t('orders.recipient'), defaultValue: customer?.name, half: true },
+          { name: 'method', label: t('orders.method'), type: 'select', defaultValue: methodOptions[0]?.value ?? 'pickup', half: true, options: methodOptions },
+          { name: 'recipient', label: t('orders.recipient'), defaultValue: customer?.name ?? '', half: true },
           { name: 'transport', label: t('orders.transportCost'), type: 'number', prefix: 'Rp', defaultValue: '0', min: 0, half: true },
-          { name: 'address', label: t('common.address'), type: 'textarea', defaultValue: customer?.address ?? undefined },
+          { name: 'address', label: t('common.address'), type: 'textarea', defaultValue: customer?.address ?? '', required: false },
         ]}
       />
     </>
