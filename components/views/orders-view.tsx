@@ -198,11 +198,10 @@ export function OrdersView() {
         onAdd={() => router.push('/orders/new')}
         rowHref={(o) => `/orders/${o.id}`}
         contextActions={(o) => [
-          { label: 'View', icon: Eye, onSelect: () => router.push(`/orders/${encodeURIComponent(o.id)}`) },
           ...(o.status !== 'delivered' && o.status !== 'cancelled' ? [
             { label: t('common.edit'), icon: Pencil, onSelect: () => setEditTarget(persistedOrders.find((row) => row.id === o.id) ?? null) },
-            { label: 'Cancel Order', icon: Ban, onSelect: () => setDeleteTarget(persistedOrders.find((row) => row.id === o.id) ?? null) },
           ] : []),
+          { label: 'Cancel Order', icon: Ban, disabled: o.status === 'delivered' || o.status === 'cancelled' || orderPaid(o) > 0, onSelect: () => setDeleteTarget(persistedOrders.find((row) => row.id === o.id) ?? null) },
         ]}
         deletable={false}
       />
