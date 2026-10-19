@@ -78,6 +78,8 @@ export async function GET(request: Request) {
     const changes = historyIds.length ? await db.select().from(auditLogChanges).where(inArray(auditLogChanges.auditLogId, historyIds)) : []
     const history = logs.filter(l => within(l.date, from!, to!)).map(l => ({ id: l.id, date: l.date, time: l.time, page: l.page, action: l.action, reference: l.reference, user: l.userName ?? "System", changes: changes.filter(c => c.auditLogId === l.id).map(c => ({ property: c.property, previous: c.previous ?? "—", current: c.current ?? "—" })) }))
     const expensesTotal = expenseReport.reduce((s,e)=>s+e.amount,0)
+    const transportTotal = deliveriesReport.reduce((s,d)=>s+d.transportCost,0)
+    const replacementCost = replacementsReport.reduce((s,r)=>s+r.cost,0)
     const revenue = sales.reduce((s,o)=>s+o.total,0)
     const cogs = sales.reduce((s,o)=>s+o.cogs,0)
     const purchaseTotal = purchaseReport.reduce((s,p)=>s+p.total,0)
@@ -87,7 +89,7 @@ export async function GET(request: Request) {
     const cashOut = paymentsReport.filter(p=>p.kind==="payable").reduce((s,p)=>s+p.amount,0)+expensesTotal
     const periodJournals = entries.flatMap(e=>e.lines.map(l=>({entryId:e.id,date:e.date,kind:e.kind,reference:e.reference,description:e.description,account:l.account,debit:l.debit,credit:l.credit})))
     return NextResponse.json({
-      range:{from,to}, summary:{sales:revenue,orders:sales.length,averageOrder:sales.length?revenue/sales.length:0,cogs,grossProfit:revenue-cogs,expenses:expensesTotal,netProfit:revenue-cogs-expensesTotal,purchases:purchaseTotal,receivables,payables,cashIn,cashOut,netCash:cashIn-cashOut,inventoryValue:inventory.reduce((s,p)=>s+p.stockValue,0),negativeStock:inventory.filter(p=>p.stock<0).length,lowStock:inventory.filter(p=>p.status==="low").length},
+      range:{from,to}, summary:{sales:revenue,orders:sales.length,averageOrder:sales.length?revenue/sales.length:0,cogs,grossProfit:revenue-cogs,transport:transportTotal,replacementCost,expenses:expensesTotal,netProfit:revenue-cogs-transportTotal-replacementCost-expensesTotal,purchases:purchaseTotal,receivables,payables,cashIn,cashOut,netCash:cashIn-cashOut,inventoryValue:inventory.reduce((s,p)=>s+p.stockValue,0),negativeStock:inventory.filter(p=>p.stock<0).length,lowStock:inventory.filter(p=>p.status==="low").length},
       sales,purchases:purchaseReport,inventory,payments:paymentsReport,expenses:expenseReport,deliveries:deliveriesReport,replacements:replacementsReport,journals:entries,ledger:periodJournals,history,
     })
   } catch (error) {
