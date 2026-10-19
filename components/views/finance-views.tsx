@@ -212,6 +212,7 @@ export function PayablesView() {
         columns={columns}
         getRowId={(p) => p.id}
         searchText={(p) => `${p.id} ${partyById.get(p.supplierId)?.name}`}
+        rowHref={(p) => `/purchases/${encodeURIComponent(p.id)}`}
         filters={[
           { value: 'all', label: t('common.all'), predicate: () => true },
           { value: 'overdue', label: t('common.overdue'), predicate: (p) => isOverdue(p.dueDate, purchaseOutstanding(p)) },
