@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { businessMembers, suppliers } from "@/lib/db/schema"
 import { generateEntityId } from "@/lib/db/ids"
+import { writeAudit } from "@/lib/audit"
 
 async function getBusinessAccess(businessId: string) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
       return created
     })
 
+    await writeAudit({ businessId, page: "Suppliers", action: "Created supplier", reference: supplier.id })
     return NextResponse.json(supplier, { status: 201 })
   } catch (error) {
     console.error("Failed to create supplier:", error)
