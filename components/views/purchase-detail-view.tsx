@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
-import { ArrowLeft, Pencil, Trash2, Wallet } from 'lucide-react'
+import { ArrowLeft, History, Package, Pencil, Trash2, UserRound, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FormDialog } from '@/components/common/form-dialog'
 import { PageHeader } from '@/components/common/page-header'
@@ -46,26 +46,91 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
   const total = purchaseTotal(purchase as any)
   const paid = purchasePaid(purchase as any)
   const outstanding = purchaseOutstanding(purchase as any)
-  const productById = new Map(data.products.map((product) => [product.id, product]))
+  const productById = new Map(data.products.map((product) => [product.id, { ...product, stock: Number(product.stock), averageCost: Number(product.averageCost) }]))
+  const totalQuantity = purchase.items.reduce((sum: number, item: { qty: number }) => sum + item.qty, 0)
+  const uniqueProducts = new Set(purchase.items.map((item: { productId: string }) => item.productId)).size
   return <>
-    <PageHeader breadcrumbs={[{ label: t('nav.purchasing') }, { label: t('nav.purchases'), href: '/purchases' }, { label: data.id }]} title={<span className="font-mono">{data.id}</span>} meta={<PaymentStatusBadge status={purchasePaymentStatus(purchase as any)} />} actions={<><Button variant="outline" size="sm" nativeButton={false} render={<Link href={'/purchases?edit=' + encodeURIComponent(data.id)} />}><Pencil /> {t('common.edit')}</Button><Button variant="outline" size="sm" nativeButton={false} render={<Link href="/purchases" />}><ArrowLeft /> Back to purchases</Button><Button variant="outline" size="sm" className="text-destructive hover:bg-pink-100 hover:text-red-700 dark:hover:bg-red-950/40" disabled={paid > 0} onClick={() => setDeleteOpen(true)}><Trash2 /> Delete purchase</Button></>} />
+    <PageHeader
+      breadcrumbs={[{ label: t('nav.purchasing') }, { label: t('nav.purchases'), href: '/purchases' }, { label: data.id }]}
+      title={<span className="font-mono">{data.id}</span>}
+      meta={<PaymentStatusBadge status={purchasePaymentStatus(purchase as any)} />}
+      actions={<>
+        <Button variant="outline" size="sm" nativeButton={false} render={<Link href={'/purchases?edit=' + encodeURIComponent(data.id)} />}><Pencil /> {t('common.edit')}</Button>
+        <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/purchases" />}><ArrowLeft /> Back to purchases</Button>
+        <Button variant="outline" size="sm" className="text-destructive hover:bg-pink-100 hover:text-red-700 dark:hover:bg-red-950/40" disabled={paid > 0} onClick={() => setDeleteOpen(true)}><Trash2 /> Delete purchase</Button>
+      </>}
+    />
     <div className="grid gap-4 lg:grid-cols-3">
-      <div className="flex flex-col gap-4 lg:col-span-2">
+      <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
         <SectionCard title="Purchase items" bodyClassName="p-0 md:p-0">
-          <div className="overflow-x-auto"><table className="w-full min-w-[480px] text-sm"><thead><tr className="border-b bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground"><th className="px-4 py-3 text-left">Product</th><th className="px-4 py-3 text-right">Qty</th><th className="px-4 py-3 text-right">Unit cost</th><th className="px-4 py-3 text-right">Stock before</th><th className="px-4 py-3 text-right">After receipt</th><th className="px-4 py-3 text-right">Subtotal</th></tr></thead><tbody className="divide-y">{purchase.items.map((item, index) => <tr key={data.items[index]?.id ?? item.productId}><td className="px-4 py-3"><div className="font-medium">{productById.get(item.productId)?.name ?? item.productId}</div><div className="font-mono text-xs text-muted-foreground">{item.productId}</div></td><td className="px-4 py-3 text-right font-mono">{item.qty}</td><td className="px-4 py-3 text-right font-mono">{formatIDR(item.price)}</td><td className="px-4 py-3 text-right font-mono">{Number(productById.get(item.productId)?.stock ?? 0) - Number(item.qty)}</td><td className="px-4 py-3 text-right font-mono">{Number(productById.get(item.productId)?.stock ?? 0)}</td><td className="px-4 py-3 text-right font-mono font-medium">{formatIDR(item.qty * item.price)}</td></tr>)}</tbody><tfoot><tr className="border-t bg-muted/30"><td colSpan={5} className="px-4 py-3 text-right font-medium">Total</td><td className="px-4 py-3 text-right font-mono font-semibold">{formatIDR(total)}</td></tr></tfoot></table></div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead><tr className="border-b bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
+                <th scope="col" className="h-10 px-4 text-left font-medium md:px-5">Product</th>
+                <th scope="col" className="h-10 px-4 text-right font-medium">Qty</th>
+                <th scope="col" className="h-10 px-4 text-right font-medium">Purchase price</th>
+                <th scope="col" className="h-10 px-4 text-right font-medium">Subtotal</th>
+              </tr></thead>
+              <tbody className="divide-y">
+                {purchase.items.map((item: { productId: string; qty: number; price: number }, index: number) => {
+                  const product = productById.get(item.productId)
+                  return <tr key={data.items[index]?.id ?? item.productId}>
+                    <td className="px-4 py-3 md:px-5">
+                      <p className="font-medium">{product?.name ?? item.productId}</p>
+                      <p className="font-mono text-[11px] text-muted-foreground">{item.productId}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Current stock: <span className="font-mono tabular-nums">{product ? product.stock.toLocaleString('id-ID') : '—'}</span></p>
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums">{item.qty.toLocaleString('id-ID')}</td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums">{formatIDR(item.price)}</td>
+                    <td className="px-4 py-3 text-right font-mono font-medium tabular-nums">{formatIDR(item.qty * item.price)}</td>
+                  </tr>
+                })}
+              </tbody>
+              <tfoot><tr className="border-t bg-muted/30">
+                <td colSpan={3} className="px-4 py-3 text-right text-sm font-medium md:px-5">Total purchase</td>
+                <td className="px-4 py-3 text-right font-mono text-base font-semibold tabular-nums md:px-5">{formatIDR(total)}</td>
+              </tr></tfoot>
+            </table>
+          </div>
         </SectionCard>
         <SectionCard title="Payments" action={outstanding > 0 ? <Button size="sm" onClick={() => setPayOpen(true)}><Wallet /> {t('orders.addPayment')}</Button> : undefined} bodyClassName="p-0 md:p-0">
-          {purchase.payments.length === 0 ? <p className="p-5 text-sm text-muted-foreground">No payments recorded yet.</p> : <div className="divide-y">{purchase.payments.map((payment) => <div key={payment.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm"><div><div className="font-mono text-xs">{payment.id}</div><div className="text-muted-foreground">{formatDate(payment.date)} · {payment.account}</div></div><div className="font-mono font-medium">{formatIDR(payment.amount)}</div></div>)}</div>}
+          {purchase.payments.length === 0 ? <p className="p-5 text-sm text-muted-foreground">No payments recorded yet.</p> : <ul className="divide-y">
+            {purchase.payments.map((payment: { id: string; date: string; amount: number; account: string }) => <li key={payment.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-5">
+              <div><p className="font-mono text-xs font-medium text-primary">{payment.id}</p><p className="text-xs text-muted-foreground">{formatDate(payment.date)} · {payment.account}</p></div>
+              <span className="font-mono text-sm font-medium tabular-nums text-success">−{formatIDR(payment.amount)}</span>
+            </li>)}
+          </ul>}
         </SectionCard>
       </div>
-      <div className="flex flex-col gap-4">
+      <div className="flex min-w-0 flex-col gap-4">
+        <SectionCard title="Payment summary">
+          <dl className="divide-y">
+            <DetailRow label={t('common.total')}><span className="font-mono font-medium tabular-nums">{formatIDR(total)}</span></DetailRow>
+            <DetailRow label={t('common.paid')}><span className="font-mono font-medium tabular-nums text-success">{formatIDR(paid)}</span></DetailRow>
+            <DetailRow label={t('common.outstanding')}><span className={`font-mono text-base font-semibold tabular-nums ${outstanding > 0 ? 'text-warning' : 'text-success'}`}>{formatIDR(outstanding)}</span></DetailRow>
+            <DetailRow label={t('common.dueDate')}>{data.dueDate ? <span className={data.dueDate < TODAY && outstanding > 0 ? 'text-destructive' : ''}>{formatDate(data.dueDate)}</span> : <span className="text-muted-foreground">{t('common.noDueDate')}</span>}</DetailRow>
+          </dl>
+          {total > 0 && <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={Math.round((paid / total) * 100)} aria-valuemin={0} aria-valuemax={100}><div className="h-full rounded-full bg-success" style={{ width: `${Math.min((paid / total) * 100, 100)}%` }} /></div>}
+        </SectionCard>
+        <SectionCard title="Purchase summary">
+          <dl className="divide-y">
+            <DetailRow label="Products"><span className="font-mono tabular-nums">{uniqueProducts}</span></DetailRow>
+            <DetailRow label="Total quantity"><span className="font-mono tabular-nums">{totalQuantity.toLocaleString('id-ID')}</span></DetailRow>
+            <DetailRow label="Purchase cost"><span className="font-mono font-semibold tabular-nums">{formatIDR(total)}</span></DetailRow>
+          </dl>
+        </SectionCard>
         <SectionCard title="Purchase information">
-          <DetailRow label="Purchase date">{formatDate(data.date)}</DetailRow>
-          <DetailRow label="Due date">{data.dueDate ? formatDate(data.dueDate) : 'No due date'}</DetailRow>
-          <DetailRow label="Total">{formatIDR(total)}</DetailRow>
-          <DetailRow label="Paid">{formatIDR(paid)}</DetailRow>
-          <DetailRow label="Outstanding">{formatIDR(outstanding)}</DetailRow>
-          {data.notes && <DetailRow label="Notes">{data.notes}</DetailRow>}
+          <dl className="divide-y">
+            <DetailRow label={t('common.supplier')}>{data.supplier?.name ?? data.supplierId}</DetailRow>
+            <DetailRow label={t('common.phone')}><span className="font-mono text-xs">{data.supplier?.phone || '—'}</span></DetailRow>
+            <DetailRow label="Purchase date">{formatDate(data.date)}</DetailRow>
+          </dl>
+          {data.notes && <div className="mt-3 rounded-lg bg-muted/60 p-3 text-sm leading-relaxed"><p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('common.notes')}</p>{data.notes}</div>}
+          <div className="mt-4 flex flex-col gap-2">
+            <Button variant="outline" size="sm" className="justify-start" nativeButton={false} render={<Link href="/suppliers" />}><UserRound /> View supplier</Button>
+            <Button variant="outline" size="sm" className="justify-start" nativeButton={false} render={<Link href="/payables" />}><Wallet /> View payables</Button>
+            <Button variant="outline" size="sm" className="justify-start" nativeButton={false} render={<Link href="/history" />}><History /> {t('orders.viewHistory')}</Button>
+          </div>
         </SectionCard>
       </div>
     </div>
