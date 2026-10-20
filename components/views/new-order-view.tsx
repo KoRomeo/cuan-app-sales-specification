@@ -160,7 +160,7 @@ export function NewOrderView() {
                         <Label>Subtotal</Label>
                         <div className="flex h-10 items-center font-mono font-semibold tabular-nums">{formatIDR(l.qty * l.price - l.discount)}</div>
                       </div>
-                      <div className="flex items-end justify-end sm:col-span-12">
+                      <div className="flex h-10 items-center justify-end">
                         <Button
                           type="button"
                           variant="ghost"
