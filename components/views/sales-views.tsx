@@ -545,7 +545,7 @@ export function ReturnsView() {
       <PageHeader breadcrumbs={[{ label: t('nav.sales') }, { label: t('nav.returns') }]} title={t('returns.title')} description={t('returns.desc')} />
       <KpiGrid>
         <KpiCard label={t('returns.title')} value={returns.length} icon={RotateCcw} />
-        <KpiCard label={t('returns.outstanding')} value={returns.filter((r) => Number(r.refundAmount) === 0).length} icon={RotateCcw} tone="warning" />
+        <KpiCard label="No refund" value={returns.filter((r) => Number(r.refundAmount) === 0).length} icon={RotateCcw} tone="warning" />
         <KpiCard label="Refunded" value={returns.filter((r) => Number(r.refundAmount) > 0).length} icon={CheckCircle2} tone="success" />
         <KpiCard label={t('reports.units')} value={returns.reduce((sum, r) => sum + r.items.reduce((itemSum, item) => itemSum + Number(item.qty), 0), 0)} icon={Truck} tone="neutral" />
       </KpiGrid>
