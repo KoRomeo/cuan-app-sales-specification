@@ -24,7 +24,8 @@ const fetcher = (url: string) => fetch(url).then(async (response) => {
   return response.json()
 })
 type Party = { id: string; name: string }
-type Product = { id: string; name: string; sellingPrice: string | number; averageCost: string | number; stock?: string | number }\ntype StockRow = { productId: string; stock: number | string }
+type Product = { id: string; name: string; sellingPrice: string | number; averageCost: string | number; stock?: string | number }
+type StockRow = { productId: string; stock: number | string }
 
 interface Line {
   key: number
@@ -40,7 +41,8 @@ export function NewOrderView() {
   const { mutate: globalMutate } = useSWRConfig()
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: customerRows, error: customersError } = useSWR<Party[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
-  const { data: productRows, error: productsError } = useSWR<Product[]>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)\n  const { data: stockRows } = useSWR<StockRow[]>(business?.id ? `/api/stock?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: productRows, error: productsError } = useSWR<Product[]>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: stockRows } = useSWR<StockRow[]>(business?.id ? `/api/stock?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const error = businessError || customersError || productsError
   const productsById = new Map((productRows ?? []).map((product) => [product.id, { ...product, sellingPrice: Number(product.sellingPrice), averageCost: Number(product.averageCost), stock: Number(stockRows?.find((row) => row.productId === product.id)?.stock ?? product.stock ?? 0) }]))
   const [lines, setLines] = useState<Line[]>([])
@@ -56,7 +58,12 @@ export function NewOrderView() {
   const update = (key: number, patch: Partial<Line>) =>
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)))
 
-  const total = lines.reduce((s, l) => s + l.qty * l.price - l.discount, 0)\n  const stockAfterOrder = (productId: string) => {\n    const product = productsById.get(productId)\n    const quantity = lines.filter((line) => line.productId === productId).reduce((sum, line) => sum + line.qty, 0)\n    return { current: product?.stock ?? 0, after: (product?.stock ?? 0) - quantity, quantity }\n  }
+  const total = lines.reduce((s, l) => s + l.qty * l.price - l.discount, 0)
+  const stockAfterOrder = (productId: string) => {
+    const product = productsById.get(productId)
+    const quantity = lines.filter((line) => line.productId === productId).reduce((sum, line) => sum + line.qty, 0)
+    return { current: product?.stock ?? 0, after: (product?.stock ?? 0) - quantity, quantity }
+  }
   const cogs = lines.reduce((s, l) => s + l.qty * (productsById.get(l.productId)?.averageCost ?? 0), 0)
   if (error) return <p role="alert" className="text-sm text-destructive">{error.message}</p>
   if (!business || !customerRows || !productRows) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
