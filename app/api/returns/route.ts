@@ -1,7 +1,7 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm"
+import { and, desc, eq, inArray } from "drizzle-orm"
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { customers, journalEntries, journalEntryLines, orderItems, orders, payments, products, returnItems, returns, stockMovements } from "@/lib/db/schema"
+import { journalEntries, journalEntryLines, orderItems, orders, payments, products, returnItems, returns, stockMovements } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
 import { generateEntityId } from "@/lib/db/ids"
 import { writeAudit } from "@/lib/audit"
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       if (refund > 0 || stockValue > 0) {
         const entryId = `JE-${id}`
         await tx.insert(journalEntries).values({ id: entryId, businessId, entryDate: date, kind: "return", reference: id, description: `Customer return for ${orderId}` })
-        const journalLines = []
+        const journalLines: Array<{ id: string; journalEntryId: string; account: string; debit: string; credit: string }> = []
         if (refund > 0) journalLines.push(
           { id: `${entryId}-sales-return`, journalEntryId: entryId, account: "Sales Returns", debit: refund.toFixed(2), credit: "0" },
           { id: `${entryId}-cash`, journalEntryId: entryId, account: "Cash", debit: "0", credit: refund.toFixed(2) },
