@@ -97,7 +97,7 @@ export function NewPurchaseView() {
           </ul>
           <div className="mt-4"><Button type="button" variant="outline" onClick={()=>setItems(current=>[...current,{key:crypto.randomUUID(),productId:'',qty:'1',unitCost:''}])}><Plus/> Add item</Button></div>
         </SectionCard>
-        <SectionCard title={t('common.notes')}><Textarea name="notes" rows={3} placeholder="…" value={notes} onChange={e=>setNotes(e.target.value}/></SectionCard>
+        <SectionCard title={t('common.notes')}><Textarea name="notes" rows={3} placeholder="…" value={notes} onChange={e=>setNotes(e.target.value)}/></SectionCard>
       </div>
       <div className="flex min-w-0 flex-col gap-4">
         <SectionCard title="Payment Summary" className="lg:sticky lg:top-20">
