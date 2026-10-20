@@ -26,6 +26,7 @@ const fetcher = async (url: string) => {
 type ProductLine = { productId: string; qty: number; price: number | string; discount?: number | string }
 type OrderRow = { id: string; customerId: string; date: string; status: string; items: ProductLine[] }
 type CustomerRow = { id: string; name: string }
+type PaymentRow = { orderId: string | null; amount: number | string }
 type ProductRow = { id: string; name: string }
 type Line = { key: number; productId: string; qty: number }
 
@@ -36,6 +37,7 @@ export function NewReturnView() {
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: orders, error: ordersError } = useSWR<OrderRow[]>(business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: customers } = useSWR<CustomerRow[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: payments } = useSWR<PaymentRow[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: products } = useSWR<ProductRow[]>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: previousReturns } = useSWR<Array<{ orderId: string; items: Array<{ productId: string; qty: number }>; refundAmount: string | number }>>(business?.id ? `/api/returns?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const [orderId, setOrderId] = useState('')
@@ -61,7 +63,7 @@ export function NewReturnView() {
   const orderLines = order?.items ?? []
   const invalidLine = lines.some((line) => !line.productId || !Number.isInteger(line.qty) || line.qty < 1 || line.qty > (eligibleLines.find((item) => item.productId === line.productId)?.remaining ?? 0))
   if (businessError || ordersError) return <p role="alert" className="text-sm text-destructive">{(businessError || ordersError)?.message}</p>
-  if (!business || !orders || !customers || !products || !previousReturns) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+  if (!business || !orders || !customers || !products || !previousReturns || !payments) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
 
   return <>
     <PageHeader
@@ -74,7 +76,7 @@ export function NewReturnView() {
       event.preventDefault()
       if (!business?.id || !orderId || invalidLine || !lines.length) { toast.error('Select an order and valid returned quantities.'); return }
       const refund = Number(refundAmount || 0)
-      if (refundCustomer === 'yes' && (!Number.isFinite(refund) || refund < 0 || refund > total)) { toast.error('Refund must be between Rp0 and the return total.'); return }
+      if (refundCustomer === 'yes' && (!Number.isFinite(refund) || refund < 0 || refund > maxRefund)) { toast.error('Refund must be between Rp0 and the return total.'); return }
       setSaving(true)
       try {
         const response = await fetch('/api/returns', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
@@ -106,7 +108,7 @@ export function NewReturnView() {
           </div>
           <div className="mt-4 grid gap-4 border-t pt-4 sm:grid-cols-2">
             <fieldset className="flex flex-col gap-2"><legend className="mb-2 text-sm font-medium">Return items to sellable stock?</legend><div className="flex gap-2">{[{value:'yes',label:'Yes, restock'},{value:'no',label:'No, keep out of stock'}].map((option) => <label key={option.value} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${stockReturned===option.value?'border-primary bg-primary/5':''}`}><input type="radio" name="stockReturned" value={option.value} checked={stockReturned===option.value} onChange={() => setStockReturned(option.value)} />{option.label}</label>)}</div></fieldset>
-            <fieldset className="flex flex-col gap-2"><legend className="mb-2 text-sm font-medium">Refund money to customer?</legend><div className="flex gap-2">{[{value:'yes',label:'Yes, refund'},{value:'no',label:'No refund'}].map((option) => <label key={option.value} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${refundCustomer===option.value?'border-primary bg-primary/5':''}`}><input type="radio" name="refundCustomer" value={option.value} checked={refundCustomer===option.value} onChange={() => {setRefundCustomer(option.value);if(option.value==='no')setRefundAmount('0');else setRefundAmount(String(total))}} />{option.label}</label>)}</div></fieldset>
+            <fieldset className="flex flex-col gap-2"><legend className="mb-2 text-sm font-medium">Refund money to customer?</legend><div className="flex gap-2">{[{value:'yes',label:'Yes, refund'},{value:'no',label:'No refund'}].map((option) => <label key={option.value} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${refundCustomer===option.value?'border-primary bg-primary/5':''}`}><input type="radio" name="refundCustomer" value={option.value} checked={refundCustomer===option.value} onChange={() => {setRefundCustomer(option.value);if(option.value==='no')setRefundAmount('0');else setRefundAmount(String(maxRefund))}} />{option.label}</label>)}</div></fieldset>
           </div>
         </SectionCard>
         <SectionCard title="Return items">
@@ -130,7 +132,7 @@ export function NewReturnView() {
       <div className="flex min-w-0 flex-col gap-4">
         <SectionCard title="Return summary" className="lg:sticky lg:top-20">
           <dl className="flex flex-col gap-3 text-sm"><div className="flex justify-between"><dt className="text-muted-foreground">Return total</dt><dd className="font-mono text-lg font-semibold tabular-nums text-destructive">−{formatIDR(total)}</dd></div></dl>
-          {refundCustomer==='yes' && <div className="mt-4 flex flex-col gap-1.5"><Label htmlFor="refund-amount">Refund amount (Rp)</Label><Input id="refund-amount" type="number" min={0} max={total} value={refundAmount} onChange={(event)=>setRefundAmount(event.target.value)} required /><p className="text-xs text-muted-foreground">Cannot exceed the return value or the amount the customer has paid.</p></div>}
+          {refundCustomer==='yes' && <div className="mt-4 flex flex-col gap-1.5"><Label htmlFor="refund-amount">Refund amount (Rp)</Label><Input id="refund-amount" type="number" min={0} max={maxRefund} value={refundAmount} onChange={(event)=>setRefundAmount(event.target.value)} required /><p className="text-xs text-muted-foreground">Maximum refundable: ${formatIDR(maxRefund)} based on this order's remaining paid balance.</p></div>}
           <div className="mt-4 flex flex-col gap-1.5"><Label htmlFor="return-date">Return date</Label><Input id="return-date" type="date" value={returnDate} onChange={(event)=>setReturnDate(event.target.value)} required /></div>
           <div className="mt-5 flex gap-2 border-t pt-4"><Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/returns" />}>Cancel</Button><Button type="submit" className="flex-1" disabled={saving||!orderId||invalidLine||!lines.length}>{saving?'Saving…':'Save Return'}</Button></div>
         </SectionCard>
