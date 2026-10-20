@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
-import { ArrowLeft, History, Package, Pencil, Trash2, UserRound, Wallet } from 'lucide-react'
+import { ArrowLeft, History, Pencil, Trash2, UserRound, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FormDialog } from '@/components/common/form-dialog'
 import { PageHeader } from '@/components/common/page-header'
@@ -26,7 +26,7 @@ const fetcher = async (url: string) => {
 }
 type PurchaseDetail = {
   id: string; date: string; supplierId: string; dueDate: string | null; notes: string | null
-  supplier: { id: string; name: string; phone?: string | null; address?: string | null } | null
+  supplier: { id: string; name: string; contact?: string | null; address?: string | null } | null
   items: Array<{ id: string; productId: string; qty: number; unitCost: string | number }>
   products: Array<{ id: string; name: string; stock: string | number; averageCost: string | number }>
   payments: Array<{ id: string; date: string; amount: string | number; account: string }>
@@ -122,7 +122,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
         <SectionCard title="Purchase information">
           <dl className="divide-y">
             <DetailRow label={t('common.supplier')}>{data.supplier?.name ?? data.supplierId}</DetailRow>
-            <DetailRow label={t('common.phone')}><span className="font-mono text-xs">{data.supplier?.phone || '—'}</span></DetailRow>
+            <DetailRow label={t('common.phone')}><span className="font-mono text-xs">{data.supplier?.contact || '—'}</span></DetailRow>
             <DetailRow label="Purchase date">{formatDate(data.date)}</DetailRow>
           </dl>
           {data.notes && <div className="mt-3 rounded-lg bg-muted/60 p-3 text-sm leading-relaxed"><p className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('common.notes')}</p>{data.notes}</div>}
