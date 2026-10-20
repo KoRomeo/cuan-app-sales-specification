@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { AlertTriangle, Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSWRConfig } from 'swr'
@@ -24,7 +24,7 @@ const fetcher = (url: string) => fetch(url).then(async (response) => {
   return response.json()
 })
 type Party = { id: string; name: string }
-type Product = { id: string; name: string; sellingPrice: string | number; averageCost: string | number; stock?: string | number }
+type Product = { id: string; name: string; sellingPrice: string | number; averageCost: string | number; stock?: string | number }\ntype StockRow = { productId: string; stock: number | string }
 
 interface Line {
   key: number
@@ -40,9 +40,9 @@ export function NewOrderView() {
   const { mutate: globalMutate } = useSWRConfig()
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: customerRows, error: customersError } = useSWR<Party[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
-  const { data: productRows, error: productsError } = useSWR<Product[]>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: productRows, error: productsError } = useSWR<Product[]>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)\n  const { data: stockRows } = useSWR<StockRow[]>(business?.id ? `/api/stock?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const error = businessError || customersError || productsError
-  const productsById = new Map((productRows ?? []).map((product) => [product.id, { ...product, sellingPrice: Number(product.sellingPrice), averageCost: Number(product.averageCost), stock: Number(product.stock ?? 0) }]))
+  const productsById = new Map((productRows ?? []).map((product) => [product.id, { ...product, sellingPrice: Number(product.sellingPrice), averageCost: Number(product.averageCost), stock: Number(stockRows?.find((row) => row.productId === product.id)?.stock ?? product.stock ?? 0) }]))
   const [lines, setLines] = useState<Line[]>([])
   const [customerId, setCustomerId] = useState('')
   const [paid, setPaid] = useState('0')
@@ -56,7 +56,7 @@ export function NewOrderView() {
   const update = (key: number, patch: Partial<Line>) =>
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)))
 
-  const total = lines.reduce((s, l) => s + l.qty * l.price - l.discount, 0)
+  const total = lines.reduce((s, l) => s + l.qty * l.price - l.discount, 0)\n  const stockAfterOrder = (productId: string) => {\n    const product = productsById.get(productId)\n    const quantity = lines.filter((line) => line.productId === productId).reduce((sum, line) => sum + line.qty, 0)\n    return { current: product?.stock ?? 0, after: (product?.stock ?? 0) - quantity, quantity }\n  }
   const cogs = lines.reduce((s, l) => s + l.qty * (productsById.get(l.productId)?.averageCost ?? 0), 0)
   if (error) return <p role="alert" className="text-sm text-destructive">{error.message}</p>
   if (!business || !customerRows || !productRows) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
@@ -120,7 +120,7 @@ export function NewOrderView() {
             <ul className="flex flex-col gap-4">
               {lines.map((l) => {
                 const p = productsById.get(l.productId)
-                const after = (p?.stock ?? 0) - l.qty
+                const stock = stockAfterOrder(l.productId)
                 return (
                   <li key={l.key} className="rounded-lg border p-3">
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-12">
@@ -149,7 +149,11 @@ export function NewOrderView() {
                         <Label htmlFor={`pr-${l.key}`}>{t('orders.sellingPrice')}</Label>
                         <Input id={`pr-${l.key}`} name={`price-${l.key}`} type="number" min={0} required className="font-mono" value={l.price} onChange={(e) => update(l.key, { price: Number(e.target.value) })} />
                       </div>
-                      <div className="flex items-end justify-end sm:col-span-2">
+                      <div className="flex flex-col gap-1.5 sm:col-span-2">
+                        <Label>Subtotal</Label>
+                        <div className="flex h-10 items-center font-mono font-semibold tabular-nums">{formatIDR(l.qty * l.price - l.discount)}</div>
+                      </div>
+                      <div className="flex items-end justify-end sm:col-span-12">
                         <Button
                           type="button"
                           variant="ghost"
@@ -162,18 +166,9 @@ export function NewOrderView() {
                         </Button>
                       </div>
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-                      {after < 0 ? (
-                        <span className="flex items-center gap-1.5 text-destructive">
-                          <AlertTriangle className="size-3.5" />
-                          {t('orders.negativeWarning', { product: p?.name ?? '', stock: after })}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">
-                          {t('stock.current')}: <span className="font-mono">{p?.stock}</span> → <span className="font-mono">{after}</span>
-                        </span>
-                      )}
-                      <span className="font-mono font-medium tabular-nums">{formatIDR(l.qty * l.price - l.discount)}</span>
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <span>Stock after order: <span className="font-mono">{stock.current} → {stock.after}</span></span>
+                      <span>{p?.name} ({stock.quantity > 0 ? '−' : ''}{stock.quantity})</span>
                     </div>
                   </li>
                 )
