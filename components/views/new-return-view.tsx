@@ -59,8 +59,8 @@ export function NewReturnView() {
     return sold ? Math.max(0, line.qty * sold.price - (sold.discount * line.qty / Number(sold.qty))) : 0
   }
   const total = lines.reduce((sum, line) => sum + linePrice(line), 0)
-  const totalPaid = (orders ? 0 : 0) + 0
-  const orderLines = order?.items ?? []
+  const eligiblePaid = Math.max((payments ?? []).filter((payment) => payment.orderId === orderId).reduce((sum, payment) => sum + Number(payment.amount), 0) - (previousReturns ?? []).filter((row) => row.orderId === orderId).reduce((sum, row) => sum + Number(row.refundAmount), 0), 0)
+  const maxRefund = Math.min(total, eligiblePaid)
   const invalidLine = lines.some((line) => !line.productId || !Number.isInteger(line.qty) || line.qty < 1 || line.qty > (eligibleLines.find((item) => item.productId === line.productId)?.remaining ?? 0))
   if (businessError || ordersError) return <p role="alert" className="text-sm text-destructive">{(businessError || ordersError)?.message}</p>
   if (!business || !orders || !customers || !products || !previousReturns || !payments) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
