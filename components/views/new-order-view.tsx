@@ -116,17 +116,6 @@ export function NewOrderView() {
 
           <SectionCard
             title={t('orders.orderItems')}
-            action={
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setLines((prev) => [...prev, { key: Date.now(), productId: productRows[0]?.id ?? '', qty: 1, price: Number(productRows[0]?.sellingPrice ?? 0), discount: 0 }])}
-              >
-                <Plus />
-                {t('common.add')}
-              </Button>
-            }
           >
             <ul className="flex flex-col gap-4">
               {lines.map((l) => {
@@ -190,6 +179,17 @@ export function NewOrderView() {
                 )
               })}
             </ul>
+            <div className="mt-4">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setLines((prev) => [...prev, { key: Date.now(), productId: productRows[0]?.id ?? '', qty: 1, price: Number(productRows[0]?.sellingPrice ?? 0), discount: 0 }])}
+              >
+                <Plus />
+                {t('common.add')}
+              </Button>
+            </div>
           </SectionCard>
 
           <SectionCard title={t('common.notes')}>
