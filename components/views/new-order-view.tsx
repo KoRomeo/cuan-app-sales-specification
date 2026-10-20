@@ -26,6 +26,8 @@ const fetcher = (url: string) => fetch(url).then(async (response) => {
 type Party = { id: string; name: string }
 type Product = { id: string; name: string; sellingPrice: string | number; averageCost: string | number; stock?: string | number }
 type StockRow = { productId: string; stock: number | string }
+const MAX_ORDER_QTY = 999999
+const formatCompactIDR = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', notation: 'compact', maximumFractionDigits: 2 }).format(value)
 
 interface Line {
   key: number
@@ -78,6 +80,10 @@ export function NewOrderView() {
         onSubmit={async (event) => {
           event.preventDefault()
           if (isSaving) return
+          if (lines.some((line) => !Number.isInteger(line.qty) || line.qty < 1 || line.qty > MAX_ORDER_QTY || !Number.isFinite(line.price) || line.price < 0)) {
+            toast.error('Quantity must be between 1 and 999,999 and price must be valid.')
+            return
+          }
           setIsSaving(true)
           try {
             const form = new FormData(event.currentTarget)
@@ -131,7 +137,7 @@ export function NewOrderView() {
                 return (
                   <li key={l.key} className="rounded-lg border p-3">
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-12">
-                      <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-5">
+                      <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-4">
                         <Label htmlFor={`p-${l.key}`}>{t('common.product')}</Label>
                         <select
                           id={`p-${l.key}`}
@@ -150,21 +156,25 @@ export function NewOrderView() {
                       </div>
                       <div className="flex flex-col gap-1.5 sm:col-span-2">
                         <Label htmlFor={`q-${l.key}`}>{t('common.qty')}</Label>
-                        <Input id={`q-${l.key}`} name={`quantity-${l.key}`} type="number" min={1} required className="font-mono" value={l.qty} onChange={(e) => update(l.key, { qty: Number(e.target.value) })} />
+                        <Input id={`q-${l.key}`} name={`quantity-${l.key}`} type="number" min={1} max={MAX_ORDER_QTY} required className="font-mono" value={l.qty} onChange={(e) => update(l.key, { qty: Number(e.target.value) })} />
                       </div>
                       <div className="flex flex-col gap-1.5 sm:col-span-3">
                         <Label htmlFor={`pr-${l.key}`}>{t('orders.sellingPrice')}</Label>
                         <Input id={`pr-${l.key}`} name={`price-${l.key}`} type="number" min={0} required className="font-mono" value={l.price} onChange={(e) => update(l.key, { price: Number(e.target.value) })} />
                       </div>
-                      <div className="flex flex-col gap-1.5 sm:col-span-2">
+                      <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2">
                         <Label>Subtotal</Label>
-                        <div className="flex h-10 items-center gap-1 font-mono font-semibold tabular-nums">
-                          <span>{formatIDR(l.qty * l.price - l.discount)}</span>
+                        <div className="flex h-10 min-w-0 items-center">
+                          <span title={formatIDR(l.qty * l.price - l.discount)} className="truncate font-mono text-sm font-semibold tabular-nums">{formatCompactIDR(l.qty * l.price - l.discount)}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1.5 sm:col-span-1">
+                        <Label className="invisible">Remove</Label>
+                        <div className="flex h-10 items-center justify-center">
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon-sm"
-                            className="shrink-0"
                             aria-label={t('common.delete')}
                             disabled={lines.length === 1}
                             onClick={() => setLineToRemove(l.key)}
@@ -175,8 +185,8 @@ export function NewOrderView() {
                       </div>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                      <span>Stock after order: <span className="font-mono">{stock.current} → {stock.after}</span></span>
-                      <span>{p?.name} ({stock.quantity > 0 ? '−' : ''}{stock.quantity})</span>
+                      <span>Stock after order: <span className="font-mono">{stock.current.toLocaleString('id-ID')} → {stock.after.toLocaleString('id-ID')}</span></span>
+                      <span>{p?.name} ({stock.quantity > 0 ? '−' : ''}{stock.quantity.toLocaleString('id-ID')})</span>
                     </div>
                   </li>
                 )
