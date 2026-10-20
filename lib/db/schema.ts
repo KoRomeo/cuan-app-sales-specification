@@ -343,6 +343,29 @@ reason: text("reason").notNull(),
 delivered: boolean("delivered").notNull().default(false),
 })
 
+
+// ============================================================
+// CUSTOMER RETURNS
+// ============================================================
+export const returns = pgTable("returns", {
+  id: text("id").primaryKey(),
+  businessId: text("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  orderId: text("order_id").notNull().references(() => orders.id),
+  date: date("date").notNull(),
+  stockReturned: boolean("stock_returned").notNull().default(false),
+  refundAmount: decimal("refund_amount", { precision: 14, scale: 2 }).notNull().default("0"),
+  notes: text("notes"),
+  total: decimal("total", { precision: 14, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+})
+export const returnItems = pgTable("return_items", {
+  id: text("id").primaryKey(),
+  returnId: text("return_id").notNull().references(() => returns.id, { onDelete: "cascade" }),
+  productId: text("product_id").notNull().references(() => products.id),
+  qty: integer("qty").notNull(),
+  price: decimal("price", { precision: 14, scale: 2 }).notNull(),
+})
+
 // ============================================================
 // EXPENSES
 // ============================================================
