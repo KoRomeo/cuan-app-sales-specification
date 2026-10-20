@@ -474,7 +474,7 @@ export function DeliveriesView() {
   )
 }
 
-type PersistedReturn = { id: string; date: string; orderId: string; productId: string; qty: number; reason: string; delivered: boolean; returnValue?: number }
+type PersistedReturn = { id: string; date: string; orderId: string; total: string | number; refundAmount: string | number; stockReturned: boolean; notes: string | null; items: Array<{ productId: string; qty: number; price: string | number }> }
 type ReturnOrderOption = { id: string; customerId: string; status: string; items: Array<{ productId: string; qty: number }> }
 type ReturnProductOption = { id: string; name: string }
 
@@ -484,7 +484,7 @@ export function ReturnsView() {
   const [selectedReturnOrderId, setSelectedReturnOrderId] = useState('')
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', customersFetcher)
   const { data: rows, error, isLoading, mutate } = useSWR<PersistedReturn[]>(
-    business?.id ? `/api/replacements?businessId=${encodeURIComponent(business.id)}` : null,
+    business?.id ? `/api/returns?businessId=${encodeURIComponent(business.id)}` : null,
     customersFetcher,
   )
   const { data: orderRows, mutate: mutateOrders } = useSWR<ReturnOrderOption[]>(
@@ -500,7 +500,7 @@ export function ReturnsView() {
     customersFetcher,
   )
   const returns = rows ?? []
-  const orderOptions = (orderRows ?? []).filter((o) => o.status === 'delivered')
+  const orderOptions = (orderRows ?? []).filter((o) => o.status !== 'cancelled')
   const selectedReturnOrder = orderOptions.find((o) => o.id === selectedReturnOrderId)
   const orderedProductIds = new Set((selectedReturnOrder?.items ?? []).map((item) => item.productId))
   const orderedProducts = (productRows ?? []).filter((product) => orderedProductIds.has(product.id))
@@ -514,11 +514,11 @@ export function ReturnsView() {
     { key: 'date', header: t('common.date'), cell: (r) => <span className="font-mono text-xs text-muted-foreground">{formatDate(r.date)}</span> },
     { key: 'order', header: t('returns.order'), cell: (r) => <span className="font-mono text-xs">{r.orderId}</span> },
     { key: 'customer', header: t('common.customer'), cell: (r) => customerName(r.orderId) },
-    { key: 'product', header: t('common.product'), cell: (r) => <span className="font-medium">{productName(r.productId)}</span> },
-    { key: 'qty', header: t('common.qty'), align: 'right', cell: (r) => <span className="font-mono tabular-nums">{r.qty}</span> },
-    { key: 'value', header: t('common.amount'), align: 'right', cell: (r) => <Money value={Number(r.returnValue ?? 0)} /> },
-    { key: 'reason', header: t('returns.reason'), cell: (r) => <span className="text-muted-foreground">{r.reason}</span> },
-    { key: 'status', header: t('common.status'), cell: (r) => (r.delivered ? <Pill tone="success">{t('returns.delivered')}</Pill> : <Pill tone="warning">{t('returns.outstanding')}</Pill>) },
+    { key: 'product', header: t('common.product'), cell: (r) => <span className="font-medium">{r.items.map((item) => productName(item.productId)).join(', ')}</span> },
+    { key: 'qty', header: t('common.qty'), align: 'right', cell: (r) => <span className="font-mono tabular-nums">{r.items.reduce((sum, item) => sum + Number(item.qty), 0)}</span> },
+    { key: 'value', header: 'Return total', align: 'right', cell: (r) => <Money value={Number(r.total)} className="text-destructive" /> },
+    { key: 'reason', header: t('common.notes'), cell: (r) => <span className="text-muted-foreground">{r.notes || '—'}</span> },
+    { key: 'status', header: 'Refund', cell: (r) => (Number(r.refundAmount) > 0 ? <Pill tone="success">Refunded</Pill> : <Pill tone="neutral">No refund</Pill>) },
   ]
   const saveReturn = async (values: Record<string, string>) => {
     if (!business?.id) throw new Error('Business not found')
@@ -545,24 +545,24 @@ export function ReturnsView() {
       <PageHeader breadcrumbs={[{ label: t('nav.sales') }, { label: t('nav.returns') }]} title={t('returns.title')} description={t('returns.desc')} />
       <KpiGrid>
         <KpiCard label={t('returns.title')} value={returns.length} icon={RotateCcw} />
-        <KpiCard label={t('returns.outstanding')} value={returns.filter((r) => !r.delivered).length} icon={RotateCcw} tone="warning" />
-        <KpiCard label={t('returns.delivered')} value={returns.filter((r) => r.delivered).length} icon={CheckCircle2} tone="success" />
-        <KpiCard label={t('reports.units')} value={returns.reduce((sum, r) => sum + r.qty, 0)} icon={Truck} tone="neutral" />
+        <KpiCard label={t('returns.outstanding')} value={returns.filter((r) => Number(r.refundAmount) === 0).length} icon={RotateCcw} tone="warning" />
+        <KpiCard label="Refunded" value={returns.filter((r) => Number(r.refundAmount) > 0).length} icon={CheckCircle2} tone="success" />
+        <KpiCard label={t('reports.units')} value={returns.reduce((sum, r) => sum + r.items.reduce((itemSum, item) => itemSum + Number(item.qty), 0), 0)} icon={Truck} tone="neutral" />
       </KpiGrid>
       {error ? <p className="py-4 text-sm text-destructive">Failed to load Returns. Please refresh and try again.</p> : isLoading || !business ? <p className="py-4 text-sm text-muted-foreground">Loading Returns...</p> : (
         <DataTable
           rows={returns}
           columns={columns}
           getRowId={(r) => r.id}
-          searchText={(r) => `${r.id} ${r.orderId} ${productName(r.productId)} ${r.reason}`}
+          searchText={(r) => `${r.id} ${r.orderId} ${r.items.map((item) => productName(item.productId)).join(' ')} ${r.notes ?? ''}`}
           filters={[
             { value: 'all', label: t('common.all'), predicate: () => true },
-            { value: 'out', label: t('returns.outstanding'), predicate: (r) => !r.delivered },
-            { value: 'done', label: t('returns.delivered'), predicate: (r) => r.delivered },
+            { value: 'out', label: 'No refund', predicate: (r) => Number(r.refundAmount) === 0 },
+            { value: 'done', label: 'Refunded', predicate: (r) => Number(r.refundAmount) > 0 },
           ]}
           rowHref={(r) => `/orders/${r.orderId}`}
           addLabel={t('returns.add')}
-          onAdd={() => setOpen(true)}
+          onAdd={() => { window.location.href = '/returns/new' }}
         />
       )}
       <FormDialog
@@ -570,7 +570,7 @@ export function ReturnsView() {
         open={open}
         onOpenChange={setOpen}
         title={t('returns.add')}
-        description="Creating a Return records the replacement obligation and deducts replacement stock once."
+        description="Record returned items, restock decision, and any customer refund."
         persisted
         fields={[
           { name: 'order', label: t('returns.order'), type: 'select', half: true, required: true, options: [{ value: '', label: 'Select an order' }, ...orderOptions.map((o) => ({ value: o.id, label: o.id }))], onValueChange: setSelectedReturnOrderId },
