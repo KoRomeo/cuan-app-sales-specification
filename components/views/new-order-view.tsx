@@ -158,19 +158,20 @@ export function NewOrderView() {
                       </div>
                       <div className="flex flex-col gap-1.5 sm:col-span-2">
                         <Label>Subtotal</Label>
-                        <div className="flex h-10 items-center font-mono font-semibold tabular-nums">{formatIDR(l.qty * l.price - l.discount)}</div>
-                      </div>
-                      <div className="flex h-10 items-center justify-end">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={t('common.delete')}
-                          disabled={lines.length === 1}
-                          onClick={() => setLineToRemove(l.key)}
-                        >
-                          <Trash2 />
-                        </Button>
+                        <div className="flex h-10 items-center gap-1 font-mono font-semibold tabular-nums">
+                          <span>{formatIDR(l.qty * l.price - l.discount)}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="shrink-0"
+                            aria-label={t('common.delete')}
+                            disabled={lines.length === 1}
+                            onClick={() => setLineToRemove(l.key)}
+                          >
+                            <Trash2 />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
