@@ -132,12 +132,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       const paymentRows = await tx.select({ amount: payments.amount }).from(payments)
         .where(and(eq(payments.orderId, record.orderId), eq(payments.businessId, businessId)))
       const paid = paymentRows.reduce((sum, row) => sum + Number(row.amount), 0)
-      const otherRefundRows = await tx.select({ amount: returns.refundAmount }).from(returns)
-        .where(and(eq(returns.orderId, record.orderId), eq(returns.id, id)))
       const allRefundRows = await tx.select({ id: returns.id, amount: returns.refundAmount }).from(returns)
         .where(eq(returns.orderId, record.orderId))
       const refundedElsewhere = allRefundRows.filter((row) => row.id !== id).reduce((sum, row) => sum + Number(row.amount), 0)
-      void otherRefundRows
       if (refundCustomer && refund > Math.min(total, Math.max(paid - refundedElsewhere, 0))) throw new Error("REFUND_EXCEEDS_PAID")
 
       // Replace this return's effects atomically so stock, journal, and report totals never see a half-updated record.
