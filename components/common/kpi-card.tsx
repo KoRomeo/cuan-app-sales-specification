@@ -20,7 +20,7 @@ export function KpiCard({
   href?: string
 }) {
   const amountDigits = typeof value === 'string' ? value.replace(/\D/g, '').length : 0
-  const valueSize = amountDigits >= 13 ? 'text-xs sm:text-sm md:text-base' : amountDigits >= 10 ? 'text-sm sm:text-base md:text-lg' : 'text-xl md:text-2xl'
+  const valueSize = amountDigits >= 12 ? 'text-xs sm:text-sm md:text-base' : amountDigits >= 9 ? 'text-sm sm:text-base md:text-lg' : 'text-xl md:text-2xl'
   const body = (
     <>
       <div className="flex items-start justify-between gap-3">
