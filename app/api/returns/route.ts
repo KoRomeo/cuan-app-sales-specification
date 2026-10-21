@@ -125,7 +125,16 @@ export async function POST(request: Request) {
       }
       return { id, total, refundAmount: refund, refundAccount: resolvedRefundAccount, stockReturned, orderId }
     })
-    await writeAudit({ businessId, page: "Returns", action: `Recorded ${refundCustomer ? "refunded return; item restocked" : "replacement return; replacement stock issued"}; refund ${refundCustomer ? "issued" : "not issued"}`, reference: created.id })
+    await writeAudit({
+      businessId, page: "Returns", action: "Record Return", reference: created.id,
+      changes: [
+        { property: "Order", previous: null, current: created.orderId },
+        { property: "Date", previous: null, current: date },
+        { property: "Return Total", previous: null, current: String(created.total) },
+        { property: "Refund Amount", previous: null, current: String(created.refundAmount) },
+        { property: "Stock Decision", previous: null, current: created.stockReturned ? "Restocked" : "Not restocked" },
+      ],
+    })
     return NextResponse.json(created, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : ""
