@@ -37,12 +37,13 @@ export function ProductDetailView({ productId }: { productId: string }) {
   const { t } = useApp()
   const { data: product, error, mutate } = useSWR<ProductDetail>(`/api/products/${encodeURIComponent(productId)}`, fetcher)
   const businessId = product?.businessId
-  const { data: inventory } = useSWR<{ products: InventoryRow[] }>(businessId ? `/api/inventory?businessId=${encodeURIComponent(businessId)}` : null, fetcher)
-  const { data: orders } = useSWR<ProductOrder[]>(businessId ? `/api/orders?businessId=${encodeURIComponent(businessId)}` : null, fetcher)
-  const { data: returns } = useSWR<ReturnRow[]>(businessId ? `/api/returns?businessId=${encodeURIComponent(businessId)}` : null, fetcher)
-  const { data: customers } = useSWR<CustomerRow[]>(businessId ? `/api/customers?businessId=${encodeURIComponent(businessId)}` : null, fetcher)
+  const { data: inventory, error: inventoryError, mutate: mutateInventory } = useSWR<{ products: InventoryRow[] }>(businessId ? `/api/inventory?businessId=${encodeURIComponent(businessId)}` : null, fetcher)
+  const { data: orders, error: ordersError, mutate: mutateOrders } = useSWR<ProductOrder[]>(businessId ? `/api/orders?businessId=${encodeURIComponent(businessId)}` : null, fetcher)
+  const { data: returns, error: returnsError, mutate: mutateReturns } = useSWR<ReturnRow[]>(businessId ? `/api/returns?businessId=${encodeURIComponent(businessId)}` : null, fetcher)
+  const { data: customers, error: customersError, mutate: mutateCustomers } = useSWR<CustomerRow[]>(businessId ? `/api/customers?businessId=${encodeURIComponent(businessId)}` : null, fetcher)
 
-  if (error) return <div role="alert" className="space-y-3"><p className="text-sm text-destructive">{error.message}</p><Button variant="outline" size="sm" onClick={() => mutate()}>{t('common.retry')}</Button></div>
+  const relatedError = inventoryError || ordersError || returnsError || customersError
+  if (error || relatedError) return <div role="alert" className="space-y-3"><p className="text-sm text-destructive">{(error || relatedError)?.message}</p><Button variant="outline" size="sm" onClick={() => { void Promise.all([mutate(), mutateInventory(), mutateOrders(), mutateReturns(), mutateCustomers()]) }}>{t('common.retry')}</Button></div>
   if (!product || !inventory || !orders || !returns || !customers) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
 
   const current = inventory.products.find((row) => row.id === product.id)
