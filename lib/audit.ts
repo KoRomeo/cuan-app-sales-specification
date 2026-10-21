@@ -1,5 +1,11 @@
 import { db } from "@/lib/db"
-import { auditLogs } from "@/lib/db/schema"
+import { auditLogs, auditLogChanges } from "@/lib/db/schema"
+
+type AuditChange = {
+  property: string
+  previous?: string | null
+  current?: string | null
+}
 
 type AuditInput = {
   businessId: string
@@ -7,11 +13,12 @@ type AuditInput = {
   action: string
   reference: string
   userId?: string | null
+  changes?: AuditChange[]
 }
 
 export async function writeAudit(input: AuditInput) {
   const now = new Date()
-  await db.insert(auditLogs).values({
+  const [log] = await db.insert(auditLogs).values({
     id: `AUD-${crypto.randomUUID()}`,
     businessId: input.businessId,
     date: now.toISOString().slice(0, 10),
@@ -20,5 +27,15 @@ export async function writeAudit(input: AuditInput) {
     action: input.action,
     userId: input.userId ?? null,
     reference: input.reference,
-  })
+  }).returning({ id: auditLogs.id })
+
+  if (input.changes?.length) {
+    await db.insert(auditLogChanges).values(input.changes.map((change, index) => ({
+      id: `${log.id}-${index + 1}`,
+      auditLogId: log.id,
+      property: change.property,
+      previous: change.previous ?? null,
+      current: change.current ?? null,
+    })))
+  }
 }
