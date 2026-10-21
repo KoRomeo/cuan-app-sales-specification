@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     const { businessId, orderId, date, stockReturned, refundCustomer, refundAmount, refundAccount, notes, items } = body ?? {}
     const refund = Number(refundAmount ?? 0)
     if (typeof businessId !== "string" || !businessId.trim() || typeof orderId !== "string" || !orderId.trim() ||
-      !validDate(date) || typeof stockReturned !== "boolean" || typeof refundCustomer !== "boolean" || stockReturned !== refundCustomer ||
+      !validDate(date) || typeof stockReturned !== "boolean" || typeof refundCustomer !== "boolean" ||
       !validItems(items) || !Number.isFinite(refund) || refund < 0 || (!refundCustomer && refund !== 0) ||
       typeof notes !== "string") {
       return NextResponse.json({ error: "Please provide a valid order, return date, items, and refund settings." }, { status: 400 })
