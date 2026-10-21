@@ -19,7 +19,7 @@ export function KpiCard({
   tone?: Tone
   href?: string
 }) {
-  const amountDigits = typeof value === 'string' ? value.replace(/\\D/g, '').length : 0
+  const amountDigits = typeof value === 'string' ? value.replace(/\D/g, '').length : 0
   const valueSize = amountDigits >= 13 ? 'text-xs sm:text-sm md:text-base' : amountDigits >= 10 ? 'text-sm sm:text-base md:text-lg' : 'text-xl md:text-2xl'
   const body = (
     <>
