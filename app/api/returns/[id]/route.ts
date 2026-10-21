@@ -219,6 +219,10 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     if ("error" in authorized) return authorized.error
     const { record, businessId } = authorized
     await db.transaction(async (tx) => {
+      // Serialize delete against return creation/edits so remaining returnable quantities stay correct.
+      const [order] = await tx.select({ id: orders.id }).from(orders)
+        .where(and(eq(orders.id, record.orderId), eq(orders.businessId, businessId))).for("update").limit(1)
+      if (!order) throw new Error("ORDER_NOT_FOUND")
       await tx.delete(stockMovements).where(and(
         eq(stockMovements.businessId, businessId),
         inArray(stockMovements.reference, [`return:${id}:stock`, `return:${id}:replacement`]),
