@@ -480,7 +480,7 @@ export function DataTable<T>({
 }
 
 export function Money({ value, className }: { value: number; className?: string }) {
-  return <span className={cn('font-mono tabular-nums', className)}>{formatMoney(value)}</span>
+  return <span className={cn('whitespace-nowrap font-mono tabular-nums', className)}>{formatMoney(value)}</span>
 }
 
 function formatMoney(v: number) {
