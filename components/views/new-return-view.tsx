@@ -127,6 +127,7 @@ export function NewReturnView() {
           globalMutate(editId ? `/api/returns/${encodeURIComponent(editId)}` : null),
           globalMutate(`/api/replacements?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/orders?businessId=${encodeURIComponent(business.id)}`),
+          globalMutate(`/api/orders/${encodeURIComponent(orderId)}`),
           globalMutate(`/api/products?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/inventory?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/stock?businessId=${encodeURIComponent(business.id)}`),
