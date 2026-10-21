@@ -14,3 +14,11 @@ node_modules
 .next/
 .DS_Store
 .vercel
+
+.next/
+out/
+dist/
+.turbo/
+coverage/
+.env*
+!.env.example
