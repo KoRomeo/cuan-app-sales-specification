@@ -40,6 +40,9 @@ const pageLabelKeys: Partial<Record<string, TranslationKey>> = {
 
 const actionLabelKeys: Partial<Record<string, TranslationKey>> = {
   'Create Order': 'history.action.createOrder',
+  'Record Return': 'history.action.createReturn',
+  'Edit Return': 'history.action.editReturn',
+  'Delete Return': 'history.action.deleteReturn',
   'Create Replacement': 'history.action.createReplacement',
   'Create Purchase': 'history.action.createPurchase',
   'Edit Order': 'history.action.editOrder',
@@ -56,6 +59,12 @@ const actionLabelKeys: Partial<Record<string, TranslationKey>> = {
 
 const propertyLabelKeys: Partial<Record<string, TranslationKey>> = {
   Customer: 'common.customer',
+  Date: 'common.date',
+  'Stock Decision': 'returns.stockDecision',
+  'Refund Amount': 'returns.totalRefund',
+  'Return Total': 'returns.returnTotal',
+  Notes: 'common.notes',
+  Deleted: 'common.delete',
   Status: 'common.status',
   Total: 'common.total',
   Paid: 'common.paid',
@@ -86,6 +95,11 @@ const valueLabelKeys: Partial<Record<string, TranslationKey>> = {
   'Own Delivery': 'history.value.ownDelivery',
   'Moving Weighted Average': 'history.value.movingWeightedAverage',
   '0 (reversed)': 'history.value.reversed',
+  Restocked: 'returns.stockReturned',
+  'Not restocked': 'returns.stockNotReturned',
+  Active: 'history.value.active',
+  Deleted: 'history.value.deleted',
+  'Effects reversed': 'history.value.effectsReversed',
 }
 
 export function HistoryView() {
