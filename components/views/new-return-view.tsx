@@ -103,7 +103,7 @@ export function NewReturnView() {
   return <>
     <PageHeader
       breadcrumbs={[{ label: t('nav.sales') }, { label: t('nav.returns'), href: '/returns' }, { label: t('returns.recordTitle') }]}
-      title={editId ? t('common.edit') : t('returns.recordTitle')}
+      title={editId ?? t('returns.recordTitle')}
       description={t('returns.recordDescription')}
       actions={<Button variant="outline" size="sm" nativeButton={false} render={<Link href={editId ? `/returns/${encodeURIComponent(editId)}` : '/returns'} />}><ArrowLeft /> {t('returns.backToList')}</Button>}
     />
