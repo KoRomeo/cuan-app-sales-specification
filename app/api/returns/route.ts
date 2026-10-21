@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm"
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { journalEntries, journalEntryLines, orderItems, orders, payments, products, returnItems, returns, stockMovements } from "@/lib/db/schema"
+import { financialAccounts, journalEntries, journalEntryLines, orderItems, orders, payments, products, returnItems, returns, stockMovements } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
 import { generateEntityId } from "@/lib/db/ids"
 import { writeAudit } from "@/lib/audit"
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { businessId, orderId, date, stockReturned, refundCustomer, refundAmount, notes, items } = body ?? {}
+    const { businessId, orderId, date, stockReturned, refundCustomer, refundAmount, refundAccount, notes, items } = body ?? {}
     const refund = Number(refundAmount ?? 0)
     if (typeof businessId !== "string" || !businessId.trim() || typeof orderId !== "string" || !orderId.trim() ||
       !validDate(date) || typeof stockReturned !== "boolean" || typeof refundCustomer !== "boolean" ||
@@ -67,6 +67,17 @@ export async function POST(request: Request) {
         total += Math.max(0, price * qty - (Number(soldLine.discount) * qty / Number(soldLine.qty)))
         lines.push({ productId, qty, price, unitCost: Number(product.averageCost) })
       }
+      let resolvedRefundAccount: string | null = null
+      if (refund > 0) {
+        const activeAccounts = await tx.select({ name: financialAccounts.name }).from(financialAccounts)
+          .where(and(eq(financialAccounts.businessId, businessId), eq(financialAccounts.active, true)))
+        const requestedAccount = typeof refundAccount === "string" ? refundAccount.trim() : ""
+        const chosenAccount = requestedAccount
+          ? activeAccounts.find((account) => account.name === requestedAccount)
+          : activeAccounts.find((account) => account.name.toLowerCase() === "cash") ?? activeAccounts[0]
+        if (!chosenAccount) throw new Error("NO_REFUND_ACCOUNT")
+        resolvedRefundAccount = chosenAccount.name
+      }
       const paymentRows = await tx.select({ amount: payments.amount }).from(payments).where(and(eq(payments.orderId, orderId), eq(payments.businessId, businessId)))
       const paid = paymentRows.reduce((sum, row) => sum + Number(row.amount), 0)
       const priorRefunds = await tx.select({ amount: returns.refundAmount }).from(returns).where(eq(returns.orderId, orderId))
@@ -89,7 +100,7 @@ export async function POST(request: Request) {
         const journalLines: Array<{ id: string; journalEntryId: string; account: string; debit: string; credit: string }> = []
         if (refund > 0) journalLines.push(
           { id: `${entryId}-sales-return`, journalEntryId: entryId, account: "Sales Returns", debit: refund.toFixed(2), credit: "0" },
-          { id: `${entryId}-cash`, journalEntryId: entryId, account: "Cash", debit: "0", credit: refund.toFixed(2) },
+          { id: `${entryId}-cash`, journalEntryId: entryId, account: resolvedRefundAccount!, debit: "0", credit: refund.toFixed(2) },
         )
         if (stockValue > 0) journalLines.push(
           { id: `${entryId}-inventory`, journalEntryId: entryId, account: "Inventory", debit: stockValue.toFixed(2), credit: "0" },
@@ -97,7 +108,7 @@ export async function POST(request: Request) {
         )
         await tx.insert(journalEntryLines).values(journalLines)
       }
-      return { id, total, refundAmount: refund, stockReturned, orderId }
+      return { id, total, refundAmount: refund, refundAccount: resolvedRefundAccount, stockReturned, orderId }
     })
     await writeAudit({ businessId, page: "Returns", action: `Recorded return; stock ${stockReturned ? "restocked" : "not restocked"}; refund ${refundCustomer ? "issued" : "not issued"}`, reference: created.id })
     return NextResponse.json(created, { status: 201 })
@@ -111,6 +122,7 @@ export async function POST(request: Request) {
       RETURN_QTY_EXCEEDS_SOLD: ["Return quantity exceeds the remaining quantity sold", 409],
       REFUND_EXCEEDS_PAID: ["Refund cannot exceed the eligible amount paid for the returned items", 409],
       REFUND_NOT_SELECTED: ["Refund amount must be zero when refund is disabled", 400],
+      NO_REFUND_ACCOUNT: ["Create or activate a Cash & Bank account before recording a refund", 400],
     }
     if (known[message]) return NextResponse.json({ error: known[message][0] }, { status: known[message][1] })
     console.error("POST /api/returns", error)
