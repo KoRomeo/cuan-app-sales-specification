@@ -62,9 +62,12 @@ export async function GET(request: Request) {
       const linkedReturnIds = new Set(linkedReturns.map((r) => r.id))
       const linkedJournalIds = new Set(journalRows.filter((entry) => entry.kind === "return" && linkedReturnIds.has(entry.reference) && within(entry.entryDate, from!, to!)).map((entry) => entry.id))
       const linkedJournalLines = accountRows.filter((line) => linkedJournalIds.has(line.journalEntryId))
+      const linkedReplacementIds = new Set(replacementRows.filter((r) => r.orderId === o.id && within(r.date, from!, to!)).map((r) => r.id))
+      const linkedReplacementJournalIds = new Set(journalRows.filter((entry) => entry.kind === "replacement" && linkedReplacementIds.has(entry.reference) && within(entry.entryDate, from!, to!)).map((entry) => entry.id))
+      const linkedReplacementLines = accountRows.filter((line) => linkedReplacementJournalIds.has(line.journalEntryId))
       const refundTotal = linkedReturns.reduce((sum, r) => sum + num(r.refundAmount), 0)
       const returnedCogs = linkedJournalLines.filter((line) => line.account === "Cost of Goods Sold").reduce((sum, line) => sum + num(line.credit) - num(line.debit), 0)
-      const replacementCost = linkedJournalLines.filter((line) => line.account === "Replacement Cost").reduce((sum, line) => sum + num(line.debit) - num(line.credit), 0)
+      const replacementCost = linkedJournalLines.filter((line) => line.account === "Replacement Cost").reduce((sum, line) => sum + num(line.debit) - num(line.credit), 0) + linkedReplacementLines.filter((line) => line.account === "Cost of Goods Sold").reduce((sum, line) => sum + num(line.debit) - num(line.credit), 0)
       const netRevenue = total - refundTotal
       const netCogs = cogs - returnedCogs
       return { id: o.id, date: o.date, customer: customerMap.get(o.customerId) ?? o.customerId, customerId: o.customerId, status: o.status, total, refundTotal, netRevenue, cogs, netCogs, replacementCost, grossProfit: netRevenue - netCogs - replacementCost, paid: orderPayments.get(o.id) ?? 0, outstanding: Math.max(0, total - (orderPayments.get(o.id) ?? 0)), returnCount: linkedReturns.length, items: items.map(i => ({ productId: i.productId, product: productMap.get(i.productId)?.name ?? i.productId, qty: i.qty, price: num(i.price), total: i.qty * num(i.price) - num(i.discount) })) }
