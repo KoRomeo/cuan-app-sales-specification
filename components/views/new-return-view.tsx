@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import useSWR from 'swr'
 import { useSWRConfig } from 'swr'
 import { useEffect, useState } from 'react'
@@ -35,10 +35,12 @@ type Line = { key: number; productId: string; qty: number }
 export function NewReturnView() {
   const { t } = useApp()
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const editId = searchParams.get('editId')
-  const initialOrderId = searchParams.get('orderId')
-  const initialProductId = searchParams.get('productId')
+  const [query, setQuery] = useState<{ editId: string | null; orderId: string | null; productId: string | null }>({ editId: null, orderId: null, productId: null })
+  const { editId, orderId: initialOrderId, productId: initialProductId } = query
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    setQuery({ editId: params.get('editId'), orderId: params.get('orderId'), productId: params.get('productId') })
+  }, [])
   const { mutate: globalMutate } = useSWRConfig()
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: orders, error: ordersError } = useSWR<OrderRow[]>(business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
