@@ -1,6 +1,5 @@
 'use client'
 import useSWR, { useSWRConfig } from 'swr'
-import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { appToast as toast } from '@/lib/toast'
 import { Ban, CheckCircle2, Eye, FileText, HandCoins, Pencil, Printer, RotateCcw, Trash2, Truck, Users } from 'lucide-react'
@@ -484,7 +483,6 @@ export function ReturnsView() {
   const [open, setOpen] = useState(false)
   const [selectedReturnOrderId, setSelectedReturnOrderId] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<PersistedReturn | null>(null)
-  const router = useRouter()
   const { mutate: globalMutate } = useSWRConfig()
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', customersFetcher)
   const { data: rows, error, isLoading, mutate } = useSWR<PersistedReturn[]>(
