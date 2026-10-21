@@ -282,6 +282,7 @@ const en = {
   'returns.saved': 'Return recorded successfully',
   'returns.saveFailed': 'Failed to record return',
   'returns.selectCashBank': 'Select Cash & Bank account',
+  'returns.remaining': 'remaining',
 
   'purchases.title': 'Purchases',
   'purchases.desc': 'Stock bought from suppliers — before or after an order, both are valid.',
@@ -938,6 +939,7 @@ const id: Record<TranslationKey, string> = {
   'returns.saved': 'Retur berhasil dicatat',
   'returns.saveFailed': 'Gagal mencatat retur',
   'returns.selectCashBank': 'Pilih akun Kas & Bank',
+  'returns.remaining': 'tersisa',
 
   'purchases.title': 'Pembelian',
   'purchases.desc': 'Stok yang dibeli dari supplier — sebelum atau sesudah pesanan, keduanya valid.',
