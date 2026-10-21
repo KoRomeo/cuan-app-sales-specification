@@ -56,6 +56,7 @@ export async function GET(request: Request) {
     const salesReturns = sumAccount("Sales Returns", "debit") - sumAccount("Sales Returns", "credit")
     const salesRevenue = grossSalesRevenue - salesReturns
     const costOfGoodsSold = sumAccount("Cost of Goods Sold", "debit") - sumAccount("Cost of Goods Sold", "credit")
+    const replacementCost = sumAccount("Replacement Cost", "debit") - sumAccount("Replacement Cost", "credit")
     const totalPurchases = entries.filter((entry) => entry.kind === "purchase").reduce((sum, entry) =>
       sum + (linesByEntry.get(entry.id) ?? []).filter((line) => line.account === "Inventory")
         .reduce((part, line) => part + Number(line.debit) - Number(line.credit), 0), 0)
@@ -82,7 +83,8 @@ export async function GET(request: Request) {
       salesRevenue: round(salesRevenue),
       netSales: round(salesRevenue),
       costOfGoodsSold: round(costOfGoodsSold),
-      grossProfit: round(salesRevenue - costOfGoodsSold),
+      replacementCost: round(replacementCost),
+      grossProfit: round(salesRevenue - costOfGoodsSold - replacementCost),
       totalPaymentsReceived: round(totalPaymentsReceived),
       totalPurchases: round(totalPurchases),
       totalExpenses: round(totalExpenses),
