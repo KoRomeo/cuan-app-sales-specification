@@ -279,6 +279,9 @@ const en = {
   'returns.refundValidation': 'Refund must be between Rp0 and the return total.',
   'returns.loadError': 'Failed to load Returns. Please refresh and try again.',
   'returns.loading': 'Loading Returns…',
+  'returns.saved': 'Return recorded successfully',
+  'returns.saveFailed': 'Failed to record return',
+  'returns.selectCashBank': 'Select Cash & Bank account',
 
   'purchases.title': 'Purchases',
   'purchases.desc': 'Stock bought from suppliers — before or after an order, both are valid.',
@@ -932,6 +935,9 @@ const id: Record<TranslationKey, string> = {
   'returns.refundValidation': 'Jumlah pengembalian harus antara Rp0 dan total retur.',
   'returns.loadError': 'Gagal memuat retur. Silakan segarkan halaman dan coba lagi.',
   'returns.loading': 'Memuat retur…',
+  'returns.saved': 'Retur berhasil dicatat',
+  'returns.saveFailed': 'Gagal mencatat retur',
+  'returns.selectCashBank': 'Pilih akun Kas & Bank',
 
   'purchases.title': 'Pembelian',
   'purchases.desc': 'Stok yang dibeli dari supplier — sebelum atau sesudah pesanan, keduanya valid.',
