@@ -28,6 +28,7 @@ type OrderRow = { id: string; customerId: string; date: string; status: string; 
 type CustomerRow = { id: string; name: string }
 type PaymentRow = { orderId: string | null; amount: number | string }
 type ProductRow = { id: string; name: string }
+type FinancialAccountRow = { id: string; name: string; type: string; active: boolean; currentBalance?: number }
 type Line = { key: number; productId: string; qty: number }
 
 export function NewReturnView() {
@@ -39,11 +40,13 @@ export function NewReturnView() {
   const { data: customers } = useSWR<CustomerRow[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: payments } = useSWR<PaymentRow[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: products } = useSWR<ProductRow[]>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: financialAccounts } = useSWR<FinancialAccountRow[]>(business?.id ? `/api/financial-accounts?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: previousReturns } = useSWR<Array<{ orderId: string; items: Array<{ productId: string; qty: number }>; refundAmount: string | number }>>(business?.id ? `/api/returns?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const [orderId, setOrderId] = useState('')
   const [stockReturned, setStockReturned] = useState('yes')
   const [refundCustomer, setRefundCustomer] = useState('no')
   const [refundAmount, setRefundAmount] = useState('0')
+  const [refundAccount, setRefundAccount] = useState('')
   const [returnDate, setReturnDate] = useState(TODAY)
   const [notes, setNotes] = useState('')
   const [lines, setLines] = useState<Line[]>([{ key: 1, productId: '', qty: 1 }])
@@ -61,6 +64,8 @@ export function NewReturnView() {
   const total = lines.reduce((sum, line) => sum + linePrice(line), 0)
   const eligiblePaid = Math.max((payments ?? []).filter((payment) => payment.orderId === orderId).reduce((sum, payment) => sum + Number(payment.amount), 0) - (previousReturns ?? []).filter((row) => row.orderId === orderId).reduce((sum, row) => sum + Number(row.refundAmount), 0), 0)
   const maxRefund = Math.min(total, eligiblePaid)
+  const activeFinancialAccounts = (financialAccounts ?? []).filter((account) => account.active)
+  const selectedRefundAccount = refundAccount || activeFinancialAccounts.find((account) => account.name.toLowerCase() === 'cash')?.name || activeFinancialAccounts[0]?.name || ''
   const invalidLine = lines.some((line) => !line.productId || !Number.isInteger(line.qty) || line.qty < 1 || line.qty > (eligibleLines.find((item) => item.productId === line.productId)?.remaining ?? 0))
   if (businessError || ordersError) return <p role="alert" className="text-sm text-destructive">{(businessError || ordersError)?.message}</p>
   if (!business || !orders || !customers || !products || !previousReturns || !payments) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
@@ -81,7 +86,8 @@ export function NewReturnView() {
       try {
         const response = await fetch('/api/returns', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
           businessId: business.id, orderId, date: returnDate, stockReturned: stockReturned === 'yes',
-          refundCustomer: refundCustomer === 'yes', refundAmount: refundCustomer === 'yes' ? refund : 0, notes,
+          refundCustomer: refundCustomer === 'yes', refundAmount: refundCustomer === 'yes' ? refund : 0,
+          refundAccount: refundCustomer === 'yes' && refund > 0 ? selectedRefundAccount : null, notes,
           items: lines.map(({ productId, qty }) => ({ productId, qty })),
         }) })
         const result = await response.json()
@@ -93,6 +99,8 @@ export function NewReturnView() {
           globalMutate(`/api/products?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/stock?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/accounting?businessId=${encodeURIComponent(business.id)}`),
+          globalMutate(`/api/financial-accounts?businessId=${encodeURIComponent(business.id)}`),
+          globalMutate(`/api/reports?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/dashboard?businessId=${encodeURIComponent(business.id)}`),
         ])
         toast.success('Return recorded successfully')
@@ -132,9 +140,12 @@ export function NewReturnView() {
       <div className="flex min-w-0 flex-col gap-4">
         <SectionCard title="Return summary" className="lg:sticky lg:top-20">
           <dl className="flex flex-col gap-3 text-sm"><div className="flex justify-between"><dt className="text-muted-foreground">Return total</dt><dd className="font-mono text-lg font-semibold tabular-nums text-destructive">−{formatIDR(total)}</dd></div></dl>
-          {refundCustomer==='yes' && <div className="mt-4 flex flex-col gap-1.5"><Label htmlFor="refund-amount">Refund amount (Rp)</Label><Input id="refund-amount" type="number" min={0} max={maxRefund} value={refundAmount} onChange={(event)=>setRefundAmount(event.target.value)} required /><p className="text-xs text-muted-foreground">Maximum refundable: {formatIDR(maxRefund)} based on this order's remaining paid balance.</p></div>}
+          {refundCustomer==='yes' && <div className="mt-4 flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5"><Label htmlFor="refund-amount">Refund amount (Rp)</Label><Input id="refund-amount" type="number" min={0} max={maxRefund} value={refundAmount} onChange={(event)=>setRefundAmount(event.target.value)} required /><p className="text-xs text-muted-foreground">Maximum refundable: {formatIDR(maxRefund)} based on this order's remaining paid balance.</p></div>
+            {Number(refundAmount) > 0 && <div className="flex flex-col gap-1.5"><Label htmlFor="refund-account">Refund from account</Label><select id="refund-account" className={selectClass} value={selectedRefundAccount} onChange={(event)=>setRefundAccount(event.target.value)} required><option value="">Select Cash &amp; Bank account</option>{activeFinancialAccounts.map((account)=><option key={account.id} value={account.name}>{account.name}</option>)}</select>{activeFinancialAccounts.length===0 && <p className="text-xs text-destructive">Create an active Cash &amp; Bank account before recording a refund.</p>}</div>}
+          </div>}
           <div className="mt-4 flex flex-col gap-1.5"><Label htmlFor="return-date">Return date</Label><Input id="return-date" type="date" value={returnDate} onChange={(event)=>setReturnDate(event.target.value)} required /></div>
-          <div className="mt-5 flex gap-2 border-t pt-4"><Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/returns" />}>Cancel</Button><Button type="submit" className="flex-1" disabled={saving||!orderId||invalidLine||!lines.length}>{saving?'Saving…':'Save Return'}</Button></div>
+          <div className="mt-5 flex gap-2 border-t pt-4"><Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/returns" />}>Cancel</Button><Button type="submit" className="flex-1" disabled={saving||!orderId||invalidLine||!lines.length||(refundCustomer==='yes'&&Number(refundAmount)>0&&!selectedRefundAccount)}>{saving?'Saving…':'Save Return'}</Button></div>
         </SectionCard>
       </div>
     </form>
