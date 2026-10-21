@@ -20,7 +20,7 @@ type ReturnDetail = {
   notes: string | null
   refundAccount: string | null
   customer: { id: string; name: string; phone: string | null; address: string | null } | null
-  items: Array<{ productId: string; productName: string; qty: number; price: string | number }>
+  items: Array<{ productId: string; productName: string; qty: number; price: string | number; subtotal: number }>
 }
 const fetcher = async (url: string) => {
   const response = await fetch(url)
@@ -74,7 +74,7 @@ export function ReturnDetailView({ returnId }: { returnId: string }) {
                 <td className="px-4 py-3"><p className="font-medium">{item.productName}</p><p className="font-mono text-xs text-muted-foreground">{item.productId}</p></td>
                 <td className="whitespace-nowrap px-4 py-3 text-right font-mono">{item.qty}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-right font-mono">{formatIDR(Number(item.price))}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-right font-mono">{formatIDR(Number(item.price) * Number(item.qty))}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-right font-mono">{formatIDR(Number(item.subtotal))}</td>
               </tr>)}</tbody>
             </table>
           </div>
