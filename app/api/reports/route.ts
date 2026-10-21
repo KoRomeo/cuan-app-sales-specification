@@ -4,7 +4,7 @@ import { db } from "@/lib/db"
 import {
   auditLogs, auditLogChanges, customers, deliveries, expenses, journalEntries,
   journalEntryLines, orderItems, orders, payments, products, purchaseItems,
-  purchases, replacements, stockMovements, suppliers, user,
+  purchases, replacements, returns, stockMovements, suppliers, user,
 } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
 
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     const access = await requireBusinessAccess(businessId)
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
-    const [orderRows, purchaseRows, productRows, paymentRows, expenseRows, movementRows, deliveryRows, replacementRows, journalRows, accountRows, customerRows, supplierRows, logs] = await Promise.all([
+    const [orderRows, purchaseRows, productRows, paymentRows, expenseRows, movementRows, deliveryRows, replacementRows, returnRows, journalRows, accountRows, customerRows, supplierRows, logs] = await Promise.all([
       db.select().from(orders).where(eq(orders.businessId, businessId)),
       db.select().from(purchases).where(eq(purchases.businessId, businessId)),
       db.select().from(products).where(eq(products.businessId, businessId)),
@@ -32,6 +32,7 @@ export async function GET(request: Request) {
       db.select().from(stockMovements).where(eq(stockMovements.businessId, businessId)),
       db.select({ id: deliveries.id, date: deliveries.date, method: deliveries.method, recipient: deliveries.recipient, address: deliveries.address, transportCost: deliveries.transportCost, orderId: deliveries.orderId }).from(deliveries).innerJoin(orders, and(eq(orders.id, deliveries.orderId), eq(orders.businessId, businessId))),
       db.select().from(replacements).where(eq(replacements.businessId, businessId)),
+      db.select().from(returns).where(eq(returns.businessId, businessId)),
       db.select().from(journalEntries).where(eq(journalEntries.businessId, businessId)),
       db.select({ id: journalEntryLines.id, journalEntryId: journalEntryLines.journalEntryId, account: journalEntryLines.account, debit: journalEntryLines.debit, credit: journalEntryLines.credit }).from(journalEntryLines).innerJoin(journalEntries, eq(journalEntries.id, journalEntryLines.journalEntryId)).where(eq(journalEntries.businessId, businessId)),
       db.select().from(customers).where(eq(customers.businessId, businessId)),
@@ -80,17 +81,23 @@ export async function GET(request: Request) {
     const expensesTotal = expenseReport.reduce((s,e)=>s+e.amount,0)
     const transportTotal = deliveriesReport.reduce((s,d)=>s+d.transportCost,0)
     const replacementCost = replacementsReport.reduce((s,r)=>s+r.cost,0)
-    const revenue = sales.reduce((s,o)=>s+o.total,0)
-    const cogs = sales.reduce((s,o)=>s+o.cogs,0)
+    const grossRevenue = sales.reduce((s,o)=>s+o.total,0)
+    const returnJournals = entries.filter(e => e.kind === "return")
+    const salesReturns = returnJournals.reduce((sum, entry) => sum + entry.lines.filter(line => line.account === "Sales Returns").reduce((part, line) => part + line.debit - line.credit, 0), 0)
+    const returnedCogs = returnJournals.reduce((sum, entry) => sum + entry.lines.filter(line => line.account === "Cost of Goods Sold").reduce((part, line) => part + line.credit - line.debit, 0), 0)
+    const revenue = grossRevenue - salesReturns
+    const cogs = sales.reduce((s,o)=>s+o.cogs,0) - returnedCogs
+    const returnsReport = returnRows.filter(r => within(r.date, from!, to!)).map(r => ({ id: r.id, date: r.date, orderId: r.orderId, total: num(r.total), refundAmount: num(r.refundAmount), stockReturned: r.stockReturned, notes: r.notes }))
     const purchaseTotal = purchaseReport.reduce((s,p)=>s+p.total,0)
     const receivables = orderRows.filter(o=>o.status!=="cancelled").reduce((s,o)=>{const total=orderLineRows.filter(i=>i.orderId===o.id).reduce((n,i)=>n+i.qty*num(i.price)-num(i.discount),0);return s+Math.max(0,total-(orderPayments.get(o.id)??0))},0)
     const payables = purchaseRows.reduce((s,p)=>{const total=purchaseLineRows.filter(i=>i.purchaseId===p.id).reduce((n,i)=>n+i.qty*num(i.unitCost),0);return s+Math.max(0,total-(purchasePayments.get(p.id)??0))},0)
     const cashIn = paymentsReport.filter(p=>p.kind==="receivable").reduce((s,p)=>s+p.amount,0)
-    const cashOut = paymentsReport.filter(p=>p.kind==="payable").reduce((s,p)=>s+p.amount,0)+expensesTotal
+    const refundCashOut = returnsReport.reduce((sum, item) => sum + item.refundAmount, 0)
+    const cashOut = paymentsReport.filter(p=>p.kind==="payable").reduce((s,p)=>s+p.amount,0)+expensesTotal+refundCashOut
     const periodJournals = entries.flatMap(e=>e.lines.map(l=>({entryId:e.id,date:e.date,kind:e.kind,reference:e.reference,description:e.description,account:l.account,debit:l.debit,credit:l.credit})))
     return NextResponse.json({
-      range:{from,to}, summary:{sales:revenue,orders:sales.length,averageOrder:sales.length?revenue/sales.length:0,cogs,grossProfit:revenue-cogs,transport:transportTotal,replacementCost,expenses:expensesTotal,netProfit:revenue-cogs-transportTotal-replacementCost-expensesTotal,purchases:purchaseTotal,receivables,payables,cashIn,cashOut,netCash:cashIn-cashOut,inventoryValue:inventory.reduce((s,p)=>s+p.stockValue,0),negativeStock:inventory.filter(p=>p.stock<0).length,lowStock:inventory.filter(p=>p.status==="low").length},
-      sales,purchases:purchaseReport,inventory,payments:paymentsReport,expenses:expenseReport,deliveries:deliveriesReport,replacements:replacementsReport,journals:entries,ledger:periodJournals,history,
+      range:{from,to}, summary:{grossSales:grossRevenue,salesReturns,sales:revenue,orders:sales.length,averageOrder:sales.length?revenue/sales.length:0,cogs,grossProfit:revenue-cogs,transport:transportTotal,replacementCost,expenses:expensesTotal,netProfit:revenue-cogs-transportTotal-replacementCost-expensesTotal,purchases:purchaseTotal,receivables,payables,cashIn,cashOut,refundCashOut,netCash:cashIn-cashOut,inventoryValue:inventory.reduce((s,p)=>s+p.stockValue,0),negativeStock:inventory.filter(p=>p.stock<0).length,lowStock:inventory.filter(p=>p.status==="low").length},
+      sales,returns:returnsReport,purchases:purchaseReport,inventory,payments:paymentsReport,expenses:expenseReport,deliveries:deliveriesReport,replacements:replacementsReport,journals:entries,ledger:periodJournals,history,
     })
   } catch (error) {
     console.error("GET /api/reports", error)
