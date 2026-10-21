@@ -113,7 +113,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
         }
         actions={
           <>
-            {linkedReturns.length > 0 && <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/returns/${encodeURIComponent(linkedReturns[linkedReturns.length - 1].id)}`} />}><RotateCcw />{t('orders.viewReturn')} ({linkedReturns.length})</Button>}
+            {linkedReturns.length > 0 && <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/returns/${encodeURIComponent(linkedReturns[0].id)}`} />}><RotateCcw />{t('orders.viewReturn')} ({linkedReturns.length})</Button>}
             <Button variant="outline" size="sm" onClick={() => setDoc('invoice')}>
               <FileText />
               {t('orders.viewInvoice')}
