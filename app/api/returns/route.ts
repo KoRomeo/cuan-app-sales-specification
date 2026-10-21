@@ -90,19 +90,21 @@ export async function POST(request: Request) {
       await tx.insert(returns).values({ id, businessId, orderId, date, stockReturned, refundAmount: refund.toFixed(2), notes: notes.trim() || null, total: total.toFixed(2) })
       await tx.insert(returnItems).values(lines.map((line, index) => ({ id: `RI-${id}-${index + 1}`, returnId: id, productId: line.productId, qty: line.qty, price: line.price.toFixed(2) })))
       if (stockReturned) {
+        // Returned goods are added back to sellable stock only when explicitly selected.
         for (const line of lines) await tx.insert(stockMovements).values({
           id: `SM-${id}-${line.productId}`, businessId, date, productId: line.productId,
           type: "reversal", qty: line.qty, reference: `return:${id}:stock`,
         })
-      } else {
-        // No refund means the customer receives replacement goods; the returned faulty goods are not restocked.
+      }
+      if (!refundCustomer) {
+        // No refund means a replacement unit is issued, independent of whether the returned item can be restocked.
         for (const line of lines) await tx.insert(stockMovements).values({
           id: `SM-${id}-REPLACEMENT-${line.productId}`, businessId, date, productId: line.productId,
           type: "replacement", qty: -line.qty, reference: `return:${id}:replacement`,
         })
       }
       const stockValue = stockReturned ? lines.reduce((sum, line) => sum + line.qty * line.unitCost, 0) : 0
-      const replacementValue = stockReturned ? 0 : lines.reduce((sum, line) => sum + line.qty * line.replacementUnitCost, 0)
+      const replacementValue = !refundCustomer ? lines.reduce((sum, line) => sum + line.qty * line.replacementUnitCost, 0) : 0
       if (refund > 0 || stockValue > 0 || replacementValue > 0) {
         const entryId = `JE-${id}`
         await tx.insert(journalEntries).values({ id: entryId, businessId, entryDate: date, kind: "return", reference: id, description: `Customer return for ${orderId}` })
