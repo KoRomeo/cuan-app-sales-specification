@@ -40,6 +40,7 @@ export const movementTypeEnum = pgEnum("movement_type", [
 "replacement",
 "adjustment",
 "reversal",
+"unit",
 ])
 
 // ============================================================
@@ -479,4 +480,36 @@ export const verification = pgTable("verification", {
   expiresAt: timestamp("expiresAt").notNull(),
   createdAt: timestamp("createdAt"),
   updatedAt: timestamp("updatedAt"),
+})
+
+
+// ============================================================
+// UNITS (split / combine between two products, e.g. dus <-> pcs)
+// ============================================================
+
+export const unitRules = pgTable("unit_rules", {
+  id: text("id").primaryKey(),
+  businessId: text("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  bigProductId: text("big_product_id").notNull().references(() => products.id),
+  smallProductId: text("small_product_id").notNull().references(() => products.id),
+  ratio: integer("ratio").notNull(),
+  status: text("status").notNull().default("active"),
+  note: text("note"),
+  date: date("date").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+})
+
+export const unitOperations = pgTable("unit_operations", {
+  id: text("id").primaryKey(),
+  businessId: text("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  ruleId: text("rule_id").notNull().references(() => unitRules.id),
+  type: text("type").notNull(),
+  sourceProductId: text("source_product_id").notNull().references(() => products.id),
+  targetProductId: text("target_product_id").notNull().references(() => products.id),
+  qtyOut: integer("qty_out").notNull(),
+  qtyIn: integer("qty_in").notNull(),
+  valueMoved: decimal("value_moved", { precision: 14, scale: 2 }).notNull(),
+  note: text("note"),
+  date: date("date").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 })
