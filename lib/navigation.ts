@@ -13,6 +13,7 @@ import {
   PieChart,
   Receipt,
   RotateCcw,
+  Scale,
   Settings,
   ShoppingBag,
   ShoppingCart,
@@ -63,6 +64,7 @@ export const navigation: NavSection[] = [
       { href: '/products', label: 'nav.products', icon: Package, feature: 'inventory' },
       { href: '/stock', label: 'nav.stock', icon: Boxes, feature: 'inventory' },
       { href: '/stock-movements', label: 'nav.stockMovements', icon: ArrowLeftRight, feature: 'inventory' },
+      { href: '/units', label: 'nav.units', icon: Scale, feature: 'inventory' },
     ],
   },
   {
