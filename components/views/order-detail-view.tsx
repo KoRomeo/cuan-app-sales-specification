@@ -44,7 +44,7 @@ type DetailResponse = {
   products: Array<{ id: string; name: string; averageCost: string | number; stock: string | number }>
   payments: Array<{ id: string; date: string; amount: string | number; account: string }>
   delivery: Order['delivery']; replacements: Array<{ id: string; orderId?: string; date: string; productId: string; qty: number; reason: string; delivered: boolean }>
-  returns: Array<{ id: string; date: string; total: string | number; refundAmount: string | number; stockReturned: boolean; notes: string | null; items: Array<{ productId: string; qty: number; price: string | number }> }>
+  returns: Array<{ id: string; date: string; total: string | number; refundAmount: string | number; replacementCost?: string | number; stockReturned: boolean; notes: string | null; items: Array<{ productId: string; qty: number; price: string | number }> }>
 }
 
 export function OrderDetailView({ orderId }: { orderId: string }) {
@@ -82,8 +82,9 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
   }, 0), 0)
   const netRevenue = Math.max(0, total - refundTotal)
   const netCogs = Math.max(0, cogs - returnedCogs)
+  const replacementCostTotal = linkedReturns.reduce((sum, ret) => sum + Number(ret.replacementCost ?? 0), 0)
   const transport = order.delivery?.transportCost ?? 0
-  const profit = netRevenue - netCogs - transport
+  const profit = netRevenue - netCogs - replacementCostTotal - transport
   const cancelled = order.status === 'cancelled'
   const pendingReplacements = replacements.filter((r) => r.orderId === order.id && !r.delivered)
   const negativeItems = cancelled
@@ -308,6 +309,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
               <DetailRow label={t('orders.revenue')}><span className="font-mono">{formatIDR(total)}</span></DetailRow>
               {refundTotal > 0 && <DetailRow label={t('orders.refundAmount')}><span className="font-mono text-destructive">-{formatIDR(refundTotal)}</span></DetailRow>}
               <DetailRow label={t('orders.cogs')}><span className="font-mono text-muted-foreground">-{formatIDR(netCogs)}</span></DetailRow>
+              {replacementCostTotal > 0 && <DetailRow label={t('orders.replacementCost')}><span className="font-mono text-muted-foreground">-{formatIDR(replacementCostTotal)}</span></DetailRow>}
               <DetailRow label={t('orders.transportCost')}><span className="font-mono text-muted-foreground">-{formatIDR(transport)}</span></DetailRow>
               <DetailRow label={t('orders.profit')}>
                 <span className={`font-mono text-base font-semibold ${profit >= 0 ? 'text-success' : 'text-destructive'}`}>{formatIDR(profit)}</span>
