@@ -50,7 +50,7 @@ export function ReturnDetailView({ returnId }: { returnId: string }) {
       if (data?.orderId) await globalMutate(`/api/orders/${encodeURIComponent(data.orderId)}`)
       if (data?.customer?.id) await globalMutate(`/api/customers/${encodeURIComponent(data.customer.id)}`)
       await Promise.all([
-        globalMutate((key: unknown) => typeof key === 'string' && /\\/api\\/(returns|orders|products|inventory|stock|accounting|financial-accounts|dashboard|reports)\\?/.test(key)),
+        globalMutate((key: unknown) => typeof key === 'string' && key.startsWith('/api/')),
         globalMutate(`/api/returns/${encodeURIComponent(returnId)}`),
       ])
       toast.success(t('returns.deleted'))
