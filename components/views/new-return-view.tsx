@@ -1,10 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import { useSWRConfig } from 'swr'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/common/page-header'
 import { SectionCard } from '@/components/common/section-card'
@@ -29,11 +29,16 @@ type CustomerRow = { id: string; name: string }
 type PaymentRow = { orderId: string | null; amount: number | string }
 type ProductRow = { id: string; name: string }
 type FinancialAccountRow = { id: string; name: string; type: string; active: boolean; currentBalance?: number }
+type ReturnEditData = { id: string; date: string; orderId: string; stockReturned: boolean; refundAmount: string | number; notes: string | null; refundAccount: string | null; items: Array<{ productId: string; qty: number }> }
 type Line = { key: number; productId: string; qty: number }
 
 export function NewReturnView() {
   const { t } = useApp()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const editId = searchParams.get('editId')
+  const initialOrderId = searchParams.get('orderId')
+  const initialProductId = searchParams.get('productId')
   const { mutate: globalMutate } = useSWRConfig()
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: orders, error: ordersError } = useSWR<OrderRow[]>(business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
@@ -41,10 +46,11 @@ export function NewReturnView() {
   const { data: payments } = useSWR<PaymentRow[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: products } = useSWR<ProductRow[]>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: financialAccounts } = useSWR<FinancialAccountRow[]>(business?.id ? `/api/financial-accounts?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
-  const { data: previousReturns } = useSWR<Array<{ orderId: string; items: Array<{ productId: string; qty: number }>; refundAmount: string | number }>>(business?.id ? `/api/returns?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: previousReturns } = useSWR<Array<{ id: string; orderId: string; items: Array<{ productId: string; qty: number }>; refundAmount: string | number }>>(business?.id ? `/api/returns?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: editData, error: editError } = useSWR<ReturnEditData>(editId ? `/api/returns/${encodeURIComponent(editId)}` : null, fetcher)
   const [orderId, setOrderId] = useState('')
   const [returnMode, setReturnMode] = useState<'replacement' | 'refund'>('replacement')
-  const stockReturned = returnMode === 'refund' ? 'yes' : 'no'
+  const [stockReturned, setStockReturned] = useState<'yes' | 'no'>('no')
   const refundCustomer = returnMode === 'refund' ? 'yes' : 'no'
   const [refundAmount, setRefundAmount] = useState('0')
   const [refundAccount, setRefundAccount] = useState('')
@@ -52,31 +58,52 @@ export function NewReturnView() {
   const [notes, setNotes] = useState('')
   const [lines, setLines] = useState<Line[]>([{ key: 1, productId: '', qty: 1 }])
   const [saving, setSaving] = useState(false)
+  useEffect(() => {
+    if (editId && editData) {
+      setOrderId(editData.orderId)
+      setReturnDate(editData.date)
+      setStockReturned(editData.stockReturned ? 'yes' : 'no')
+      setReturnMode(Number(editData.refundAmount) > 0 ? 'refund' : 'replacement')
+      setRefundAmount(String(editData.refundAmount ?? 0))
+      setRefundAccount(editData.refundAccount ?? '')
+      setNotes(editData.notes ?? '')
+      setLines(editData.items.map((item, index) => ({ key: index + 1, productId: item.productId, qty: Number(item.qty) })))
+      return
+    }
+    if (!editId && initialOrderId && orders && previousReturns && !orderId) {
+      const nextOrder = orders.find((row) => row.id === initialOrderId)
+      if (!nextOrder) return
+      setOrderId(nextOrder.id)
+      const remainingQty = (productId: string) => Number(nextOrder.items.find((item) => item.productId === productId)?.qty ?? 0) - previousReturns.filter((row) => row.orderId === nextOrder.id).flatMap((row) => row.items ?? []).filter((item) => item.productId === productId).reduce((sum, item) => sum + Number(item.qty), 0)
+      const first = initialProductId && remainingQty(initialProductId) > 0 ? initialProductId : nextOrder.items.find((item) => remainingQty(item.productId) > 0)?.productId
+      setLines([{ key: Date.now(), productId: first ?? '', qty: 1 }])
+    }
+  }, [editId, editData, initialOrderId, initialProductId, orders, previousReturns, orderId])
   const order = orders?.find((row) => row.id === orderId)
   const customer = customers?.find((row) => row.id === order?.customerId)
   const productName = (id: string) => products?.find((row) => row.id === id)?.name ?? id
   const orderedLines = (order?.items ?? []).map((item) => ({ ...item, price: Number(item.price), discount: Number(item.discount ?? 0) }))
-  const returnedQty = (productId: string) => (previousReturns ?? []).filter((row) => row.orderId === orderId).flatMap((row) => row.items ?? []).filter((item) => item.productId === productId).reduce((sum, item) => sum + Number(item.qty), 0)
+  const returnedQty = (productId: string) => (previousReturns ?? []).filter((row) => row.orderId === orderId && row.id !== editId).flatMap((row) => row.items ?? []).filter((item) => item.productId === productId).reduce((sum, item) => sum + Number(item.qty), 0)
   const eligibleLines = orderedLines.map((item) => ({ ...item, remaining: Math.max(0, Number(item.qty) - returnedQty(item.productId)) })).filter((item) => item.remaining > 0)
   const linePrice = (line: Line) => {
     const sold = orderedLines.find((item) => item.productId === line.productId)
     return sold ? Math.max(0, line.qty * sold.price - (sold.discount * line.qty / Number(sold.qty))) : 0
   }
   const total = lines.reduce((sum, line) => sum + linePrice(line), 0)
-  const eligiblePaid = Math.max((payments ?? []).filter((payment) => payment.orderId === orderId).reduce((sum, payment) => sum + Number(payment.amount), 0) - (previousReturns ?? []).filter((row) => row.orderId === orderId).reduce((sum, row) => sum + Number(row.refundAmount), 0), 0)
+  const eligiblePaid = Math.max((payments ?? []).filter((payment) => payment.orderId === orderId).reduce((sum, payment) => sum + Number(payment.amount), 0) - (previousReturns ?? []).filter((row) => row.orderId === orderId && row.id !== editId).reduce((sum, row) => sum + Number(row.refundAmount), 0), 0)
   const maxRefund = Math.min(total, eligiblePaid)
   const activeFinancialAccounts = (financialAccounts ?? []).filter((account) => account.active)
   const selectedRefundAccount = refundAccount || activeFinancialAccounts.find((account) => account.name.toLowerCase() === 'cash')?.name || activeFinancialAccounts[0]?.name || ''
   const invalidLine = lines.some((line) => !line.productId || !Number.isInteger(line.qty) || line.qty < 1 || line.qty > (eligibleLines.find((item) => item.productId === line.productId)?.remaining ?? 0))
-  if (businessError || ordersError) return <p role="alert" className="text-sm text-destructive">{(businessError || ordersError)?.message}</p>
-  if (!business || !orders || !customers || !products || !previousReturns || !payments) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+  if (businessError || ordersError || editError) return <p role="alert" className="text-sm text-destructive">{(businessError || ordersError || editError)?.message}</p>
+  if (!business || !orders || !customers || !products || !previousReturns || !payments || (editId && !editData)) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
 
   return <>
     <PageHeader
       breadcrumbs={[{ label: t('nav.sales') }, { label: t('nav.returns'), href: '/returns' }, { label: t('returns.recordTitle') }]}
-      title={t('returns.recordTitle')}
+      title={editId ? t('common.edit') : t('returns.recordTitle')}
       description={t('returns.recordDescription')}
-      actions={<Button variant="outline" size="sm" nativeButton={false} render={<Link href="/returns" />}><ArrowLeft /> {t('returns.backToList')}</Button>}
+      actions={<Button variant="outline" size="sm" nativeButton={false} render={<Link href={editId ? `/returns/${encodeURIComponent(editId)}` : '/returns'} />}><ArrowLeft /> {t('returns.backToList')}</Button>}
     />
     <form className="grid gap-4 lg:grid-cols-3" onSubmit={async (event) => {
       event.preventDefault()
@@ -85,7 +112,7 @@ export function NewReturnView() {
       if (refundCustomer === 'yes' && (!Number.isFinite(refund) || refund < 0 || refund > maxRefund)) { toast.error(t('returns.refundValidation')); return }
       setSaving(true)
       try {
-        const response = await fetch('/api/returns', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        const response = await fetch(editId ? `/api/returns/${encodeURIComponent(editId)}` : '/api/returns', { method: editId ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
           businessId: business.id, orderId, date: returnDate, stockReturned: stockReturned === 'yes',
           refundCustomer: refundCustomer === 'yes', refundAmount: refundCustomer === 'yes' ? refund : 0,
           refundAccount: refundCustomer === 'yes' && refund > 0 ? selectedRefundAccount : null, notes,
@@ -95,6 +122,7 @@ export function NewReturnView() {
         if (!response.ok) throw new Error(result.error ?? t('returns.saveFailed'))
         await Promise.all([
           globalMutate(`/api/returns?businessId=${encodeURIComponent(business.id)}`),
+          globalMutate(editId ? `/api/returns/${encodeURIComponent(editId)}` : null),
           globalMutate(`/api/replacements?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/orders?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/products?businessId=${encodeURIComponent(business.id)}`),
@@ -104,7 +132,7 @@ export function NewReturnView() {
           globalMutate(`/api/dashboard?businessId=${encodeURIComponent(business.id)}`),
         ])
         toast.success(t('returns.saved'))
-        router.push('/returns')
+        router.push(editId ? `/returns/${encodeURIComponent(editId)}` : '/returns')
       } catch (error) { toast.error(error instanceof Error ? error.message : t('returns.saveFailed')) } finally { setSaving(false) }
     }}>
       <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
@@ -124,6 +152,19 @@ export function NewReturnView() {
               <label className={`flex cursor-pointer flex-col gap-1 rounded-md border px-3 py-3 text-sm ${returnMode === 'refund' ? 'border-primary bg-primary/5' : ''}`}>
                 <span className="flex items-center gap-2"><input type="radio" name="returnMode" value="refund" checked={returnMode === 'refund'} onChange={() => { setReturnMode('refund'); setRefundAmount(String(maxRefund)) }} />{t('returns.refundMode')}</span>
                 <span className="pl-6 text-xs text-muted-foreground">{t('returns.refundModeHint')}</span>
+              </label>
+            </fieldset>
+          </div>
+          <div className="mt-4 border-t pt-4">
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-2 text-sm font-medium">{t('returns.restockPrompt')}</legend>
+              <label className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-3 text-sm ${stockReturned === 'yes' ? 'border-primary bg-primary/5' : ''}`}>
+                <input type="radio" name="stockReturned" value="yes" checked={stockReturned === 'yes'} onChange={() => setStockReturned('yes')} />
+                {t('returns.restockYes')}
+              </label>
+              <label className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-3 text-sm ${stockReturned === 'no' ? 'border-primary bg-primary/5' : ''}`}>
+                <input type="radio" name="stockReturned" value="no" checked={stockReturned === 'no'} onChange={() => setStockReturned('no')} />
+                {t('returns.restockNo')}
               </label>
             </fieldset>
           </div>
