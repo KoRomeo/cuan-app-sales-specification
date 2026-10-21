@@ -6,6 +6,8 @@ import {
   customers,
   deliveries,
   expenses,
+  journalEntryLines,
+  returns,
   orderItems,
   orders,
   payments,
@@ -37,6 +39,7 @@ export async function GET(request: Request) {
       paymentRows,
       expenseRows,
       movementRows,
+      returnRows,
     ] = await Promise.all([
       db.select().from(customers).where(eq(customers.businessId, businessId)),
       db.select().from(products).where(eq(products.businessId, businessId)),
@@ -52,6 +55,7 @@ export async function GET(request: Request) {
         .from(stockMovements)
         .where(eq(stockMovements.businessId, businessId))
         .groupBy(stockMovements.productId),
+      db.select().from(returns).where(eq(returns.businessId, businessId)),
     ])
 
     const orderIds = orderRows.map((row) => row.id)
@@ -99,6 +103,16 @@ export async function GET(request: Request) {
       movementRows.map((row) => [row.productId, Number(row.stock)]),
     )
 
+    const returnEntryIds = returnRows.map((row) => `JE-${row.id}`)
+    const returnJournalLines = returnEntryIds.length
+      ? await db.select({ journalEntryId: journalEntryLines.journalEntryId, account: journalEntryLines.account, debit: journalEntryLines.debit, credit: journalEntryLines.credit })
+        .from(journalEntryLines).where(inArray(journalEntryLines.journalEntryId, returnEntryIds))
+      : []
+    const returnStockValue = new Map<string, number>()
+    for (const line of returnJournalLines) {
+      if (line.account === "Inventory") returnStockValue.set(line.journalEntryId, Number(line.debit) - Number(line.credit))
+    }
+
     return NextResponse.json({
       customers: customerRows,
       products: productRows.map((product) => ({
@@ -114,6 +128,11 @@ export async function GET(request: Request) {
       expenses: expenseRows.map((expense) => ({
         ...expense,
         amount: Number(expense.amount),
+      })),
+      returns: returnRows.map((row) => ({
+        id: row.id, date: row.date, orderId: row.orderId,
+        refundAmount: Number(row.refundAmount), stockReturned: row.stockReturned,
+        stockValue: returnStockValue.get(`JE-${row.id}`) ?? 0,
       })),
     })
   } catch (error) {
