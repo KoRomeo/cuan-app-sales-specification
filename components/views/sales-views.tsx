@@ -1,8 +1,9 @@
 'use client'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
+import { useRouter } from 'next/navigation'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { appToast as toast } from '@/lib/toast'
-import { Ban, CheckCircle2, Eye, FileText, HandCoins, Pencil, Printer, RotateCcw, Truck, Users } from 'lucide-react'
+import { Ban, CheckCircle2, Eye, FileText, HandCoins, Pencil, Printer, RotateCcw, Trash2, Truck, Users } from 'lucide-react'
 import { useState } from 'react'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
 import { DocumentPreview } from '@/components/common/document-preview'
@@ -482,6 +483,9 @@ export function ReturnsView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
   const [selectedReturnOrderId, setSelectedReturnOrderId] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<PersistedReturn | null>(null)
+  const router = useRouter()
+  const { mutate: globalMutate } = useSWRConfig()
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', customersFetcher)
   const { data: rows, error, isLoading, mutate } = useSWR<PersistedReturn[]>(
     business?.id ? `/api/returns?businessId=${encodeURIComponent(business.id)}` : null,
@@ -520,6 +524,31 @@ export function ReturnsView() {
     { key: 'reason', header: t('common.notes'), cell: (r) => <span className="text-muted-foreground">{r.notes || '—'}</span> },
     { key: 'status', header: t('returns.refundStatus'), cell: (r) => (Number(r.refundAmount) > 0 ? <Pill tone="success">{t('returns.refunded')}</Pill> : <Pill tone="neutral">{t('returns.noRefund')}</Pill>) },
   ]
+  const deleteReturn = async () => {
+    if (!business?.id || !deleteTarget) return
+    try {
+      const id = deleteTarget.id
+      const response = await fetch(`/api/returns/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error ?? t('returns.deleteFailed'))
+      setDeleteTarget(null)
+      await Promise.all([
+        mutate(), mutateOrders(),
+        globalMutate(`/api/orders?businessId=${encodeURIComponent(business.id)}`),
+        globalMutate(`/api/products?businessId=${encodeURIComponent(business.id)}`),
+        globalMutate(`/api/inventory?businessId=${encodeURIComponent(business.id)}`),
+        globalMutate(`/api/stock?businessId=${encodeURIComponent(business.id)}`),
+        globalMutate(`/api/accounting?businessId=${encodeURIComponent(business.id)}`),
+        globalMutate(`/api/financial-accounts?businessId=${encodeURIComponent(business.id)}`),
+        globalMutate(`/api/dashboard?businessId=${encodeURIComponent(business.id)}`),
+        globalMutate(`/api/reports?businessId=${encodeURIComponent(business.id)}`),
+      ])
+      toast.success(t('returns.deleted'))
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('returns.deleteFailed'))
+    }
+  }
+
   const saveReturn = async (values: Record<string, string>) => {
     if (!business?.id) throw new Error('Business not found')
     const response = await fetch('/api/replacements', {
@@ -561,10 +590,22 @@ export function ReturnsView() {
             { value: 'done', label: t('returns.refunded'), predicate: (r) => Number(r.refundAmount) > 0 },
           ]}
           rowHref={(r) => `/returns/${encodeURIComponent(r.id)}`}
+          contextActions={(r) => [
+            { label: t('common.edit'), icon: Pencil, href: `/returns/new?editId=${encodeURIComponent(r.id)}` },
+            { label: t('common.delete'), icon: Trash2, onSelect: () => setDeleteTarget(r) },
+          ]}
           addLabel={t('returns.add')}
           onAdd={() => { window.location.href = '/returns/new' }}
         />
       )}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(nextOpen) => { if (!nextOpen) setDeleteTarget(null) }}
+        title={t('common.delete')}
+        description={deleteTarget ? t('returns.deleteConfirm', { id: deleteTarget.id }) : ''}
+        confirmLabel={t('common.delete')}
+        onConfirm={() => { void deleteReturn() }}
+      />
       <FormDialog
         key={open ? 'new-return-open' : 'new-return-closed'}
         open={open}
