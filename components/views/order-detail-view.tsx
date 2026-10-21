@@ -43,7 +43,7 @@ type DetailResponse = {
   items: Array<{ id: string; productId: string; qty: number; price: string | number; discount: string | number; unitCost: string | number }>
   products: Array<{ id: string; name: string; averageCost: string | number; stock: string | number }>
   payments: Array<{ id: string; date: string; amount: string | number; account: string }>
-  delivery: Order['delivery']; replacements: Array<{ id: string; orderId?: string; date: string; productId: string; qty: number; reason: string; delivered: boolean }>
+  delivery: Order['delivery']; replacements: Array<{ id: string; orderId?: string; date: string; productId: string; qty: number; reason: string; delivered: boolean; cost?: string | number }>
   returns: Array<{ id: string; date: string; total: string | number; refundAmount: string | number; replacementCost?: string | number; stockReturned: boolean; notes: string | null; items: Array<{ productId: string; qty: number; price: string | number }> }>
 }
 
@@ -82,7 +82,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
   }, 0), 0)
   const netRevenue = Math.max(0, total - refundTotal)
   const netCogs = Math.max(0, cogs - returnedCogs)
-  const replacementCostTotal = linkedReturns.reduce((sum, ret) => sum + Number(ret.replacementCost ?? 0), 0)
+  const replacementCostTotal = replacements.reduce((sum, replacement) => sum + Number(replacement.cost ?? 0), 0) + linkedReturns.reduce((sum, ret) => sum + Number(ret.replacementCost ?? 0), 0)
   const transport = order.delivery?.transportCost ?? 0
   const profit = netRevenue - netCogs - replacementCostTotal - transport
   const cancelled = order.status === 'cancelled'
