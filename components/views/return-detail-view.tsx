@@ -19,6 +19,7 @@ type ReturnDetail = {
   stockReturned: boolean
   notes: string | null
   refundAccount: string | null
+  replacementCost: string | number
   customer: { id: string; name: string; phone: string | null; address: string | null } | null
   items: Array<{ productId: string; productName: string; qty: number; price: string | number; subtotal: number }>
 }
@@ -86,6 +87,7 @@ export function ReturnDetailView({ returnId }: { returnId: string }) {
             <DetailRow label={t('returns.returnedAmount')}><span className="font-mono">{formatIDR(Number(data.total))}</span></DetailRow>
             <DetailRow label={t('returns.totalRefund')}><span className="font-mono text-destructive">{formatIDR(Number(data.refundAmount))}</span></DetailRow>
             {Number(data.refundAmount) > 0 && data.refundAccount && <DetailRow label={t('common.account')}><span className="font-mono">{data.refundAccount}</span></DetailRow>}
+            {Number(data.replacementCost) > 0 && <DetailRow label={t('orders.replacementCost')}><span className="font-mono text-destructive">{formatIDR(Number(data.replacementCost))}</span></DetailRow>}
             <DetailRow label={t('common.status')}>{data.stockReturned ? <span className="inline-flex items-center gap-1.5"><PackageCheck className="size-4" />{t('returns.stockReturned')}</span> : t('returns.stockNotReturned')}</DetailRow>
           </dl>
           {Number(data.refundAmount) > 0 && <p className="mt-3 flex items-center gap-2 rounded-md bg-muted/40 p-3 text-sm"><Wallet className="size-4 shrink-0" />{t('returns.refunded')}</p>}
