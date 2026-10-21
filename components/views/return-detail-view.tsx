@@ -1,13 +1,17 @@
 'use client'
 
 import Link from 'next/link'
-import useSWR from 'swr'
-import { ArrowLeft, ExternalLink, PackageCheck, Wallet } from 'lucide-react'
+import useSWR, { useSWRConfig } from 'swr'
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { ArrowLeft, ExternalLink, PackageCheck, Pencil, Trash2, Wallet } from 'lucide-react'
 import { PageHeader } from '@/components/common/page-header'
 import { SectionCard, DetailRow } from '@/components/common/section-card'
 import { Pill } from '@/components/common/status-badge'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/common/confirm-dialog'
+import { appToast as toast } from '@/lib/toast'
 import { formatDate, formatIDR } from '@/lib/format'
 
 type ReturnDetail = {
@@ -32,7 +36,29 @@ const fetcher = async (url: string) => {
 
 export function ReturnDetailView({ returnId }: { returnId: string }) {
   const { t } = useApp()
+  const router = useRouter()
+  const { mutate: globalMutate } = useSWRConfig()
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const { data, error, mutate } = useSWR<ReturnDetail>(`/api/returns/${encodeURIComponent(returnId)}`, fetcher)
+  const deleteReturn = async () => {
+    setDeleting(true)
+    try {
+      const response = await fetch(`/api/returns/${encodeURIComponent(returnId)}`, { method: 'DELETE' })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error ?? t('returns.deleteFailed'))
+      if (data?.orderId) await globalMutate(`/api/orders/${encodeURIComponent(data.orderId)}`)
+      if (data?.customer?.id) await globalMutate(`/api/customers/${encodeURIComponent(data.customer.id)}`)
+      await Promise.all([
+        globalMutate((key: unknown) => typeof key === 'string' && /\\/api\\/(returns|orders|products|inventory|stock|accounting|financial-accounts|dashboard|reports)\\?/.test(key)),
+        globalMutate(`/api/returns/${encodeURIComponent(returnId)}`),
+      ])
+      toast.success(t('returns.deleted'))
+      router.push('/returns')
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : t('returns.deleteFailed'))
+    } finally { setDeleting(false) }
+  }
   if (error) return <div role="alert" className="space-y-3"><p className="text-sm text-destructive">{error.message}</p><Button variant="outline" size="sm" onClick={() => mutate()}>{t('common.retry')}</Button></div>
   if (!data) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
 
@@ -43,9 +69,19 @@ export function ReturnDetailView({ returnId }: { returnId: string }) {
       description={t('returns.readOnly')}
       meta={<Pill tone={Number(data.refundAmount) > 0 ? 'success' : 'neutral'}>{Number(data.refundAmount) > 0 ? t('returns.refunded') : t('returns.noRefund')}</Pill>}
       actions={<>
+        <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/returns/new?editId=${encodeURIComponent(data.id)}`} />}><Pencil />{t('common.edit')}</Button>
+        <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)} disabled={deleting}><Trash2 />{t('common.delete')}</Button>
         <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/orders/${encodeURIComponent(data.orderId)}`} />}><ExternalLink />{t('orders.viewOrder')}</Button>
         <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/returns" />}><ArrowLeft />{t('nav.returns')}</Button>
       </>}
+    />
+    <ConfirmDialog
+      open={deleteOpen}
+      onOpenChange={setDeleteOpen}
+      title={t('common.delete')}
+      description={t('returns.deleteConfirm', { id: data.id })}
+      confirmLabel={t('common.delete')}
+      onConfirm={() => { void deleteReturn() }}
     />
     <div className="grid gap-4 lg:grid-cols-3">
       <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
