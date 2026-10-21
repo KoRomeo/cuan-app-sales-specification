@@ -109,7 +109,7 @@ export function DashboardView() {
   const inRange = (date: string) => date >= range[0] && date <= range[1]
   const activeOrders = orders.filter((order) => order.status !== 'cancelled')
   const periodOrders = activeOrders.filter((order) => inRange(order.date))
-  const revenueOrders = periodOrders.filter((order) => order.status === 'delivered')
+  // Sales are posted when the order is created, so dashboard revenue must include every non-cancelled order.
   const grossRevenue = revenueOrders.reduce((sum, order) => sum + totalOfOrder(order), 0)
   const periodReturns = returns.filter((item) => inRange(item.date))
   const refundTotal = periodReturns.reduce((sum, item) => sum + item.refundAmount, 0)
@@ -133,7 +133,7 @@ export function DashboardView() {
       date.setDate(1)
       date.setMonth(date.getMonth() - (5 - index))
       const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      const monthOrders = activeOrders.filter((order) => order.status === 'delivered' && order.date.startsWith(month))
+      const monthOrders = activeOrders.filter((order) => order.date.startsWith(month))
       const monthReturns = returns.filter((item) => item.date.startsWith(month))
       const monthRefunds = monthReturns.reduce((sum, item) => sum + item.refundAmount, 0)
       const monthReturnedStockValue = monthReturns.reduce((sum, item) => sum + item.stockValue, 0)
