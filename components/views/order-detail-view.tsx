@@ -215,7 +215,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="text-right">
-                        <p className="font-mono text-sm">{formatIDR(Number(ret.total))}</p>
+                        <p className="font-mono text-sm">{t('returns.returnTotal')}: {formatIDR(Number(ret.total))}</p>
                         {Number(ret.refundAmount) > 0 && <p className="font-mono text-xs text-destructive">-{formatIDR(Number(ret.refundAmount))} {t('returns.refunded')}</p>}
                         {Number(ret.replacementCost ?? 0) > 0 && <p className="font-mono text-xs text-destructive">-{formatIDR(Number(ret.replacementCost))} {t('orders.replacementCost')}</p>}
                       </div>
