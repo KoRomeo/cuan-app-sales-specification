@@ -65,7 +65,8 @@ export async function POST(request: Request) {
         if (!product) throw new Error("PRODUCT_NOT_FOUND")
         const price = Number(soldLine.price)
         total += Math.max(0, price * qty - (Number(soldLine.discount) * qty / Number(soldLine.qty)))
-        lines.push({ productId, qty, price, unitCost: Number(product.averageCost) })
+        // Reverse the cost recognized on the original sale, not today's moving average.
+        lines.push({ productId, qty, price, unitCost: Number(soldLine.unitCost) })
       }
       let resolvedRefundAccount: string | null = null
       if (refund > 0) {
