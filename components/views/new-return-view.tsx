@@ -43,8 +43,9 @@ export function NewReturnView() {
   const { data: financialAccounts } = useSWR<FinancialAccountRow[]>(business?.id ? `/api/financial-accounts?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: previousReturns } = useSWR<Array<{ orderId: string; items: Array<{ productId: string; qty: number }>; refundAmount: string | number }>>(business?.id ? `/api/returns?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const [orderId, setOrderId] = useState('')
-  const [stockReturned, setStockReturned] = useState('yes')
-  const [refundCustomer, setRefundCustomer] = useState('no')
+  const [returnMode, setReturnMode] = useState<'replacement' | 'refund'>('replacement')
+  const stockReturned = returnMode === 'refund' ? 'yes' : 'no'
+  const refundCustomer = returnMode === 'refund' ? 'yes' : 'no'
   const [refundAmount, setRefundAmount] = useState('0')
   const [refundAccount, setRefundAccount] = useState('')
   const [returnDate, setReturnDate] = useState(TODAY)
@@ -113,9 +114,18 @@ export function NewReturnView() {
             <div className="flex flex-col gap-1.5"><Label htmlFor="return-order">{t('returns.linkedOrder')}</Label><select id="return-order" className={selectClass} value={orderId} onChange={(event) => { setOrderId(event.target.value); const next = orders.find((row) => row.id === event.target.value); const first = (next?.items ?? []).find((item) => Number(item.qty) - (previousReturns ?? []).filter((row) => row.orderId === (next?.id ?? '')).flatMap((row) => row.items ?? []).filter((returnedItem) => returnedItem.productId === item.productId).reduce((sum, item) => sum + Number(item.qty), 0) > 0); setLines([{ key: Date.now(), productId: first?.productId ?? '', qty: 1 }]); setRefundAmount('0') }} required><option value="">{t('returns.selectOrder')}</option>{orders.filter((row) => row.status !== 'cancelled').map((row) => <option key={row.id} value={row.id}>{row.id} — {customers.find((c) => c.id === row.customerId)?.name ?? row.customerId}</option>)}</select></div>
             <div className="flex flex-col gap-1.5"><Label>{t('returns.orderDate')}</Label><div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 font-mono text-sm">{order?.date ?? '—'}</div></div>
           </div>
-          <div className="mt-4 grid gap-4 border-t pt-4 sm:grid-cols-2">
-            <fieldset className="flex flex-col gap-2"><legend className="mb-2 text-sm font-medium">{t('returns.restockPrompt')}</legend><div className="flex gap-2">{[{value:'yes',label:t('returns.restockYes')},{value:'no',label:t('returns.restockNo')}].map((option) => <label key={option.value} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${stockReturned===option.value?'border-primary bg-primary/5':''}`}><input type="radio" name="stockReturned" value={option.value} checked={stockReturned===option.value} onChange={() => setStockReturned(option.value)} />{option.label}</label>)}</div></fieldset>
-            <fieldset className="flex flex-col gap-2"><legend className="mb-2 text-sm font-medium">{t('returns.refundPrompt')}</legend><div className="flex gap-2">{[{value:'yes',label:t('returns.refundYes')},{value:'no',label:t('returns.noRefund')}].map((option) => <label key={option.value} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${refundCustomer===option.value?'border-primary bg-primary/5':''}`}><input type="radio" name="refundCustomer" value={option.value} checked={refundCustomer===option.value} onChange={() => {setRefundCustomer(option.value);if(option.value==='no')setRefundAmount('0');else setRefundAmount(String(maxRefund))}} />{option.label}</label>)}</div></fieldset>
+          <div className="mt-4 border-t pt-4">
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-2 text-sm font-medium">{t('returns.mode')}</legend>
+              <label className={`flex cursor-pointer flex-col gap-1 rounded-md border px-3 py-3 text-sm ${returnMode === 'replacement' ? 'border-primary bg-primary/5' : ''}`}>
+                <span className="flex items-center gap-2"><input type="radio" name="returnMode" value="replacement" checked={returnMode === 'replacement'} onChange={() => { setReturnMode('replacement'); setRefundAmount('0') }} />{t('returns.replacementMode')}</span>
+                <span className="pl-6 text-xs text-muted-foreground">{t('returns.replacementModeHint')}</span>
+              </label>
+              <label className={`flex cursor-pointer flex-col gap-1 rounded-md border px-3 py-3 text-sm ${returnMode === 'refund' ? 'border-primary bg-primary/5' : ''}`}>
+                <span className="flex items-center gap-2"><input type="radio" name="returnMode" value="refund" checked={returnMode === 'refund'} onChange={() => { setReturnMode('refund'); setRefundAmount(String(maxRefund)) }} />{t('returns.refundMode')}</span>
+                <span className="pl-6 text-xs text-muted-foreground">{t('returns.refundModeHint')}</span>
+              </label>
+            </fieldset>
           </div>
         </SectionCard>
         <SectionCard title={t('returns.itemsSection')}>
