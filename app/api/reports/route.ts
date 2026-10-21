@@ -67,7 +67,7 @@ export async function GET(request: Request) {
       const replacementCost = linkedJournalLines.filter((line) => line.account === "Replacement Cost").reduce((sum, line) => sum + num(line.debit) - num(line.credit), 0)
       const netRevenue = total - refundTotal
       const netCogs = cogs - returnedCogs
-      return { id: o.id, date: o.date, customer: customerMap.get(o.customerId) ?? o.customerId, customerId: o.customerId, status: o.status, total, refundTotal, netRevenue, cogs: netCogs, replacementCost, grossProfit: netRevenue - netCogs - replacementCost, paid: orderPayments.get(o.id) ?? 0, outstanding: Math.max(0, total - (orderPayments.get(o.id) ?? 0)), returnCount: linkedReturns.length, items: items.map(i => ({ productId: i.productId, product: productMap.get(i.productId)?.name ?? i.productId, qty: i.qty, price: num(i.price), total: i.qty * num(i.price) - num(i.discount) })) }
+      return { id: o.id, date: o.date, customer: customerMap.get(o.customerId) ?? o.customerId, customerId: o.customerId, status: o.status, total, refundTotal, netRevenue, cogs, netCogs, replacementCost, grossProfit: netRevenue - netCogs - replacementCost, paid: orderPayments.get(o.id) ?? 0, outstanding: Math.max(0, total - (orderPayments.get(o.id) ?? 0)), returnCount: linkedReturns.length, items: items.map(i => ({ productId: i.productId, product: productMap.get(i.productId)?.name ?? i.productId, qty: i.qty, price: num(i.price), total: i.qty * num(i.price) - num(i.discount) })) }
     })
     const purchaseReport = purchaseRows.filter(p => within(p.date, from!, to!)).map(p => {
       const items = purchaseLineRows.filter(i => i.purchaseId === p.id)
