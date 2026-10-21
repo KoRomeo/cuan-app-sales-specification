@@ -549,7 +549,7 @@ export function ReturnsView() {
         <KpiCard label={t('returns.refunded')} value={returns.filter((r) => Number(r.refundAmount) > 0).length} icon={CheckCircle2} tone="success" />
         <KpiCard label={t('reports.units')} value={returns.reduce((sum, r) => sum + r.items.reduce((itemSum, item) => itemSum + Number(item.qty), 0), 0)} icon={Truck} tone="neutral" />
       </KpiGrid>
-      {error ? <p className="py-4 text-sm text-destructive">Failed to load Returns. Please refresh and try again.</p> : isLoading || !business ? <p className="py-4 text-sm text-muted-foreground">Loading Returns...</p> : (
+      {error ? <p className="py-4 text-sm text-destructive">{t('returns.loadError')}</p> : isLoading || !business ? <p className="py-4 text-sm text-muted-foreground">{t('returns.loading')}</p> : (
         <DataTable
           rows={returns}
           columns={columns}
