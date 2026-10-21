@@ -126,10 +126,13 @@ export function NewReturnView() {
           globalMutate(`/api/replacements?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/orders?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/products?businessId=${encodeURIComponent(business.id)}`),
+          globalMutate(`/api/inventory?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/stock?businessId=${encodeURIComponent(business.id)}`),
+          globalMutate(`/api/stock-movements?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/accounting?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/financial-accounts?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/dashboard?businessId=${encodeURIComponent(business.id)}`),
+          globalMutate(`/api/reports?businessId=${encodeURIComponent(business.id)}`),
         ])
         toast.success(editId ? t('returns.updated') : t('returns.saved'))
         router.push(editId ? `/returns/${encodeURIComponent(editId)}` : '/returns')
