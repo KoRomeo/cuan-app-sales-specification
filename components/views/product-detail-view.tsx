@@ -68,7 +68,7 @@ export function ProductDetailView({ productId }: { productId: string }) {
     />
     <KpiGrid>
       <KpiCard label={t('products.sellingPrice')} value={formatIDR(Number(product.sellingPrice))} />
-      <KpiCard label={t('products.averageCost')} value={formatIDR(Number(product.averageCost)) />
+      <KpiCard label={t('products.averageCost')} value={formatIDR(Number(product.averageCost))} />
       <KpiCard label={t('products.stock')} value={current?.stock ?? 0} />
       <KpiCard label={t('products.minimumStock')} value={product.minimumStock} />
     </KpiGrid>
