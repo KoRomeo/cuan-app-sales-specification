@@ -6,11 +6,7 @@ export function formatIDR(value: number) {
 }
 
 export function formatCompactIDR(value: number) {
-  const abs = Math.abs(value)
-  const sign = value < 0 ? '-' : ''
-  if (abs >= 1_000_000_000) return `${sign}Rp${(abs / 1_000_000_000).toFixed(1).replace('.', ',')} M`
-  if (abs >= 1_000_000) return `${sign}Rp${(abs / 1_000_000).toFixed(1).replace('.', ',')} jt`
-  if (abs >= 1_000) return `${sign}Rp${Math.round(abs / 1_000)} rb`
+  // Keep the full rupiah amount everywhere; never abbreviate with rb/jt or hide digits.
   return formatIDR(value)
 }
 
