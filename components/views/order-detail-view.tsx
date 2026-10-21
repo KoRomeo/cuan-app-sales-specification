@@ -214,7 +214,11 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
                       <p className="mt-1 text-xs text-muted-foreground">{ret.items.map((item) => `${productById.get(item.productId)?.name ?? item.productId} × ${item.qty}`).join(', ')}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className="font-mono text-sm text-destructive">{formatIDR(Number(ret.refundAmount))}</span>
+                      <div className="text-right">
+                        <p className="font-mono text-sm">{formatIDR(Number(ret.total))}</p>
+                        {Number(ret.refundAmount) > 0 && <p className="font-mono text-xs text-destructive">-{formatIDR(Number(ret.refundAmount))} {t('returns.refunded')}</p>}
+                        {Number(ret.replacementCost ?? 0) > 0 && <p className="font-mono text-xs text-destructive">-{formatIDR(Number(ret.replacementCost))} {t('orders.replacementCost')}</p>}
+                      </div>
                       <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/returns/${encodeURIComponent(ret.id)}`} />}>{t('orders.viewReturn')}</Button>
                     </div>
                   </li>
