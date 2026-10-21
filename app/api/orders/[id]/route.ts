@@ -3,7 +3,7 @@ import { headers } from "next/headers"
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { businessMembers, customers, deliveries, journalEntries, orderItems, orders, payments, products, replacements, stockMovements, returns, returnItems } from "@/lib/db/schema"
+import { businessMembers, customers, deliveries, journalEntries, journalEntryLines, orderItems, orders, payments, products, replacements, stockMovements, returns, returnItems } from "@/lib/db/schema"
 import { writeAudit } from "@/lib/audit"
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -27,7 +27,8 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const productRows = itemRows.length ? await db.select({ id: products.id, name: products.name, averageCost: products.averageCost, stock: sql<number>`coalesce(sum(${stockMovements.qty}), 0)` }).from(products).leftJoin(stockMovements, and(eq(stockMovements.productId, products.id), eq(stockMovements.businessId, order.businessId))).where(eq(products.businessId, order.businessId)).groupBy(products.id) : []
   const returnRows = await db.select().from(returns).where(and(eq(returns.orderId, id), eq(returns.businessId, order.businessId)))
   const returnItemRows = returnRows.length ? await db.select().from(returnItems).where(inArray(returnItems.returnId, returnRows.map((row) => row.id))) : []
-  return NextResponse.json({ ...order, customer: customer ?? null, items: itemRows, products: productRows, payments: paymentRows, delivery: delivery ?? null, replacements: replacementRows, returns: returnRows.map((row) => ({ ...row, items: returnItemRows.filter((item) => item.returnId === row.id) })) })
+  const returnJournalRows = returnRows.length ? await db.select({ reference: journalEntries.reference, account: journalEntryLines.account, debit: journalEntryLines.debit, credit: journalEntryLines.credit }).from(journalEntries).innerJoin(journalEntryLines, eq(journalEntryLines.journalEntryId, journalEntries.id)).where(and(eq(journalEntries.businessId, order.businessId), inArray(journalEntries.reference, returnRows.map((row) => row.id)))) : []
+  return NextResponse.json({ ...order, customer: customer ?? null, items: itemRows, products: productRows, payments: paymentRows, delivery: delivery ?? null, replacements: replacementRows, returns: returnRows.map((row) => ({ ...row, replacementCost: returnJournalRows.filter((line) => line.reference === row.id && line.account === "Replacement Cost").reduce((sum, line) => sum + Number(line.debit) - Number(line.credit), 0), items: returnItemRows.filter((item) => item.returnId === row.id) })) })
   } catch (error) {
     console.error("Order detail request failed", error)
     return NextResponse.json({ error: "Unable to load order details" }, { status: 500 })
