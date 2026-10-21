@@ -525,7 +525,7 @@ export function ReturnsView() {
       if (!response.ok) throw new Error(result.error ?? t('returns.deleteFailed'))
       setDeleteTarget(null)
       await Promise.all([
-        mutate(), mutateOrders(),
+        mutate(),
         globalMutate(`/api/orders?businessId=${encodeURIComponent(business.id)}`),
         globalMutate(`/api/orders/${encodeURIComponent(deleteTarget.orderId)}`),
         globalMutate(`/api/products?businessId=${encodeURIComponent(business.id)}`),
