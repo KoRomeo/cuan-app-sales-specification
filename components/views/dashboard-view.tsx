@@ -40,6 +40,7 @@ type DashboardData = {
   purchases: DashboardPurchase[]
   suppliers: Array<{ id: string; name: string }>
   expenses: Array<{ date: string; amount: number }>
+  returns: Array<{ id: string; date: string; orderId: string; refundAmount: number; stockReturned: boolean; stockValue: number }>
 }
 const fetcher = async <T,>(url: string): Promise<T> => {
   const response = await fetch(url)
@@ -104,13 +105,17 @@ export function DashboardView() {
     return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
   }
 
-  const { customers, products, orders, purchases, suppliers, expenses } = data
+  const { customers, products, orders, purchases, suppliers, expenses, returns } = data
   const inRange = (date: string) => date >= range[0] && date <= range[1]
   const activeOrders = orders.filter((order) => order.status !== 'cancelled')
   const periodOrders = activeOrders.filter((order) => inRange(order.date))
   const revenueOrders = periodOrders.filter((order) => order.status === 'delivered')
-  const revenue = revenueOrders.reduce((sum, order) => sum + totalOfOrder(order), 0)
-  const cogs = revenueOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.qty * item.unitCost, 0), 0)
+  const grossRevenue = revenueOrders.reduce((sum, order) => sum + totalOfOrder(order), 0)
+  const periodReturns = returns.filter((item) => inRange(item.date))
+  const refundTotal = periodReturns.reduce((sum, item) => sum + item.refundAmount, 0)
+  const returnedStockValue = periodReturns.reduce((sum, item) => sum + item.stockValue, 0)
+  const revenue = grossRevenue - refundTotal
+  const cogs = revenueOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.qty * item.unitCost, 0), 0) - returnedStockValue
   const totalExpenses = expenses.filter((expense) => inRange(expense.date)).reduce((sum, expense) => sum + expense.amount, 0)
   const pl = { revenue, grossProfit: revenue - cogs, netProfit: revenue - cogs - totalExpenses }
   const receivableOrders = activeOrders.filter((order) => outstandingOfOrder(order) > 0)
@@ -128,8 +133,12 @@ export function DashboardView() {
       date.setMonth(date.getMonth() - (5 - index))
       const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
       const monthOrders = activeOrders.filter((order) => order.status === 'delivered' && order.date.startsWith(month))
-      const monthRevenue = monthOrders.reduce((sum, order) => sum + totalOfOrder(order), 0)
-      const monthCogs = monthOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.qty * item.unitCost, 0), 0)
+      const monthReturns = returns.filter((item) => item.date.startsWith(month))
+      const monthRefunds = monthReturns.reduce((sum, item) => sum + item.refundAmount, 0)
+      const monthReturnedStockValue = monthReturns.reduce((sum, item) => sum + item.stockValue, 0)
+      const monthGrossRevenue = monthOrders.reduce((sum, order) => sum + totalOfOrder(order), 0)
+      const monthRevenue = monthGrossRevenue - monthRefunds
+      const monthCogs = monthOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.qty * item.unitCost, 0), 0) - monthReturnedStockValue
       const monthExpenses = expenses.filter((expense) => expense.date.startsWith(month)).reduce((sum, expense) => sum + expense.amount, 0)
       return {
         month,
