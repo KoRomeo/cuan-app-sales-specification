@@ -68,7 +68,7 @@ export function ProductDetailView({ productId }: { productId: string }) {
     />
     <KpiGrid>
       <KpiCard label={t('products.sellingPrice')} value={formatIDR(Number(product.sellingPrice))} />
-      <KpiCard label={t('products.averageCost')} value={formatIDR(Number(product.averageCost)} />
+      <KpiCard label={t('products.averageCost')} value={formatIDR(Number(product.averageCost)) />
       <KpiCard label={t('products.stock')} value={current?.stock ?? 0} />
       <KpiCard label={t('products.minimumStock')} value={product.minimumStock} />
     </KpiGrid>
@@ -107,7 +107,7 @@ export function ProductDetailView({ productId }: { productId: string }) {
             <th className="py-2 pr-4 font-medium">{t('returns.order')}</th>
             <th className="py-2 pr-4 font-medium">{t('common.customer')}</th>
             <th className="py-2 pr-4 font-medium">{t('common.date')}</th>
-            <th className="py-2 pr-4 text-right font-medium">{t('orders.qty')}</th>
+            <th className="py-2 pr-4 text-right font-medium">{t('common.qty')}</th>
             <th className="py-2 pr-4 text-right font-medium">{t('returns.remaining')}</th>
             <th className="py-2 text-right font-medium">{t('common.actions')}</th>
           </tr></thead>
