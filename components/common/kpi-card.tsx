@@ -19,6 +19,8 @@ export function KpiCard({
   tone?: Tone
   href?: string
 }) {
+  const amountDigits = typeof value === 'string' ? value.replace(/\\D/g, '').length : 0
+  const valueSize = amountDigits >= 13 ? 'text-xs sm:text-sm md:text-base' : amountDigits >= 10 ? 'text-sm sm:text-base md:text-lg' : 'text-xl md:text-2xl'
   const body = (
     <>
       <div className="flex items-start justify-between gap-3">
@@ -29,7 +31,7 @@ export function KpiCard({
           </span>
         )}
       </div>
-      <p className={cn('mt-3 min-w-0 break-all font-mono text-lg font-semibold tabular-nums tracking-tight sm:text-xl md:text-2xl', tone === 'destructive' && toneText.destructive)}>
+      <p className={cn('mt-3 min-w-0 overflow-x-auto whitespace-nowrap font-mono font-semibold tabular-nums tracking-tight', valueSize, tone === 'destructive' && toneText.destructive)}>
         {value}
       </p>
       {hint && <div className="mt-1.5 text-xs text-muted-foreground">{hint}</div>}
