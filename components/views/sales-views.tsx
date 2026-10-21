@@ -516,9 +516,9 @@ export function ReturnsView() {
     { key: 'customer', header: t('common.customer'), cell: (r) => customerName(r.orderId) },
     { key: 'product', header: t('common.product'), cell: (r) => <span className="font-medium">{r.items.map((item) => productName(item.productId)).join(', ')}</span> },
     { key: 'qty', header: t('common.qty'), align: 'right', cell: (r) => <span className="font-mono tabular-nums">{r.items.reduce((sum, item) => sum + Number(item.qty), 0)}</span> },
-    { key: 'value', header: 'Return total', align: 'right', cell: (r) => <Money value={Number(r.total)} className="text-destructive" /> },
+    { key: 'value', header: t('returns.returnTotal'), align: 'right', cell: (r) => <Money value={Number(r.total)} className="text-destructive" /> },
     { key: 'reason', header: t('common.notes'), cell: (r) => <span className="text-muted-foreground">{r.notes || '—'}</span> },
-    { key: 'status', header: 'Refund', cell: (r) => (Number(r.refundAmount) > 0 ? <Pill tone="success">Refunded</Pill> : <Pill tone="neutral">No refund</Pill>) },
+    { key: 'status', header: t('returns.refundStatus'), cell: (r) => (Number(r.refundAmount) > 0 ? <Pill tone="success">{t('returns.refunded')}</Pill> : <Pill tone="neutral">{t('returns.noRefund')}</Pill>) },
   ]
   const saveReturn = async (values: Record<string, string>) => {
     if (!business?.id) throw new Error('Business not found')
@@ -545,8 +545,8 @@ export function ReturnsView() {
       <PageHeader breadcrumbs={[{ label: t('nav.sales') }, { label: t('nav.returns') }]} title={t('returns.title')} description={t('returns.desc')} />
       <KpiGrid>
         <KpiCard label={t('returns.title')} value={returns.length} icon={RotateCcw} />
-        <KpiCard label="No refund" value={returns.filter((r) => Number(r.refundAmount) === 0).length} icon={RotateCcw} tone="warning" />
-        <KpiCard label="Refunded" value={returns.filter((r) => Number(r.refundAmount) > 0).length} icon={CheckCircle2} tone="success" />
+        <KpiCard label={t('returns.noRefund')} value={returns.filter((r) => Number(r.refundAmount) === 0).length} icon={RotateCcw} tone="warning" />
+        <KpiCard label={t('returns.refunded')} value={returns.filter((r) => Number(r.refundAmount) > 0).length} icon={CheckCircle2} tone="success" />
         <KpiCard label={t('reports.units')} value={returns.reduce((sum, r) => sum + r.items.reduce((itemSum, item) => itemSum + Number(item.qty), 0), 0)} icon={Truck} tone="neutral" />
       </KpiGrid>
       {error ? <p className="py-4 text-sm text-destructive">Failed to load Returns. Please refresh and try again.</p> : isLoading || !business ? <p className="py-4 text-sm text-muted-foreground">Loading Returns...</p> : (
@@ -557,8 +557,8 @@ export function ReturnsView() {
           searchText={(r) => `${r.id} ${r.orderId} ${r.items.map((item) => productName(item.productId)).join(' ')} ${r.notes ?? ''}`}
           filters={[
             { value: 'all', label: t('common.all'), predicate: () => true },
-            { value: 'out', label: 'No refund', predicate: (r) => Number(r.refundAmount) === 0 },
-            { value: 'done', label: 'Refunded', predicate: (r) => Number(r.refundAmount) > 0 },
+            { value: 'out', label: t('returns.noRefund'), predicate: (r) => Number(r.refundAmount) === 0 },
+            { value: 'done', label: t('returns.refunded'), predicate: (r) => Number(r.refundAmount) > 0 },
           ]}
           rowHref={(r) => `/returns/${encodeURIComponent(r.id)}`}
           addLabel={t('returns.add')}
