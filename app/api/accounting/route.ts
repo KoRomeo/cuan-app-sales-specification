@@ -52,7 +52,9 @@ export async function GET(request: Request) {
     const sumAccount = (account: string, side: "debit" | "credit") =>
       lines.filter((line) => line.account === account).reduce((sum, line) => sum + Number(line[side]), 0)
     const round = (value: number) => Number(value.toFixed(2))
-    const salesRevenue = sumAccount("Sales Revenue", "credit") - sumAccount("Sales Revenue", "debit")
+    const grossSalesRevenue = sumAccount("Sales Revenue", "credit") - sumAccount("Sales Revenue", "debit")
+    const salesReturns = sumAccount("Sales Returns", "debit") - sumAccount("Sales Returns", "credit")
+    const salesRevenue = grossSalesRevenue - salesReturns
     const costOfGoodsSold = sumAccount("Cost of Goods Sold", "debit") - sumAccount("Cost of Goods Sold", "credit")
     const totalPurchases = entries.filter((entry) => entry.kind === "purchase").reduce((sum, entry) =>
       sum + (linesByEntry.get(entry.id) ?? []).filter((line) => line.account === "Inventory")
@@ -75,7 +77,10 @@ export async function GET(request: Request) {
       businessId,
       period: { startDate: startDate || null, endDate: endDate || null },
       orderCount: orderRows.length,
+      grossSalesRevenue: round(grossSalesRevenue),
+      salesReturns: round(salesReturns),
       salesRevenue: round(salesRevenue),
+      netSales: round(salesRevenue),
       costOfGoodsSold: round(costOfGoodsSold),
       grossProfit: round(salesRevenue - costOfGoodsSold),
       totalPaymentsReceived: round(totalPaymentsReceived),
