@@ -41,6 +41,7 @@ type DashboardData = {
   suppliers: Array<{ id: string; name: string }>
   expenses: Array<{ date: string; amount: number }>
   returns: Array<{ id: string; date: string; orderId: string; refundAmount: number; stockReturned: boolean; stockValue: number; replacementCost: number }>
+  replacements: Array<{ date: string; cost: number }>
 }
 const fetcher = async <T,>(url: string): Promise<T> => {
   const response = await fetch(url)
@@ -114,7 +115,9 @@ export function DashboardView() {
   const periodReturns = returns.filter((item) => inRange(item.date))
   const refundTotal = periodReturns.reduce((sum, item) => sum + item.refundAmount, 0)
   const returnedStockValue = periodReturns.reduce((sum, item) => sum + item.stockValue, 0)
-  const replacementCost = periodReturns.reduce((sum, item) => sum + item.replacementCost, 0)
+  const returnReplacementCost = periodReturns.reduce((sum, item) => sum + item.replacementCost, 0)
+  const existingReplacementCost = (data.replacements ?? []).filter((item) => inRange(item.date)).reduce((sum, item) => sum + item.cost, 0)
+  const replacementCost = returnReplacementCost + existingReplacementCost
   const revenue = grossRevenue - refundTotal
   const cogs = revenueOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.qty * item.unitCost, 0), 0) - returnedStockValue
   const totalExpenses = expenses.filter((expense) => inRange(expense.date)).reduce((sum, expense) => sum + expense.amount, 0)
@@ -137,7 +140,7 @@ export function DashboardView() {
       const monthReturns = returns.filter((item) => item.date.startsWith(month))
       const monthRefunds = monthReturns.reduce((sum, item) => sum + item.refundAmount, 0)
       const monthReturnedStockValue = monthReturns.reduce((sum, item) => sum + item.stockValue, 0)
-      const monthReplacementCost = monthReturns.reduce((sum, item) => sum + item.replacementCost, 0)
+      const monthReplacementCost = monthReturns.reduce((sum, item) => sum + item.replacementCost, 0) + (data.replacements ?? []).filter((item) => item.date.startsWith(month)).reduce((sum, item) => sum + item.cost, 0)
       const monthGrossRevenue = monthOrders.reduce((sum, order) => sum + totalOfOrder(order), 0)
       const monthRevenue = monthGrossRevenue - monthRefunds
       const monthCogs = monthOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.qty * item.unitCost, 0), 0) - monthReturnedStockValue
