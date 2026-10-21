@@ -3,7 +3,7 @@ import { headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { businessMembers, customers, journalEntries, journalEntryLines, orders, products, returnItems, returns } from "@/lib/db/schema"
+import { businessMembers, customers, journalEntries, journalEntryLines, orderItems, orders, products, returnItems, returns } from "@/lib/db/schema"
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -26,11 +26,18 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         .innerJoin(journalEntries, eq(journalEntryLines.journalEntryId, journalEntries.id))
         .where(and(eq(journalEntries.reference, record.id), eq(journalEntries.businessId, record.businessId))),
     ])
+    const soldItems = await db.select().from(orderItems).where(eq(orderItems.orderId, record.orderId))
     return NextResponse.json({
       ...record,
       order: order ?? null,
       customer: customer ?? null,
-      items: items.map((item) => ({ ...item, productName: productRows.find((product) => product.id === item.productId)?.name ?? item.productId })),
+      items: items.map((item) => {
+        const sold = soldItems.find((line) => line.productId === item.productId)
+        const qty = Number(item.qty)
+        const soldQty = Number(sold?.qty ?? qty)
+        const subtotal = Math.max(0, Number(sold?.price ?? item.price) * qty - Number(sold?.discount ?? 0) * qty / Math.max(1, soldQty))
+        return { ...item, subtotal, productName: productRows.find((product) => product.id === item.productId)?.name ?? item.productId }
+      }),
       refundAccount: journal.find((line) => Number(record.refundAmount) > 0 && line.account !== "Sales Returns" && line.account !== "Inventory" && line.account !== "Cost of Goods Sold")?.account ?? null,
     })
   } catch (error) {
