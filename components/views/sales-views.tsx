@@ -592,6 +592,8 @@ export function ReturnsView() {
             { label: t('common.edit'), icon: Pencil, href: `/returns/new?editId=${encodeURIComponent(r.id)}` },
             { label: t('common.delete'), icon: Trash2, onSelect: () => setDeleteTarget(r) },
           ]}
+          editable={false}
+          deletable={false}
           addLabel={t('returns.add')}
           onAdd={() => { window.location.href = '/returns/new' }}
         />
