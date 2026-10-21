@@ -193,7 +193,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       }
       return { id, orderId: record.orderId, date, stockReturned, refundAmount: refund, total }
     })
-    await writeAudit({ businessId, page: "Returns", action: "Edited return and recalculated stock and journal effects", reference: id })
+    await writeAudit({
+      businessId, page: "Returns", action: "Edit Return", reference: id,
+      changes: [
+        { property: "Date", previous: record.date, current: date },
+        { property: "Stock Decision", previous: record.stockReturned ? "Restocked" : "Not restocked", current: stockReturned ? "Restocked" : "Not restocked" },
+        { property: "Refund Amount", previous: String(record.refundAmount), current: refund.toFixed(2) },
+        { property: "Return Total", previous: String(record.total), current: total.toFixed(2) },
+        { property: "Notes", previous: record.notes ?? "—", current: notes.trim() || "—" },
+      ],
+    })
     return NextResponse.json(updated)
   } catch (error) {
     const message = error instanceof Error ? error.message : ""
@@ -234,7 +243,15 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       ))
       await tx.delete(returns).where(and(eq(returns.id, id), eq(returns.businessId, businessId)))
     })
-    await writeAudit({ businessId, page: "Returns", action: "Deleted return and reversed its stock and journal effects", reference: id })
+    await writeAudit({
+      businessId, page: "Returns", action: "Delete Return", reference: id,
+      changes: [
+        { property: "Deleted", previous: "Active", current: "Deleted" },
+        { property: "Stock Decision", previous: record.stockReturned ? "Restocked" : "Not restocked", current: "Effects reversed" },
+        { property: "Refund Amount", previous: String(record.refundAmount), current: "Reversed" },
+        { property: "Return Total", previous: String(record.total), current: "Deleted" },
+      ],
+    })
     return NextResponse.json({ id, deleted: true, orderId: record.orderId })
   } catch (error) {
     console.error("DELETE /api/returns/[id]", error)
