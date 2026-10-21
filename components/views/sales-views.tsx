@@ -480,8 +480,6 @@ type ReturnProductOption = { id: string; name: string }
 
 export function ReturnsView() {
   const { t } = useApp()
-  const [open, setOpen] = useState(false)
-  const [selectedReturnOrderId, setSelectedReturnOrderId] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<PersistedReturn | null>(null)
   const { mutate: globalMutate } = useSWRConfig()
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', customersFetcher)
@@ -489,7 +487,7 @@ export function ReturnsView() {
     business?.id ? `/api/returns?businessId=${encodeURIComponent(business.id)}` : null,
     customersFetcher,
   )
-  const { data: orderRows, mutate: mutateOrders } = useSWR<ReturnOrderOption[]>(
+  const { data: orderRows } = useSWR<ReturnOrderOption[]>(
     business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null,
     customersFetcher,
   )
@@ -502,10 +500,6 @@ export function ReturnsView() {
     customersFetcher,
   )
   const returns = rows ?? []
-  const orderOptions = (orderRows ?? []).filter((o) => o.status !== 'cancelled')
-  const selectedReturnOrder = orderOptions.find((o) => o.id === selectedReturnOrderId)
-  const orderedProductIds = new Set((selectedReturnOrder?.items ?? []).map((item) => item.productId))
-  const orderedProducts = (productRows ?? []).filter((product) => orderedProductIds.has(product.id))
   const productName = (id: string) => productRows?.find((p) => p.id === id)?.name ?? id
   const customerName = (orderId: string) => {
     const order = orderRows?.find((o) => o.id === orderId)
@@ -548,26 +542,6 @@ export function ReturnsView() {
     }
   }
 
-  const saveReturn = async (values: Record<string, string>) => {
-    if (!business?.id) throw new Error('Business not found')
-    const response = await fetch('/api/replacements', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        businessId: business.id,
-        orderId: values.order,
-        date: values.date,
-        productId: values.product,
-        qty: Number(values.qty),
-        reason: values.reason?.trim(),
-      }),
-    })
-    const result = await response.json()
-    if (!response.ok) throw new Error(result.error || 'Failed to create Return')
-    await Promise.all([mutate(), mutateOrders()])
-    setOpen(false)
-  }
-
   return (
     <>
       <PageHeader breadcrumbs={[{ label: t('nav.sales') }, { label: t('nav.returns') }]} title={t('returns.title')} description={t('returns.desc')} />
@@ -606,22 +580,6 @@ export function ReturnsView() {
         description={deleteTarget ? t('returns.deleteConfirm', { id: deleteTarget.id }) : ''}
         confirmLabel={t('common.delete')}
         onConfirm={() => { void deleteReturn() }}
-      />
-      <FormDialog
-        key={open ? 'new-return-open' : 'new-return-closed'}
-        open={open}
-        onOpenChange={setOpen}
-        title={t('returns.add')}
-        description="Record returned items, restock decision, and any customer refund."
-        persisted
-        fields={[
-          { name: 'order', label: t('returns.order'), type: 'select', half: true, required: true, options: [{ value: '', label: 'Select an order' }, ...orderOptions.map((o) => ({ value: o.id, label: o.id }))], onValueChange: setSelectedReturnOrderId },
-          { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true, required: true },
-          { name: 'product', label: t('common.product'), type: 'select', half: true, required: true, options: [{ value: '', label: selectedReturnOrderId ? 'Select a product from this order' : 'Select an order first' }, ...orderedProducts.map((p) => ({ value: p.id, label: p.name }))] },
-          { name: 'qty', label: t('common.qty'), type: 'number', min: 1, defaultValue: '1', half: true, required: true },
-          { name: 'reason', label: t('returns.reason'), type: 'textarea', required: true },
-        ]}
-        onSubmit={saveReturn}
       />
     </>
   )
