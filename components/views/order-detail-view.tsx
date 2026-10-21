@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { AlertTriangle, ArrowLeft, Ban, FileText, History, Pencil, Plus, Printer, Trash2, Truck, User, Wallet } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Ban, FileText, History, Pencil, Plus, Printer, RotateCcw, Trash2, Truck, User, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import useSWR from 'swr'
 import { appToast as toast } from '@/lib/toast'
@@ -112,6 +112,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
         }
         actions={
           <>
+            {linkedReturns.length > 0 && <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/returns/${encodeURIComponent(linkedReturns[linkedReturns.length - 1].id)}`} />}><RotateCcw />{t('orders.viewReturn')} ({linkedReturns.length})</Button>}
             <Button variant="outline" size="sm" onClick={() => setDoc('invoice')}>
               <FileText />
               {t('orders.viewInvoice')}
@@ -304,7 +305,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
 
           <SectionCard title={t('orders.profitability')}>
             <dl className="divide-y">
-              <DetailRow label={t('orders.revenue')}><span className="font-mono">{formatIDR(netRevenue)}</span></DetailRow>
+              <DetailRow label={t('orders.revenue')}><span className="font-mono">{formatIDR(total)}</span></DetailRow>
               {refundTotal > 0 && <DetailRow label={t('orders.refundAmount')}><span className="font-mono text-destructive">-{formatIDR(refundTotal)}</span></DetailRow>}
               <DetailRow label={t('orders.cogs')}><span className="font-mono text-muted-foreground">-{formatIDR(netCogs)}</span></DetailRow>
               <DetailRow label={t('orders.transportCost')}><span className="font-mono text-muted-foreground">-{formatIDR(transport)}</span></DetailRow>
