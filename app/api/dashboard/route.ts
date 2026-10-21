@@ -6,6 +6,7 @@ import {
   customers,
   deliveries,
   expenses,
+  journalEntries,
   journalEntryLines,
   returns,
   orderItems,
@@ -22,7 +23,18 @@ export async function GET(request: Request) {
   try {
     const businessId = new URL(request.url).searchParams.get("businessId")
     if (!businessId) {
-      return NextResponse.json({ error: "businessId is required" }, { status: 400 })
+      const replacementEntryIds = replacementEntryRows.map((entry) => entry.id)
+    const replacementJournalLines = replacementEntryIds.length
+      ? await db.select({ journalEntryId: journalEntryLines.journalEntryId, account: journalEntryLines.account, debit: journalEntryLines.debit, credit: journalEntryLines.credit })
+        .from(journalEntryLines).where(inArray(journalEntryLines.journalEntryId, replacementEntryIds))
+      : []
+    const replacementsForDashboard = replacementEntryRows.map((entry) => ({
+      date: entry.entryDate,
+      cost: replacementJournalLines.filter((line) => line.journalEntryId === entry.id && line.account === "Cost of Goods Sold")
+        .reduce((sum, line) => sum + Number(line.debit) - Number(line.credit), 0),
+    }))
+
+    return NextResponse.json({ error: "businessId is required" }, { status: 400 })
     }
 
     const access = await requireBusinessAccess(businessId)
@@ -40,6 +52,7 @@ export async function GET(request: Request) {
       expenseRows,
       movementRows,
       returnRows,
+      replacementEntryRows,
     ] = await Promise.all([
       db.select().from(customers).where(eq(customers.businessId, businessId)),
       db.select().from(products).where(eq(products.businessId, businessId)),
@@ -56,6 +69,7 @@ export async function GET(request: Request) {
         .where(eq(stockMovements.businessId, businessId))
         .groupBy(stockMovements.productId),
       db.select().from(returns).where(eq(returns.businessId, businessId)),
+      db.select().from(journalEntries).where(and(eq(journalEntries.businessId, businessId), eq(journalEntries.kind, "replacement"))),
     ])
 
     const orderIds = orderRows.map((row) => row.id)
@@ -135,6 +149,7 @@ export async function GET(request: Request) {
         ...expense,
         amount: Number(expense.amount),
       })),
+      replacements: replacementsForDashboard,
       returns: returnRows.map((row) => ({
         id: row.id, date: row.date, orderId: row.orderId,
         refundAmount: Number(row.refundAmount), stockReturned: row.stockReturned,
