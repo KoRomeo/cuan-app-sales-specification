@@ -20,7 +20,6 @@ export async function GET(request: Request) {
   try {
     const businessId = new URL(request.url).searchParams.get("businessId")
     if (!businessId) return NextResponse.json({ error: "businessId is required" }, { status: 400 })
-    if (refundCustomer && refund <= 0) return NextResponse.json({ error: "A refund amount greater than Rp0 is required for refund mode." }, { status: 400 })
     const access = await requireBusinessAccess(businessId)
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
     const rows = await db.select().from(returns).where(eq(returns.businessId, businessId)).orderBy(desc(returns.date))
@@ -43,6 +42,7 @@ export async function POST(request: Request) {
       typeof notes !== "string") {
       return NextResponse.json({ error: "Please provide a valid order, return date, items, and refund settings." }, { status: 400 })
     }
+    if (refundCustomer && refund <= 0) return NextResponse.json({ error: "A refund amount greater than Rp0 is required for refund mode." }, { status: 400 })
     const access = await requireBusinessAccess(businessId)
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
     const created = await db.transaction(async (tx) => {
