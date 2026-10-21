@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm"
+import { and, desc, eq, sql } from "drizzle-orm"
 import { headers } from "next/headers"
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
@@ -25,7 +25,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     db.select({ id: replacements.id, date: replacements.date, productId: replacements.productId, qty: replacements.qty, reason: replacements.reason, delivered: replacements.delivered }).from(replacements).where(and(eq(replacements.orderId, id), eq(replacements.businessId, order.businessId))),
   ])
   const productRows = itemRows.length ? await db.select({ id: products.id, name: products.name, averageCost: products.averageCost, stock: sql<number>`coalesce(sum(${stockMovements.qty}), 0)` }).from(products).leftJoin(stockMovements, and(eq(stockMovements.productId, products.id), eq(stockMovements.businessId, order.businessId))).where(eq(products.businessId, order.businessId)).groupBy(products.id) : []
-  const returnRows = await db.select().from(returns).where(and(eq(returns.orderId, id), eq(returns.businessId, order.businessId)))
+  const returnRows = await db.select().from(returns).where(and(eq(returns.orderId, id), eq(returns.businessId, order.businessId))).orderBy(desc(returns.date))
   const returnItemRows = returnRows.length ? await db.select().from(returnItems).where(inArray(returnItems.returnId, returnRows.map((row) => row.id))) : []
   const returnJournalRows = returnRows.length ? await db.select({ reference: journalEntries.reference, account: journalEntryLines.account, debit: journalEntryLines.debit, credit: journalEntryLines.credit }).from(journalEntries).innerJoin(journalEntryLines, eq(journalEntryLines.journalEntryId, journalEntries.id)).where(and(eq(journalEntries.businessId, order.businessId), inArray(journalEntries.reference, returnRows.map((row) => row.id)))) : []
   return NextResponse.json({ ...order, customer: customer ?? null, items: itemRows, products: productRows, payments: paymentRows, delivery: delivery ?? null, replacements: replacementRows, returns: returnRows.map((row) => ({ ...row, replacementCost: returnJournalRows.filter((line) => line.reference === row.id && line.account === "Replacement Cost").reduce((sum, line) => sum + Number(line.debit) - Number(line.credit), 0), items: returnItemRows.filter((item) => item.returnId === row.id) })) })
