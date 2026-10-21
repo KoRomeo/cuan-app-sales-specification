@@ -378,19 +378,21 @@ export function ProfitLossView() {
     note?: string
     salesRevenue?: number
     costOfGoodsSold?: number
+    replacementCost?: number
     totalExpenses?: number
   }>(business?.id ? `/api/accounting?businessId=${encodeURIComponent(business.id)}&startDate=${startDate}&endDate=${endDate}` : null, fetcher)
   const revenue = Number(accounting?.salesRevenue ?? 0)
   const cogs = Number(accounting?.costOfGoodsSold ?? 0)
+  const replacementCost = Number(accounting?.replacementCost ?? 0)
   const operatingExpenses = Number(accounting?.totalExpenses ?? 0)
   const pl = {
     revenue,
     cogs,
-    grossProfit: revenue - cogs,
+    grossProfit: revenue - cogs - replacementCost,
     operating: operatingExpenses,
     transport: 0,
     expenseByCategory: [] as Array<[string, number]>,
-    netProfit: revenue - cogs - operatingExpenses,
+    netProfit: revenue - cogs - replacementCost - operatingExpenses,
   }
   const pct = (v: number) => (pl.revenue ? formatPercent((v / pl.revenue) * 100) : '—')
 
@@ -413,6 +415,7 @@ export function ProfitLossView() {
         <div className="divide-y">
           <PlRow label={t('pl.revenue')} value={pl.revenue} strong />
           <PlRow label={t('pl.cogs')} value={pl.cogs} negative indent />
+          {replacementCost > 0 && <PlRow label={t('pl.replacementCost')} value={replacementCost} negative indent />}
           <div className="rounded-md bg-success/8 px-3">
             <PlRow label={t('pl.grossProfit')} value={pl.grossProfit} strong />
           </div>
