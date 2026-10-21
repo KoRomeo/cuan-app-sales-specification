@@ -55,8 +55,11 @@ export async function GET(request: Request) {
     const grossSalesRevenue = sumAccount("Sales Revenue", "credit") - sumAccount("Sales Revenue", "debit")
     const salesReturns = sumAccount("Sales Returns", "debit") - sumAccount("Sales Returns", "credit")
     const salesRevenue = grossSalesRevenue - salesReturns
-    const costOfGoodsSold = sumAccount("Cost of Goods Sold", "debit") - sumAccount("Cost of Goods Sold", "credit")
-    const replacementCost = sumAccount("Replacement Cost", "debit") - sumAccount("Replacement Cost", "credit")
+    const existingReplacementCost = entries.filter((entry) => entry.kind === "replacement").reduce((sum, entry) =>
+      sum + (linesByEntry.get(entry.id) ?? []).filter((line) => line.account === "Cost of Goods Sold")
+        .reduce((part, line) => part + Number(line.debit) - Number(line.credit), 0), 0)
+    const costOfGoodsSold = sumAccount("Cost of Goods Sold", "debit") - sumAccount("Cost of Goods Sold", "credit") - existingReplacementCost
+    const replacementCost = existingReplacementCost + sumAccount("Replacement Cost", "debit") - sumAccount("Replacement Cost", "credit")
     const totalPurchases = entries.filter((entry) => entry.kind === "purchase").reduce((sum, entry) =>
       sum + (linesByEntry.get(entry.id) ?? []).filter((line) => line.account === "Inventory")
         .reduce((part, line) => part + Number(line.debit) - Number(line.credit), 0), 0)
