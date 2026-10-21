@@ -100,7 +100,6 @@ export function NewReturnView() {
           globalMutate(`/api/stock?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/accounting?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/financial-accounts?businessId=${encodeURIComponent(business.id)}`),
-          globalMutate(`/api/reports?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/dashboard?businessId=${encodeURIComponent(business.id)}`),
         ])
         toast.success('Return recorded successfully')
