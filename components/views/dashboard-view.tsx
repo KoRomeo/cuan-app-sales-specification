@@ -40,7 +40,7 @@ type DashboardData = {
   purchases: DashboardPurchase[]
   suppliers: Array<{ id: string; name: string }>
   expenses: Array<{ date: string; amount: number }>
-  returns: Array<{ id: string; date: string; orderId: string; refundAmount: number; stockReturned: boolean; stockValue: number }>
+  returns: Array<{ id: string; date: string; orderId: string; refundAmount: number; stockReturned: boolean; stockValue: number; replacementCost: number }>
 }
 const fetcher = async <T,>(url: string): Promise<T> => {
   const response = await fetch(url)
@@ -114,10 +114,11 @@ export function DashboardView() {
   const periodReturns = returns.filter((item) => inRange(item.date))
   const refundTotal = periodReturns.reduce((sum, item) => sum + item.refundAmount, 0)
   const returnedStockValue = periodReturns.reduce((sum, item) => sum + item.stockValue, 0)
+  const replacementCost = periodReturns.reduce((sum, item) => sum + item.replacementCost, 0)
   const revenue = grossRevenue - refundTotal
   const cogs = revenueOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.qty * item.unitCost, 0), 0) - returnedStockValue
   const totalExpenses = expenses.filter((expense) => inRange(expense.date)).reduce((sum, expense) => sum + expense.amount, 0)
-  const pl = { revenue, grossProfit: revenue - cogs, netProfit: revenue - cogs - totalExpenses }
+  const pl = { revenue, grossProfit: revenue - cogs - replacementCost, netProfit: revenue - cogs - replacementCost - totalExpenses }
   const receivableOrders = activeOrders.filter((order) => outstandingOfOrder(order) > 0)
   const totalReceivable = receivableOrders.reduce((sum, order) => sum + outstandingOfOrder(order), 0)
 
@@ -136,6 +137,7 @@ export function DashboardView() {
       const monthReturns = returns.filter((item) => item.date.startsWith(month))
       const monthRefunds = monthReturns.reduce((sum, item) => sum + item.refundAmount, 0)
       const monthReturnedStockValue = monthReturns.reduce((sum, item) => sum + item.stockValue, 0)
+      const monthReplacementCost = monthReturns.reduce((sum, item) => sum + item.replacementCost, 0)
       const monthGrossRevenue = monthOrders.reduce((sum, order) => sum + totalOfOrder(order), 0)
       const monthRevenue = monthGrossRevenue - monthRefunds
       const monthCogs = monthOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.qty * item.unitCost, 0), 0) - monthReturnedStockValue
@@ -143,8 +145,8 @@ export function DashboardView() {
       return {
         month,
         revenue: monthRevenue,
-        grossProfit: monthRevenue - monthCogs,
-        netProfit: monthRevenue - monthCogs - monthExpenses,
+        grossProfit: monthRevenue - monthCogs - monthReplacementCost,
+        netProfit: monthRevenue - monthCogs - monthReplacementCost - monthExpenses,
         label: new Date(`${month}-01T12:00:00`).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', { month: 'short' }),
       }
     })
