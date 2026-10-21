@@ -110,7 +110,8 @@ export function DashboardView() {
   const inRange = (date: string) => date >= range[0] && date <= range[1]
   const activeOrders = orders.filter((order) => order.status !== 'cancelled')
   const periodOrders = activeOrders.filter((order) => inRange(order.date))
-  // Sales are posted when the order is created, so dashboard revenue must include every non-cancelled order.
+  // Keep dashboard financial KPIs aligned with the selected reporting period.
+  const revenueOrders = periodOrders
   const grossRevenue = revenueOrders.reduce((sum, order) => sum + totalOfOrder(order), 0)
   const periodReturns = returns.filter((item) => inRange(item.date))
   const refundTotal = periodReturns.reduce((sum, item) => sum + item.refundAmount, 0)
