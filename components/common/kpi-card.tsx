@@ -29,7 +29,7 @@ export function KpiCard({
           </span>
         )}
       </div>
-      <p className={cn('mt-3 font-mono text-xl font-semibold tabular-nums tracking-tight md:text-2xl', tone === 'destructive' && toneText.destructive)}>
+      <p className={cn('mt-3 min-w-0 break-all font-mono text-lg font-semibold tabular-nums tracking-tight sm:text-xl md:text-2xl', tone === 'destructive' && toneText.destructive)}>
         {value}
       </p>
       {hint && <div className="mt-1.5 text-xs text-muted-foreground">{hint}</div>}
