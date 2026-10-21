@@ -201,6 +201,8 @@ export function OrdersView() {
           { value: 'requested', label: t('status.requested'), predicate: (o) => o.status === 'requested' },
           { value: 'ready', label: t('status.ready'), predicate: (o) => o.status === 'ready' },
           { value: 'delivered', label: t('status.delivered'), predicate: (o) => o.status === 'delivered' },
+          { value: 'return-partial', label: t('orders.returnStatusPartial'), predicate: (o) => returnStatusByOrder.get(o.id) === 'partial' },
+          { value: 'return-full', label: t('orders.returnStatusFull'), predicate: (o) => returnStatusByOrder.get(o.id) === 'full' },
           { value: 'unpaid', label: t('pay.unpaid'), predicate: (o) => o.status !== 'cancelled' && orderPaymentStatus(o) !== 'paid' },
           { value: 'cancelled', label: t('status.cancelled'), predicate: (o) => o.status === 'cancelled' },
         ]}
