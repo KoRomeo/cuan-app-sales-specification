@@ -37,8 +37,8 @@ export async function POST(request: Request) {
     const { businessId, orderId, date, stockReturned, refundCustomer, refundAmount, refundAccount, notes, items } = body ?? {}
     const refund = Number(refundAmount ?? 0)
     if (typeof businessId !== "string" || !businessId.trim() || typeof orderId !== "string" || !orderId.trim() ||
-      !validDate(date) || typeof stockReturned !== "boolean" || typeof refundCustomer !== "boolean" ||
-      !validItems(items) || !Number.isFinite(refund) || refund < 0 || (!refundCustomer && refund !== 0) ||
+      !validDate(date) || typeof stockReturned !== "boolean" || typeof refundCustomer !== "boolean" || stockReturned !== refundCustomer ||
+      !validItems(items) || !Number.isFinite(refund) || refund < 0 || (!refundCustomer && refund !== 0) || (refundCustomer && refund <= 0) ||
       typeof notes !== "string") {
       return NextResponse.json({ error: "Please provide a valid order, return date, items, and refund settings." }, { status: 400 })
     }
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       const requestedQty = new Map<string, number>()
       for (const line of items as ReturnLine[]) requestedQty.set(line.productId, (requestedQty.get(line.productId) ?? 0) + line.qty)
       let total = 0
-      const lines: Array<{ productId: string; qty: number; price: number; unitCost: number }> = []
+      const lines: Array<{ productId: string; qty: number; price: number; unitCost: number; replacementUnitCost: number }> = []
       for (const [productId, qty] of requestedQty) {
         const soldLine = sold.find((line) => line.productId === productId)
         if (!soldLine) throw new Error("PRODUCT_NOT_IN_ORDER")
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
         const price = Number(soldLine.price)
         total += Math.max(0, price * qty - (Number(soldLine.discount) * qty / Number(soldLine.qty)))
         // Reverse the cost recognized on the original sale, not today's moving average.
-        lines.push({ productId, qty, price, unitCost: Number(soldLine.unitCost) })
+        lines.push({ productId, qty, price, unitCost: Number(soldLine.unitCost), replacementUnitCost: Number(product.averageCost) })
       }
       let resolvedRefundAccount: string | null = null
       if (refund > 0) {
@@ -93,9 +93,16 @@ export async function POST(request: Request) {
           id: `SM-${id}-${line.productId}`, businessId, date, productId: line.productId,
           type: "reversal", qty: line.qty, reference: `return:${id}:stock`,
         })
+      } else {
+        // No refund means the customer receives replacement goods; the returned faulty goods are not restocked.
+        for (const line of lines) await tx.insert(stockMovements).values({
+          id: `SM-${id}-REPLACEMENT-${line.productId}`, businessId, date, productId: line.productId,
+          type: "replacement", qty: -line.qty, reference: `return:${id}:replacement`,
+        })
       }
       const stockValue = stockReturned ? lines.reduce((sum, line) => sum + line.qty * line.unitCost, 0) : 0
-      if (refund > 0 || stockValue > 0) {
+      const replacementValue = stockReturned ? 0 : lines.reduce((sum, line) => sum + line.qty * line.replacementUnitCost, 0)
+      if (refund > 0 || stockValue > 0 || replacementValue > 0) {
         const entryId = `JE-${id}`
         await tx.insert(journalEntries).values({ id: entryId, businessId, entryDate: date, kind: "return", reference: id, description: `Customer return for ${orderId}` })
         const journalLines: Array<{ id: string; journalEntryId: string; account: string; debit: string; credit: string }> = []
@@ -107,11 +114,15 @@ export async function POST(request: Request) {
           { id: `${entryId}-inventory`, journalEntryId: entryId, account: "Inventory", debit: stockValue.toFixed(2), credit: "0" },
           { id: `${entryId}-cogs`, journalEntryId: entryId, account: "Cost of Goods Sold", debit: "0", credit: stockValue.toFixed(2) },
         )
+        if (replacementValue > 0) journalLines.push(
+          { id: `${entryId}-replacement-cost`, journalEntryId: entryId, account: "Replacement Cost", debit: replacementValue.toFixed(2), credit: "0" },
+          { id: `${entryId}-replacement-inventory`, journalEntryId: entryId, account: "Inventory", debit: "0", credit: replacementValue.toFixed(2) },
+        )
         await tx.insert(journalEntryLines).values(journalLines)
       }
       return { id, total, refundAmount: refund, refundAccount: resolvedRefundAccount, stockReturned, orderId }
     })
-    await writeAudit({ businessId, page: "Returns", action: `Recorded return; stock ${stockReturned ? "restocked" : "not restocked"}; refund ${refundCustomer ? "issued" : "not issued"}`, reference: created.id })
+    await writeAudit({ businessId, page: "Returns", action: `Recorded ${refundCustomer ? "refunded return; item restocked" : "replacement return; replacement stock issued"}; refund ${refundCustomer ? "issued" : "not issued"}`, reference: created.id })
     return NextResponse.json(created, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : ""
