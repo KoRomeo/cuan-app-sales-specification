@@ -44,6 +44,7 @@ type DetailResponse = {
   products: Array<{ id: string; name: string; averageCost: string | number; stock: string | number }>
   payments: Array<{ id: string; date: string; amount: string | number; account: string }>
   delivery: Order['delivery']; replacements: Array<{ id: string; orderId?: string; date: string; productId: string; qty: number; reason: string; delivered: boolean }>
+  returns: Array<{ id: string; date: string; total: string | number; refundAmount: string | number; stockReturned: boolean; notes: string | null; items: Array<{ productId: string; qty: number; price: string | number }> }>
 }
 
 export function OrderDetailView({ orderId }: { orderId: string }) {
@@ -64,12 +65,25 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
   const order: Order = { ...data, notes: data.notes ?? '', items: data.items.map((item) => ({ ...item, price: Number(item.price), discount: Number(item.discount), unitCost: Number(item.unitCost) })), payments: data.payments.map((payment) => ({ ...payment, amount: Number(payment.amount) })), delivery: data.delivery }
   const customer = data.customer
   const replacements = data.replacements
+  const linkedReturns = data.returns ?? []
+  const returnedQtyByProduct = new Map<string, number>()
+  for (const ret of linkedReturns) for (const item of ret.items) returnedQtyByProduct.set(item.productId, (returnedQtyByProduct.get(item.productId) ?? 0) + Number(item.qty))
+  const totalSoldQty = order.items.reduce((sum, item) => sum + Number(item.qty), 0)
+  const totalReturnedQty = [...returnedQtyByProduct.values()].reduce((sum, qty) => sum + qty, 0)
+  const returnStatus = totalReturnedQty <= 0 ? null : totalReturnedQty >= totalSoldQty ? 'full' : 'partial'
   const total = orderTotal(order)
   const paid = orderPaid(order)
   const outstanding = orderOutstanding(order)
   const cogs = orderCogs(order)
+  const refundTotal = linkedReturns.reduce((sum, ret) => sum + Number(ret.refundAmount), 0)
+  const returnedCogs = linkedReturns.filter((ret) => ret.stockReturned).reduce((sum, ret) => sum + ret.items.reduce((itemSum, returnedItem) => {
+    const original = order.items.find((item) => item.productId === returnedItem.productId)
+    return itemSum + Number(returnedItem.qty) * Number(original?.unitCost ?? 0)
+  }, 0), 0)
+  const netRevenue = Math.max(0, total - refundTotal)
+  const netCogs = Math.max(0, cogs - returnedCogs)
   const transport = order.delivery?.transportCost ?? 0
-  const profit = total - cogs - transport
+  const profit = netRevenue - netCogs - transport
   const cancelled = order.status === 'cancelled'
   const pendingReplacements = replacements.filter((r) => r.orderId === order.id && !r.delivered)
   const negativeItems = cancelled
@@ -90,6 +104,8 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
         meta={
           <>
             <OrderStatusBadge status={order.status} />
+            {returnStatus === 'partial' && <Pill tone="warning">{t('orders.returnStatusPartial')}</Pill>}
+            {returnStatus === 'full' && <Pill tone="destructive">{t('orders.returnStatusFull')}</Pill>}
             {!cancelled && <PaymentStatusBadge status={orderPaymentStatus(order)} />}
             {pendingReplacements.length > 0 && <Pill tone="warning">{t('orders.replacementOutstanding')}</Pill>}
           </>
@@ -185,6 +201,26 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
             </div>
           </SectionCard>
 
+          {linkedReturns.length > 0 && (
+            <SectionCard title={t('orders.returns')} bodyClassName="p-0 md:p-0">
+              <ul className="divide-y">
+                {linkedReturns.map((ret) => (
+                  <li key={ret.id} className="flex flex-col gap-3 px-4 py-3 md:px-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <Link href={`/returns/${encodeURIComponent(ret.id)}`} className="font-mono text-sm font-medium text-primary hover:underline">{ret.id}</Link>
+                      <p className="text-xs text-muted-foreground">{formatDate(ret.date)} · {ret.items.reduce((sum, item) => sum + Number(item.qty), 0)} {t('common.qty')}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{ret.items.map((item) => `${productById.get(item.productId)?.name ?? item.productId} × ${item.qty}`).join(', ')}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="font-mono text-sm text-destructive">{formatIDR(Number(ret.refundAmount))}</span>
+                      <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/returns/${encodeURIComponent(ret.id)}`} />}>{t('orders.viewReturn')}</Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </SectionCard>
+          )}
+
           <SectionCard
             title={t('orders.payments')}
             action={
@@ -268,8 +304,9 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
 
           <SectionCard title={t('orders.profitability')}>
             <dl className="divide-y">
-              <DetailRow label={t('dash.revenue')}><span className="font-mono">{formatIDR(total)}</span></DetailRow>
-              <DetailRow label={t('orders.cogs')}><span className="font-mono text-muted-foreground">-{formatIDR(cogs)}</span></DetailRow>
+              <DetailRow label={t('orders.revenue')}><span className="font-mono">{formatIDR(netRevenue)}</span></DetailRow>
+              {refundTotal > 0 && <DetailRow label={t('orders.refundAmount')}><span className="font-mono text-destructive">-{formatIDR(refundTotal)}</span></DetailRow>}
+              <DetailRow label={t('orders.cogs')}><span className="font-mono text-muted-foreground">-{formatIDR(netCogs)}</span></DetailRow>
               <DetailRow label={t('orders.transportCost')}><span className="font-mono text-muted-foreground">-{formatIDR(transport)}</span></DetailRow>
               <DetailRow label={t('orders.profit')}>
                 <span className={`font-mono text-base font-semibold ${profit >= 0 ? 'text-success' : 'text-destructive'}`}>{formatIDR(profit)}</span>
