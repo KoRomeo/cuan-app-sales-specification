@@ -23,17 +23,6 @@ export async function GET(request: Request) {
   try {
     const businessId = new URL(request.url).searchParams.get("businessId")
     if (!businessId) {
-      const replacementEntryIds = replacementEntryRows.map((entry) => entry.id)
-    const replacementJournalLines = replacementEntryIds.length
-      ? await db.select({ journalEntryId: journalEntryLines.journalEntryId, account: journalEntryLines.account, debit: journalEntryLines.debit, credit: journalEntryLines.credit })
-        .from(journalEntryLines).where(inArray(journalEntryLines.journalEntryId, replacementEntryIds))
-      : []
-    const replacementsForDashboard = replacementEntryRows.map((entry) => ({
-      date: entry.entryDate,
-      cost: replacementJournalLines.filter((line) => line.journalEntryId === entry.id && line.account === "Cost of Goods Sold")
-        .reduce((sum, line) => sum + Number(line.debit) - Number(line.credit), 0),
-    }))
-
     return NextResponse.json({ error: "businessId is required" }, { status: 400 })
     }
 
@@ -132,6 +121,17 @@ export async function GET(request: Request) {
         returnReplacementCost.set(line.journalEntryId, (returnReplacementCost.get(line.journalEntryId) ?? 0) + Number(line.debit) - Number(line.credit))
       }
     }
+
+    const replacementEntryIds = replacementEntryRows.map((entry) => entry.id)
+    const replacementJournalLines = replacementEntryIds.length
+      ? await db.select({ journalEntryId: journalEntryLines.journalEntryId, account: journalEntryLines.account, debit: journalEntryLines.debit, credit: journalEntryLines.credit })
+        .from(journalEntryLines).where(inArray(journalEntryLines.journalEntryId, replacementEntryIds))
+      : []
+    const replacementsForDashboard = replacementEntryRows.map((entry) => ({
+      date: entry.entryDate,
+      cost: replacementJournalLines.filter((line) => line.journalEntryId === entry.id && line.account === "Cost of Goods Sold")
+        .reduce((sum, line) => sum + Number(line.debit) - Number(line.credit), 0),
+    }))
 
     return NextResponse.json({
       customers: customerRows,
