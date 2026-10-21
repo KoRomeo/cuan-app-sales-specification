@@ -533,6 +533,7 @@ export function ReturnsView() {
       await Promise.all([
         mutate(), mutateOrders(),
         globalMutate(`/api/orders?businessId=${encodeURIComponent(business.id)}`),
+        globalMutate(`/api/orders/${encodeURIComponent(deleteTarget.orderId)}`),
         globalMutate(`/api/products?businessId=${encodeURIComponent(business.id)}`),
         globalMutate(`/api/inventory?businessId=${encodeURIComponent(business.id)}`),
         globalMutate(`/api/stock?businessId=${encodeURIComponent(business.id)}`),
