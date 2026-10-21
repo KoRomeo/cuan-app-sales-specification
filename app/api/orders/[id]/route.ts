@@ -3,7 +3,7 @@ import { headers } from "next/headers"
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
-import { businessMembers, customers, deliveries, journalEntries, orderItems, orders, payments, products, replacements, stockMovements } from "@/lib/db/schema"
+import { businessMembers, customers, deliveries, journalEntries, orderItems, orders, payments, products, replacements, stockMovements, returns, returnItems } from "@/lib/db/schema"
 import { writeAudit } from "@/lib/audit"
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -25,7 +25,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     db.select({ id: replacements.id, date: replacements.date, productId: replacements.productId, qty: replacements.qty, reason: replacements.reason, delivered: replacements.delivered }).from(replacements).where(and(eq(replacements.orderId, id), eq(replacements.businessId, order.businessId))),
   ])
   const productRows = itemRows.length ? await db.select({ id: products.id, name: products.name, averageCost: products.averageCost, stock: sql<number>`coalesce(sum(${stockMovements.qty}), 0)` }).from(products).leftJoin(stockMovements, and(eq(stockMovements.productId, products.id), eq(stockMovements.businessId, order.businessId))).where(eq(products.businessId, order.businessId)).groupBy(products.id) : []
-  return NextResponse.json({ ...order, customer: customer ?? null, items: itemRows, products: productRows, payments: paymentRows, delivery: delivery ?? null, replacements: replacementRows })
+  const returnRows = await db.select().from(returns).where(and(eq(returns.orderId, id), eq(returns.businessId, order.businessId)))
+  const returnItemRows = returnRows.length ? await db.select().from(returnItems).where(inArray(returnItems.returnId, returnRows.map((row) => row.id))) : []
+  return NextResponse.json({ ...order, customer: customer ?? null, items: itemRows, products: productRows, payments: paymentRows, delivery: delivery ?? null, replacements: replacementRows, returns: returnRows.map((row) => ({ ...row, items: returnItemRows.filter((item) => item.returnId === row.id) })) })
   } catch (error) {
     console.error("Order detail request failed", error)
     return NextResponse.json({ error: "Unable to load order details" }, { status: 500 })
