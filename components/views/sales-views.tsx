@@ -560,7 +560,7 @@ export function ReturnsView() {
             { value: 'out', label: 'No refund', predicate: (r) => Number(r.refundAmount) === 0 },
             { value: 'done', label: 'Refunded', predicate: (r) => Number(r.refundAmount) > 0 },
           ]}
-          rowHref={(r) => `/orders/${r.orderId}`}
+          rowHref={(r) => `/returns/${encodeURIComponent(r.id)}`}
           addLabel={t('returns.add')}
           onAdd={() => { window.location.href = '/returns/new' }}
         />
