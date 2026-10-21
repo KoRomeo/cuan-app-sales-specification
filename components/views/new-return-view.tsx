@@ -131,7 +131,7 @@ export function NewReturnView() {
           globalMutate(`/api/financial-accounts?businessId=${encodeURIComponent(business.id)}`),
           globalMutate(`/api/dashboard?businessId=${encodeURIComponent(business.id)}`),
         ])
-        toast.success(t('returns.saved'))
+        toast.success(editId ? t('returns.updated') : t('returns.saved'))
         router.push(editId ? `/returns/${encodeURIComponent(editId)}` : '/returns')
       } catch (error) { toast.error(error instanceof Error ? error.message : t('returns.saveFailed')) } finally { setSaving(false) }
     }}>
