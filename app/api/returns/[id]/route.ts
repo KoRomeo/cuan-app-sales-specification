@@ -161,14 +161,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           id: `SM-${id}-${line.productId}`, businessId, date, productId: line.productId,
           type: "reversal", qty: line.qty, reference: `return:${id}:stock`,
         })
-      } else {
+      }
+      if (!refundCustomer) {
         for (const line of lines) await tx.insert(stockMovements).values({
           id: `SM-${id}-REPLACEMENT-${line.productId}`, businessId, date, productId: line.productId,
           type: "replacement", qty: -line.qty, reference: `return:${id}:replacement`,
         })
       }
       const stockValue = stockReturned ? lines.reduce((sum, line) => sum + line.qty * line.unitCost, 0) : 0
-      const replacementValue = stockReturned ? 0 : lines.reduce((sum, line) => sum + line.qty * line.replacementUnitCost, 0)
+      const replacementValue = !refundCustomer ? lines.reduce((sum, line) => sum + line.qty * line.replacementUnitCost, 0) : 0
       if (refund > 0 || stockValue > 0 || replacementValue > 0) {
         const entryId = `JE-${id}`
         await tx.insert(journalEntries).values({
