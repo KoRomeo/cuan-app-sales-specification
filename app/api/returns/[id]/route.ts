@@ -199,7 +199,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         { property: "Date", previous: record.date, current: date },
         { property: "Stock Decision", previous: record.stockReturned ? "Restocked" : "Not restocked", current: stockReturned ? "Restocked" : "Not restocked" },
         { property: "Refund Amount", previous: String(record.refundAmount), current: refund.toFixed(2) },
-        { property: "Return Total", previous: String(record.total), current: total.toFixed(2) },
+        { property: "Return Total", previous: String(record.total), current: String(updated.total) },
         { property: "Notes", previous: record.notes ?? "—", current: notes.trim() || "—" },
       ],
     })
