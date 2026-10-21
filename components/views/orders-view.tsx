@@ -11,7 +11,7 @@ import { DataTable, IdCell, Money, type Column } from '@/components/common/data-
 import { FormDialog } from '@/components/common/form-dialog'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
 import { PageHeader } from '@/components/common/page-header'
-import { OrderStatusBadge, PaymentStatusBadge, StatusDropdown } from '@/components/common/status-badge'
+import { OrderStatusBadge, PaymentStatusBadge, Pill, StatusDropdown } from '@/components/common/status-badge'
 import { useApp } from '@/components/providers'
 import {
   type Order,
@@ -36,6 +36,7 @@ const fetcher = async (url: string) => {
 }
 type PersistedOrder = { id: string; date: string; customerId: string; status: Order['status']; dueDate: string | null; notes: string | null; items: Array<{ productId: string; qty: number; price: string | number; discount?: string | number; unitCost: string | number }> }
 type PersistedPayment = { id: string; date: string; amount: string | number; account: string; orderId: string | null }
+type OrderReturnRow = { orderId: string; items: Array<{ productId: string; qty: number }> }
 type PersistedParty = { id: string; name: string; phone?: string | null; address?: string | null }
 function mapOrder(row: PersistedOrder, payments: PersistedPayment[]): Order {
   return { ...row, notes: row.notes ?? '', items: row.items.map((item) => ({ ...item, price: Number(item.price), discount: Number(item.discount ?? 0), unitCost: Number(item.unitCost) })), payments: payments.filter((payment) => payment.orderId === row.id).map((payment) => ({ id: payment.id, date: payment.date, amount: Number(payment.amount), account: payment.account })), delivery: null }
@@ -53,6 +54,7 @@ export function OrdersView() {
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: persistedOrders, error: ordersError, mutate: mutateOrders } = useSWR<PersistedOrder[]>(business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: payments, error: paymentsError } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: returnRows, error: returnsError } = useSWR<OrderReturnRow[]>(business?.id ? `/api/returns?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: customers, error: customersError } = useSWR<PersistedParty[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: products, error: productsError } = useSWR<Array<{ id: string; name: string; stock?: number }>>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   async function changeOrderStatus(order: Order, status: OrderStatus) {
@@ -122,14 +124,21 @@ export function OrdersView() {
     toast.success('Order updated successfully')
   }
 
-  const error = businessError || ordersError || paymentsError || customersError || productsError
+  const error = businessError || ordersError || paymentsError || customersError || productsError || returnsError
   if (error) return <p role="alert" className="text-sm text-destructive">{error.message}</p>
-  if (!business || !persistedOrders || !payments || !customers || !products) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+  if (!business || !persistedOrders || !payments || !customers || !products || !returnRows) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
   const orderRows = persistedOrders.map((order) => mapOrder(order, payments))
   const customerByIdMap = new Map(customers.map((customer) => [customer.id, customer]))
   const productByIdMap = new Map(products.map((product) => [product.id, product]))
   const productStock = new Map(products.map((product) => [product.id, product.stock ?? 0]))
   const sorted = [...orderRows].sort((a, b) => (a.id < b.id ? 1 : -1))
+  const returnStatusByOrder = new Map<string, 'partial' | 'full'>()
+  for (const order of persistedOrders) {
+    if (order.status === 'cancelled') continue
+    const returned = returnRows.filter((row) => row.orderId === order.id).flatMap((row) => row.items ?? []).reduce((sum, item) => sum + Number(item.qty), 0)
+    const sold = order.items.reduce((sum, item) => sum + Number(item.qty), 0)
+    if (returned > 0) returnStatusByOrder.set(order.id, returned >= sold ? 'full' : 'partial')
+  }
   const active = sorted.filter((o) => o.status !== 'cancelled')
 
   const columns: Column<Order>[] = [
@@ -148,6 +157,7 @@ export function OrdersView() {
     { key: 'date', header: t('common.date'), cell: (o) => <span className="font-mono text-xs text-muted-foreground">{formatDate(o.date)}</span> },
     { key: 'customer', header: t('common.customer'), cell: (o) => <span className="font-medium">{customerByIdMap.get(o.customerId)?.name}</span> },
     { key: 'status', header: t('common.status'), sortValue: (o) => o.status, className: 'min-w-[170px] text-right', cell: (o) => <StatusDropdown value={o.status} options={[{ value: 'requested', label: t('status.requested'), tone: 'warning', disabled: o.status !== 'requested' }, { value: 'ready', label: t('status.ready'), tone: 'primary', disabled: o.status !== 'requested' }, { value: 'delivered', label: t('status.delivered'), tone: 'success', disabled: true }, { value: 'cancelled', label: t('status.cancelled'), tone: 'neutral', disabled: o.status === 'delivered' || o.status === 'cancelled' }]} onChange={(status) => changeOrderStatus(o, status)} disabled={o.status === 'delivered' || o.status === 'cancelled'} /> },
+    { key: 'returnStatus', header: t('orders.returnStatus'), sortValue: (o) => returnStatusByOrder.get(o.id) ?? 'none', cell: (o) => { const status = returnStatusByOrder.get(o.id); return status === 'full' ? <Pill tone="destructive">{t('orders.returnStatusFull')}</Pill> : status === 'partial' ? <Pill tone="warning">{t('orders.returnStatusPartial')}</Pill> : <span className="text-muted-foreground">{t('orders.returnStatusNone')}</span> } },
     { key: 'payment', header: t('orders.paymentStatus'), sortValue: (o) => (o.status === 'cancelled' ? null : orderPaymentStatus(o)), cell: (o) => (o.status === 'cancelled' ? <span className="text-muted-foreground">—</span> : <PaymentStatusBadge status={orderPaymentStatus(o)} />) },
     { key: 'total', header: t('common.total'), align: 'right', cell: (o) => <Money value={orderTotal(o)} className={o.status === 'cancelled' ? 'text-muted-foreground line-through' : ''} /> },
     { key: 'paid', header: t('common.paid'), align: 'right', cell: (o) => <Money value={orderPaid(o)} className="text-muted-foreground" /> },
