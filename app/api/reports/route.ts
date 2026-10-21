@@ -82,7 +82,11 @@ export async function GET(request: Request) {
     const paymentsReport = paymentRows.filter(p => within(p.date, from!, to!)).map(p => ({ id: p.id, date: p.date, amount: num(p.amount), account: p.account, reference: p.orderId ?? p.purchaseId ?? "—", kind: p.orderId ? "receivable" : "payable" }))
     const expenseReport = expenseRows.filter(e => within(e.date, from!, to!)).map(e => ({ id: e.id, date: e.date, category: e.category, description: e.description, account: e.account, amount: num(e.amount) }))
     const deliveriesReport = deliveryRows.filter(d => within(d.date, from!, to!)).map(d => ({ ...d, transportCost: num(d.transportCost) }))
-    const replacementsReport = replacementRows.filter(r => within(r.date, from!, to!)).map(r => ({ id: r.id, date: r.date, orderId: r.orderId, product: productMap.get(r.productId)?.name ?? r.productId, qty: r.qty, reason: r.reason, delivered: r.delivered, cost: r.qty * num(productMap.get(r.productId)?.averageCost) }))
+    const replacementsReport = replacementRows.filter(r => within(r.date, from!, to!)).map(r => {
+      const entry = journalRows.find((journal) => journal.kind === "replacement" && journal.reference === r.id && within(journal.entryDate, from!, to!))
+      const cost = accountRows.filter((line) => line.journalEntryId === entry?.id && line.account === "Cost of Goods Sold").reduce((sum, line) => sum + num(line.debit) - num(line.credit), 0)
+      return { id: r.id, date: r.date, orderId: r.orderId, product: productMap.get(r.productId)?.name ?? r.productId, qty: r.qty, reason: r.reason, delivered: r.delivered, cost }
+    })
     const entries = journalRows.filter(j => within(j.entryDate, from!, to!)).map(j => ({ id: j.id, date: j.entryDate, kind: j.kind, reference: j.reference, description: j.description, lines: accountRows.filter(l => l.journalEntryId === j.id).map(l => ({ account: l.account, debit: num(l.debit), credit: num(l.credit) })) }))
     const historyIds = logs.filter(l => within(l.date, from!, to!)).map(l => l.id)
     const changes = historyIds.length ? await db.select().from(auditLogChanges).where(inArray(auditLogChanges.auditLogId, historyIds)) : []
