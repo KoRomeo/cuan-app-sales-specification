@@ -72,16 +72,16 @@ export function NewReturnView() {
 
   return <>
     <PageHeader
-      breadcrumbs={[{ label: t('nav.sales') }, { label: t('nav.returns'), href: '/returns' }, { label: 'Record Return' }]}
+      breadcrumbs={[{ label: t('nav.sales') }, { label: t('nav.returns'), href: '/returns' }, { label: t('returns.recordTitle') }]}
       title="Record Return"
       description="Record returned items, choose whether they re-enter stock, and record any customer refund."
       actions={<Button variant="outline" size="sm" nativeButton={false} render={<Link href="/returns" />}><ArrowLeft /> Back to returns</Button>}
     />
     <form className="grid gap-4 lg:grid-cols-3" onSubmit={async (event) => {
       event.preventDefault()
-      if (!business?.id || !orderId || invalidLine || !lines.length) { toast.error('Select an order and valid returned quantities.'); return }
+      if (!business?.id || !orderId || invalidLine || !lines.length) { toast.error(t('returns.selectOrderError')); return }
       const refund = Number(refundAmount || 0)
-      if (refundCustomer === 'yes' && (!Number.isFinite(refund) || refund < 0 || refund > maxRefund)) { toast.error('Refund must be between Rp0 and the return total.'); return }
+      if (refundCustomer === 'yes' && (!Number.isFinite(refund) || refund < 0 || refund > maxRefund)) { toast.error(t('returns.refundValidation')); return }
       setSaving(true)
       try {
         const response = await fetch('/api/returns', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
@@ -109,13 +109,13 @@ export function NewReturnView() {
       <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
         <SectionCard title="Return information">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5"><Label htmlFor="return-customer">Customer</Label><div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm">{customer?.name ?? 'Select an order first'}</div></div>
+            <div className="flex flex-col gap-1.5"><Label htmlFor="return-customer">Customer</Label><div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm">{customer?.name ?? t('returns.selectOrderFirst')}</div></div>
             <div className="flex flex-col gap-1.5"><Label htmlFor="return-order">Order ID</Label><select id="return-order" className={selectClass} value={orderId} onChange={(event) => { setOrderId(event.target.value); const next = orders.find((row) => row.id === event.target.value); const first = (next?.items ?? []).find((item) => Number(item.qty) - (previousReturns ?? []).filter((row) => row.orderId === (next?.id ?? '')).flatMap((row) => row.items ?? []).filter((returnedItem) => returnedItem.productId === item.productId).reduce((sum, item) => sum + Number(item.qty), 0) > 0); setLines([{ key: Date.now(), productId: first?.productId ?? '', qty: 1 }]); setRefundAmount('0') }} required><option value="">Select order</option>{orders.filter((row) => row.status !== 'cancelled').map((row) => <option key={row.id} value={row.id}>{row.id} — {customers.find((c) => c.id === row.customerId)?.name ?? row.customerId}</option>)}</select></div>
             <div className="flex flex-col gap-1.5"><Label>Order date</Label><div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 font-mono text-sm">{order?.date ?? '—'}</div></div>
           </div>
           <div className="mt-4 grid gap-4 border-t pt-4 sm:grid-cols-2">
-            <fieldset className="flex flex-col gap-2"><legend className="mb-2 text-sm font-medium">Return items to sellable stock?</legend><div className="flex gap-2">{[{value:'yes',label:'Yes, restock'},{value:'no',label:'No, keep out of stock'}].map((option) => <label key={option.value} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${stockReturned===option.value?'border-primary bg-primary/5':''}`}><input type="radio" name="stockReturned" value={option.value} checked={stockReturned===option.value} onChange={() => setStockReturned(option.value)} />{option.label}</label>)}</div></fieldset>
-            <fieldset className="flex flex-col gap-2"><legend className="mb-2 text-sm font-medium">Refund money to customer?</legend><div className="flex gap-2">{[{value:'yes',label:'Yes, refund'},{value:'no',label:'No refund'}].map((option) => <label key={option.value} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${refundCustomer===option.value?'border-primary bg-primary/5':''}`}><input type="radio" name="refundCustomer" value={option.value} checked={refundCustomer===option.value} onChange={() => {setRefundCustomer(option.value);if(option.value==='no')setRefundAmount('0');else setRefundAmount(String(maxRefund))}} />{option.label}</label>)}</div></fieldset>
+            <fieldset className="flex flex-col gap-2"><legend className="mb-2 text-sm font-medium">{t('returns.restockPrompt')}</legend><div className="flex gap-2">{[{value:'yes',label:t('returns.restockYes')},{value:'no',label:t('returns.restockNo')}].map((option) => <label key={option.value} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${stockReturned===option.value?'border-primary bg-primary/5':''}`}><input type="radio" name="stockReturned" value={option.value} checked={stockReturned===option.value} onChange={() => setStockReturned(option.value)} />{option.label}</label>)}</div></fieldset>
+            <fieldset className="flex flex-col gap-2"><legend className="mb-2 text-sm font-medium">Refund money to customer?</legend><div className="flex gap-2">{[{value:'yes',label:t('returns.refundYes')},{value:'no',label:t('returns.noRefund')}].map((option) => <label key={option.value} className={`flex flex-1 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${refundCustomer===option.value?'border-primary bg-primary/5':''}`}><input type="radio" name="refundCustomer" value={option.value} checked={refundCustomer===option.value} onChange={() => {setRefundCustomer(option.value);if(option.value==='no')setRefundAmount('0');else setRefundAmount(String(maxRefund))}} />{option.label}</label>)}</div></fieldset>
           </div>
         </SectionCard>
         <SectionCard title="Return items">
@@ -138,13 +138,13 @@ export function NewReturnView() {
       </div>
       <div className="flex min-w-0 flex-col gap-4">
         <SectionCard title="Return summary" className="lg:sticky lg:top-20">
-          <dl className="flex flex-col gap-3 text-sm"><div className="flex justify-between"><dt className="text-muted-foreground">Return total</dt><dd className="font-mono text-lg font-semibold tabular-nums text-destructive">−{formatIDR(total)}</dd></div></dl>
+          <dl className="flex flex-col gap-3 text-sm"><div className="flex justify-between"><dt className="text-muted-foreground">{t('returns.returnTotal')}</dt><dd className="font-mono text-lg font-semibold tabular-nums text-destructive">−{formatIDR(total)}</dd></div></dl>
           {refundCustomer==='yes' && <div className="mt-4 flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5"><Label htmlFor="refund-amount">Refund amount (Rp)</Label><Input id="refund-amount" type="number" min={0} max={maxRefund} value={refundAmount} onChange={(event)=>setRefundAmount(event.target.value)} required /><p className="text-xs text-muted-foreground">Maximum refundable: {formatIDR(maxRefund)} based on this order's remaining paid balance.</p></div>
+            <div className="flex flex-col gap-1.5"><Label htmlFor="refund-amount">Refund amount (Rp)</Label><Input id="refund-amount" type="number" min={0} max={maxRefund} value={refundAmount} onChange={(event)=>setRefundAmount(event.target.value)} required /><p className="text-xs text-muted-foreground">{t('returns.maximumRefund', { amount: formatIDR(maxRefund) })}</p></div>
             {Number(refundAmount) > 0 && <div className="flex flex-col gap-1.5"><Label htmlFor="refund-account">Refund from account</Label><select id="refund-account" className={selectClass} value={selectedRefundAccount} onChange={(event)=>setRefundAccount(event.target.value)} required><option value="">Select Cash &amp; Bank account</option>{activeFinancialAccounts.map((account)=><option key={account.id} value={account.name}>{account.name}</option>)}</select>{activeFinancialAccounts.length===0 && <p className="text-xs text-destructive">Create an active Cash &amp; Bank account before recording a refund.</p>}</div>}
           </div>}
           <div className="mt-4 flex flex-col gap-1.5"><Label htmlFor="return-date">Return date</Label><Input id="return-date" type="date" value={returnDate} onChange={(event)=>setReturnDate(event.target.value)} required /></div>
-          <div className="mt-5 flex gap-2 border-t pt-4"><Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/returns" />}>Cancel</Button><Button type="submit" className="flex-1" disabled={saving||!orderId||invalidLine||!lines.length||(refundCustomer==='yes'&&Number(refundAmount)>0&&!selectedRefundAccount)}>{saving?'Saving…':'Save Return'}</Button></div>
+          <div className="mt-5 flex gap-2 border-t pt-4"><Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/returns" />}>Cancel</Button><Button type="submit" className="flex-1" disabled={saving||!orderId||invalidLine||!lines.length||(refundCustomer==='yes'&&Number(refundAmount)>0&&!selectedRefundAccount)}>{saving?t('returns.saving'):t('returns.save')}</Button></div>
         </SectionCard>
       </div>
     </form>
