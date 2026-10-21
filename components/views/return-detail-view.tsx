@@ -43,7 +43,7 @@ export function ReturnDetailView({ returnId }: { returnId: string }) {
       meta={<Pill tone={Number(data.refundAmount) > 0 ? 'success' : 'neutral'}>{Number(data.refundAmount) > 0 ? t('returns.refunded') : t('returns.noRefund')}</Pill>}
       actions={<>
         <Button variant="outline" size="sm" nativeButton={false} render={<Link href={`/orders/${encodeURIComponent(data.orderId)}`} />}><ExternalLink />{t('orders.viewOrder')}</Button>
-        <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/returns" />}><ArrowLeft />{t('common.back')}</Button>
+        <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/returns" />}><ArrowLeft />{t('nav.returns')}</Button>
       </>}
     />
     <div className="grid gap-4 lg:grid-cols-3">
