@@ -80,14 +80,20 @@ export async function GET(request: Request) {
     const history = logs.filter(l => within(l.date, from!, to!)).map(l => ({ id: l.id, date: l.date, time: l.time, page: l.page, action: l.action, reference: l.reference, user: l.userName ?? "System", changes: changes.filter(c => c.auditLogId === l.id).map(c => ({ property: c.property, previous: c.previous ?? "—", current: c.current ?? "—" })) }))
     const expensesTotal = expenseReport.reduce((s,e)=>s+e.amount,0)
     const transportTotal = deliveriesReport.reduce((s,d)=>s+d.transportCost,0)
-    const replacementCost = replacementsReport.reduce((s,r)=>s+r.cost,0)
+    const existingReplacementCost = replacementsReport.reduce((s,r)=>s+r.cost,0)
     const grossRevenue = sales.reduce((s,o)=>s+o.total,0)
     const returnJournals = entries.filter(e => e.kind === "return")
     const salesReturns = returnJournals.reduce((sum, entry) => sum + entry.lines.filter(line => line.account === "Sales Returns").reduce((part, line) => part + line.debit - line.credit, 0), 0)
     const returnedCogs = returnJournals.reduce((sum, entry) => sum + entry.lines.filter(line => line.account === "Cost of Goods Sold").reduce((part, line) => part + line.credit - line.debit, 0), 0)
+    const returnReplacementCost = returnJournals.reduce((sum, entry) => sum + entry.lines.filter(line => line.account === "Replacement Cost").reduce((part, line) => part + line.debit - line.credit, 0), 0)
+    const replacementCost = existingReplacementCost + returnReplacementCost
     const revenue = grossRevenue - salesReturns
     const cogs = sales.reduce((s,o)=>s+o.cogs,0) - returnedCogs
-    const returnsReport = returnRows.filter(r => within(r.date, from!, to!)).map(r => ({ id: r.id, date: r.date, orderId: r.orderId, total: num(r.total), refundAmount: num(r.refundAmount), stockReturned: r.stockReturned, notes: r.notes }))
+    const returnsReport = returnRows.filter(r => within(r.date, from!, to!)).map(r => {
+      const entry = returnJournals.find((journal) => journal.reference === r.id)
+      const replacementCost = (entry?.lines ?? []).filter(line => line.account === "Replacement Cost").reduce((sum, line) => sum + line.debit - line.credit, 0)
+      return { id: r.id, date: r.date, orderId: r.orderId, total: num(r.total), refundAmount: num(r.refundAmount), replacementCost, stockReturned: r.stockReturned, notes: r.notes }
+    })
     const purchaseTotal = purchaseReport.reduce((s,p)=>s+p.total,0)
     const receivables = orderRows.filter(o=>o.status!=="cancelled").reduce((s,o)=>{const total=orderLineRows.filter(i=>i.orderId===o.id).reduce((n,i)=>n+i.qty*num(i.price)-num(i.discount),0);return s+Math.max(0,total-(orderPayments.get(o.id)??0))},0)
     const payables = purchaseRows.reduce((s,p)=>{const total=purchaseLineRows.filter(i=>i.purchaseId===p.id).reduce((n,i)=>n+i.qty*num(i.unitCost),0);return s+Math.max(0,total-(purchasePayments.get(p.id)??0))},0)
