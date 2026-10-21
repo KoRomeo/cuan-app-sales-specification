@@ -10,8 +10,24 @@ export async function GET(request: Request) {
     if (!businessId) return NextResponse.json({ error: "businessId is required" }, { status: 400 })
     const access = await requireBusinessAccess(businessId)
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
-    const rows = await db.select().from(financialAccounts).where(eq(financialAccounts.businessId, businessId)).orderBy(asc(financialAccounts.name))
-    return NextResponse.json(rows)
+    const [rows, journalLines] = await Promise.all([
+      db.select().from(financialAccounts).where(eq(financialAccounts.businessId, businessId)).orderBy(asc(financialAccounts.name)),
+      db.select({ account: journalEntryLines.account, debit: journalEntryLines.debit, credit: journalEntryLines.credit, kind: journalEntries.kind, reference: journalEntries.reference })
+        .from(journalEntryLines)
+        .innerJoin(journalEntries, eq(journalEntryLines.journalEntryId, journalEntries.id))
+        .where(eq(journalEntries.businessId, businessId)),
+    ])
+    const balances = new Map<string, number>()
+    const accountsWithOpeningJournal = new Set<string>()
+    for (const line of journalLines) {
+      balances.set(line.account, (balances.get(line.account) ?? 0) + Number(line.debit) - Number(line.credit))
+      if (line.kind === "opening" && line.reference.startsWith("FA-")) accountsWithOpeningJournal.add(line.reference)
+    }
+    return NextResponse.json(rows.map((account) => {
+      const openingAlreadyJournaled = accountsWithOpeningJournal.has(account.id)
+      const openingBalance = openingAlreadyJournaled ? 0 : Number(account.openingBalance)
+      return { ...account, currentBalance: Number((openingBalance + (balances.get(account.name) ?? 0)).toFixed(2)) }
+    }))
   } catch (error) {
     console.error("Failed to fetch financial accounts", error)
     return NextResponse.json({ error: "Failed to fetch financial accounts" }, { status: 500 })
