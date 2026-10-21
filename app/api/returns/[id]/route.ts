@@ -248,7 +248,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       changes: [
         { property: "Deleted", previous: "Active", current: "Deleted" },
         { property: "Stock Decision", previous: record.stockReturned ? "Restocked" : "Not restocked", current: "Effects reversed" },
-        { property: "Refund Amount", previous: String(record.refundAmount), current: "Reversed" },
+        { property: "Refund Amount", previous: String(record.refundAmount), current: "Effects reversed" },
         { property: "Return Total", previous: String(record.total), current: "Deleted" },
       ],
     })
