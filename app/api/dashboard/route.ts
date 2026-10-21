@@ -109,8 +109,14 @@ export async function GET(request: Request) {
         .from(journalEntryLines).where(inArray(journalEntryLines.journalEntryId, returnEntryIds))
       : []
     const returnStockValue = new Map<string, number>()
+    const returnReplacementCost = new Map<string, number>()
     for (const line of returnJournalLines) {
-      if (line.account === "Inventory") returnStockValue.set(line.journalEntryId, Number(line.debit) - Number(line.credit))
+      if (line.account === "Inventory" && Number(line.debit) > Number(line.credit)) {
+        returnStockValue.set(line.journalEntryId, Number(line.debit) - Number(line.credit))
+      }
+      if (line.account === "Replacement Cost") {
+        returnReplacementCost.set(line.journalEntryId, (returnReplacementCost.get(line.journalEntryId) ?? 0) + Number(line.debit) - Number(line.credit))
+      }
     }
 
     return NextResponse.json({
@@ -133,6 +139,7 @@ export async function GET(request: Request) {
         id: row.id, date: row.date, orderId: row.orderId,
         refundAmount: Number(row.refundAmount), stockReturned: row.stockReturned,
         stockValue: returnStockValue.get(`JE-${row.id}`) ?? 0,
+        replacementCost: returnReplacementCost.get(`JE-${row.id}`) ?? 0,
       })),
     })
   } catch (error) {
