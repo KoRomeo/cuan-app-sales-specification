@@ -16,7 +16,7 @@ import { formatIDR } from '@/lib/format'
 
 type LedgerLine = { debit: number; credit: number }
 type AccountingSummary = { ledger: Record<string, LedgerLine> }
-type FinancialAccount = { id: string; businessId: string; name: string; type: 'cash' | 'bank'; openingBalance: string; active: boolean }
+type FinancialAccount = { id: string; businessId: string; name: string; type: 'cash' | 'bank'; openingBalance: string; active: boolean; currentBalance?: number }
 type CashAccount = FinancialAccount & { balance: number }
 type CashTransaction = { id: string; date: string; kind: string; reference: string; description: string; lines: Array<{ account: string; debit: number; credit: number }> }
 const TODAY = new Date().toLocaleDateString('en-CA')
@@ -57,7 +57,8 @@ export function FinancialAccountsView() {
   const ledger = accounting?.ledger ?? {}
   const accounts: CashAccount[] = (savedAccounts ?? []).map((account) => {
     const movement = ledger[account.name]
-    return { ...account, balance: (movement?.debit ?? 0) - (movement?.credit ?? 0) }
+    const ledgerBalance = (movement?.debit ?? 0) - (movement?.credit ?? 0)
+    return { ...account, balance: account.currentBalance ?? ledgerBalance }
   }).sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name))
   const activeAccounts = accounts.filter((account) => account.active)
   const total = activeAccounts.reduce((sum, account) => sum + account.balance, 0)
