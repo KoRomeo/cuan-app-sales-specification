@@ -56,6 +56,7 @@ export const navigation: NavSection[] = [
     items: [
       { href: '/purchases', label: 'nav.purchases', icon: ShoppingBag, feature: 'purchasing' },
       { href: '/suppliers', label: 'nav.suppliers', icon: Building2, feature: 'purchasing' },
+      { href: '/purchase-documents', label: 'nav.invoiceScanner', icon: FileText, feature: 'purchasing' },
     ],
   },
   {
