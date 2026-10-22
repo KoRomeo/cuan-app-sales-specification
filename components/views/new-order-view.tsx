@@ -27,7 +27,6 @@ type Party = { id: string; name: string }
 type Product = { id: string; name: string; sellingPrice: string | number; averageCost: string | number; stock?: string | number }
 type StockRow = { productId: string; stock: number | string }
 const MAX_ORDER_QTY = 999999
-const formatCompactIDR = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', notation: 'compact', maximumFractionDigits: 2 }).format(value)
 
 interface Line {
   key: number
@@ -165,7 +164,7 @@ export function NewOrderView() {
                       <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2">
                         <Label>Subtotal</Label>
                         <div className="flex h-10 min-w-0 items-center">
-                          <span title={formatIDR(l.qty * l.price - l.discount)} className="truncate font-mono text-sm font-semibold tabular-nums">{formatCompactIDR(l.qty * l.price - l.discount)}</span>
+                          <span title={formatIDR(l.qty * l.price - l.discount)} className="truncate font-mono text-sm font-semibold tabular-nums">{formatIDR(l.qty * l.price - l.discount)}</span>
                         </div>
                       </div>
                       <div className="flex flex-col gap-1.5 sm:col-span-1">

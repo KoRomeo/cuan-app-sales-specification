@@ -266,7 +266,7 @@ export function DataTable<T>({
       </div>
 
       <div className={scrollable ? 'overflow-x-auto' : 'overflow-x-hidden'}>
-        <table aria-label={t('common.dataTable')} aria-busy={loading} className={cn('w-full text-sm', scrollable ? 'min-w-[720px]' : 'table-fixed')}>
+        <table aria-label={t('common.dataTable')} aria-busy={loading} className={cn('w-full table-fixed text-sm', scrollable ? 'min-w-[720px]' : '')}>
           <thead>
             <tr className="border-b bg-muted/40">
               {selectable && selectionMode && <th className="w-10 px-3"><input aria-label="Select all visible rows" type="checkbox" checked={visibleRows.length > 0 && visibleRows.every((row) => selectedRowIds.includes(getRowId(row)))} onChange={(event) => { const ids = new Set(selectedRowIds); visibleRows.forEach((row) => event.target.checked ? ids.add(getRowId(row)) : ids.delete(getRowId(row))); onSelectedRowIdsChange?.([...ids]) }} /></th>}
@@ -354,11 +354,12 @@ export function DataTable<T>({
                       <td
                         key={c.key}
                         className={cn(
-                          'h-12 whitespace-nowrap px-5',
+                          'h-12 min-w-0 overflow-hidden px-5',
                           c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
                           c.className,
                         )}
                       >
+                        <div className="block min-w-0 max-w-full truncate" title={typeof content === 'string' || typeof content === 'number' ? String(content) : undefined}>
                         {href && index === 0 ? (
                           <Link
                             href={href}
@@ -369,6 +370,7 @@ export function DataTable<T>({
                             {content}
                           </Link>
                         ) : content}
+                        </div>
                       </td>
                     )
                   })}
