@@ -6,13 +6,12 @@ import { useState } from 'react'
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
 import { PageHeader } from '@/components/common/page-header'
-import { PeriodSelect } from '@/components/common/period-select'
+import { DashboardDateFilter, type DashboardDateFilterValue } from '@/components/common/dashboard-date-filter'
 import { SectionCard } from '@/components/common/section-card'
 import { OrderStatusBadge, PaymentStatusBadge, StockStatusBadge } from '@/components/common/status-badge'
 import { useApp } from '@/components/providers'
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import useSWR from 'swr'
-import type { Period } from '@/lib/data'
 
 type DashboardItem = { productId: string; qty: number; price: number; discount: number; unitCost: number }
 type DashboardPayment = { amount: number }
@@ -53,28 +52,25 @@ const todayISO = () => {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
-const dateRange = (period: Period, today: string): [string, string] => {
-  const date = new Date(`${today}T12:00:00`)
-  const year = date.getFullYear()
-  const month = date.getMonth()
-  const monthStart = (y: number, m: number) => `${y}-${String(m + 1).padStart(2, '0')}-01`
-  const monthEnd = (y: number, m: number) => `${y}-${String(m + 1).padStart(2, '0')}-${String(new Date(y, m + 1, 0).getDate()).padStart(2, '0')}`
-  switch (period) {
-    case 'today': return [today, today]
-    case 'thisWeek': {
-      const start = new Date(date)
-      start.setDate(date.getDate() - ((date.getDay() + 6) % 7))
-      return [`${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`, today]
-    }
-    case 'thisMonth': return [monthStart(year, month), today]
-    case 'lastMonth': return [monthStart(month === 0 ? year - 1 : year, month === 0 ? 11 : month - 1), monthEnd(month === 0 ? year - 1 : year, month === 0 ? 11 : month - 1)]
-    case 'thisQuarter': {
-      const quarterMonth = Math.floor(month / 3) * 3
-      return [monthStart(year, quarterMonth), today]
-    }
-    case 'thisYear': return [`${year}-01-01`, today]
-    default: return ['0000-01-01', '9999-12-31']
-  }
+type DashboardDateFilter = { year: number | null; month: number | null; week: string | null; day: string | null }
+
+const toISODate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
+const monthRange = (year: number, month: number): [string,string] => [`${year}-${String(month).padStart(2,'0')}-01`, toISODate(new Date(year,month,0,12))]
+const weekRangesInMonth = (year:number,month:number):Array<{start:string;end:string}> => {
+ const lastDay=Number(monthRange(year,month)[1].slice(-2)), ranges:Array<{start:string;end:string}>=[]
+ let day=1
+ while(day<=lastDay){const startDate=new Date(year,month-1,day,12), endDay=Math.min(day+(7-startDate.getDay())%7,lastDay)
+ ranges.push({start:toISODate(startDate),end:toISODate(new Date(year,month-1,endDay,12))});day=endDay+1}
+ return ranges
+}
+const dateRange = (filter:DashboardDateFilter):[string,string] => {
+ if(filter.year===null)return ['0000-01-01','9999-12-31']
+ if(filter.month===null)return [`${filter.year}-01-01`,`${filter.year}-12-31`]
+ const [start,end]=monthRange(filter.year,filter.month)
+ if(filter.week===null)return [start,end]
+ const week=weekRangesInMonth(filter.year,filter.month).find(item=>item.start===filter.week)
+ if(!week)return [start,end]
+ return filter.day===null?[week.start,week.end]:[filter.day,filter.day]
 }
 const totalOfOrder = (order: DashboardOrder) => order.items.reduce((sum, item) => sum + item.qty * item.price - item.discount, 0)
 const paidOfOrder = (order: DashboardOrder) => order.payments.reduce((sum, payment) => sum + payment.amount, 0)
@@ -90,9 +86,9 @@ import { formatCompactIDR, formatDate, formatIDR, formatPercent } from '@/lib/fo
 
 export function DashboardView() {
   const { t, locale } = useApp()
-  const [period, setPeriod] = useState<Period>('thisMonth')
+  const [dateFilter, setDateFilter] = useState<DashboardDateFilterValue>(() => { const now = new Date(); return { year: now.getFullYear(), month: now.getMonth()+1, week: null, day: null } })
   const today = todayISO()
-  const range = dateRange(period, today)
+  const range = dateRange(dateFilter)
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data, error } = useSWR<DashboardData>(
     business?.id ? `/api/dashboard?businessId=${encodeURIComponent(business.id)}` : null,
@@ -108,6 +104,14 @@ export function DashboardView() {
 
   const { customers, products, orders, purchases, suppliers, expenses, returns } = data
   const inRange = (date: string) => date >= range[0] && date <= range[1]
+  const availableYears = Array.from(new Set([
+    new Date().getFullYear(),
+    ...orders.map((item) => Number(item.date.slice(0, 4))),
+    ...purchases.map((item) => Number(item.date.slice(0, 4))),
+    ...expenses.map((item) => Number(item.date.slice(0, 4))),
+    ...returns.map((item) => Number(item.date.slice(0, 4))),
+    ...(data.replacements ?? []).map((item) => Number(item.date.slice(0, 4))),
+  ].filter((year) => Number.isFinite(year) && year > 0))).sort((a, b) => b - a)
   const activeOrders = orders.filter((order) => order.status !== 'cancelled')
   const periodOrders = activeOrders.filter((order) => inRange(order.date))
   // Keep dashboard financial KPIs aligned with the selected reporting period.
@@ -132,29 +136,26 @@ export function DashboardView() {
   } satisfies ChartConfig
 
   const trend = (() => {
-    const months = Array.from({ length: 6 }, (_, index) => {
-      const date = new Date()
-      date.setDate(1)
-      date.setMonth(date.getMonth() - (5 - index))
-      const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      const monthOrders = activeOrders.filter((order) => order.date.startsWith(month))
-      const monthReturns = returns.filter((item) => item.date.startsWith(month))
-      const monthRefunds = monthReturns.reduce((sum, item) => sum + item.refundAmount, 0)
-      const monthReturnedStockValue = monthReturns.reduce((sum, item) => sum + item.stockValue, 0)
-      const monthReplacementCost = monthReturns.reduce((sum, item) => sum + item.replacementCost, 0) + (data.replacements ?? []).filter((item) => item.date.startsWith(month)).reduce((sum, item) => sum + item.cost, 0)
-      const monthGrossRevenue = monthOrders.reduce((sum, order) => sum + totalOfOrder(order), 0)
-      const monthRevenue = monthGrossRevenue - monthRefunds
-      const monthCogs = monthOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.qty * item.unitCost, 0), 0) - monthReturnedStockValue
-      const monthExpenses = expenses.filter((expense) => expense.date.startsWith(month)).reduce((sum, expense) => sum + expense.amount, 0)
-      return {
-        month,
-        revenue: monthRevenue,
-        grossProfit: monthRevenue - monthCogs - monthReplacementCost,
-        netProfit: monthRevenue - monthCogs - monthReplacementCost - monthExpenses,
-        label: new Date(`${month}-01T12:00:00`).toLocaleDateString(locale === 'en' ? 'en-US' : 'id-ID', { month: 'short' }),
-      }
+    const allDates=[...orders.map(x=>x.date),...returns.map(x=>x.date),...expenses.map(x=>x.date),...(data.replacements??[]).map(x=>x.date)].filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)).sort()
+    const allTime=dateFilter.year===null
+    const trendStart=allTime?(allDates[0]?`${allDates[0].slice(0,7)}-01`:`${today.slice(0,4)}-01-01`):range[0]
+    const trendEnd=allTime?today:range[1]
+    const granularity:'month'|'day'=allTime||dateFilter.month===null?'month':'day'
+    const groups:string[]=[]
+    if(granularity==='month'){const cursor=new Date(`${trendStart.slice(0,7)}-01T12:00:00`),end=new Date(`${trendEnd.slice(0,7)}-01T12:00:00`);while(cursor<=end){groups.push(`${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}`);cursor.setMonth(cursor.getMonth()+1)}}
+    else {const cursor=new Date(`${trendStart}T12:00:00`),end=new Date(`${trendEnd}T12:00:00`);while(cursor<=end){groups.push(toISODate(cursor));cursor.setDate(cursor.getDate()+1)}}
+    return groups.map(group=>{
+      const matches=(date:string)=>granularity==='month'?date.startsWith(group):date===group
+      const groupOrders=activeOrders.filter(x=>matches(x.date)), groupReturns=returns.filter(x=>matches(x.date))
+      const refunds=groupReturns.reduce((s,x)=>s+x.refundAmount,0), returnedStock=groupReturns.reduce((s,x)=>s+x.stockValue,0)
+      const replacement=groupReturns.reduce((s,x)=>s+x.replacementCost,0)+(data.replacements??[]).filter(x=>matches(x.date)).reduce((s,x)=>s+x.cost,0)
+      const gross=groupOrders.reduce((s,x)=>s+totalOfOrder(x),0), revenue=gross-refunds
+      const cogs=groupOrders.reduce((s,x)=>s+x.items.reduce((a,it)=>a+it.qty*it.unitCost,0),0)-returnedStock
+      const costs=expenses.filter(x=>matches(x.date)).reduce((s,x)=>s+x.amount,0)
+      const date=granularity==='month'?new Date(`${group}-01T12:00:00`):new Date(`${group}T12:00:00`)
+      const label=granularity==='month'?date.toLocaleDateString(locale==='en'?'en-US':'id-ID',allTime?{month:'short',year:'2-digit'}:{month:'short'}):date.toLocaleDateString(locale==='en'?'en-US':'id-ID',{day:'numeric',...(dateFilter.week?{weekday:'short'}:{})})
+      return {month:group,revenue,grossProfit:revenue-cogs-replacement,netProfit:revenue-cogs-replacement-costs,label}
     })
-    return months
   })()
 
   const receivableByCustomer = customers
@@ -197,14 +198,14 @@ export function DashboardView() {
   const customerById = (id: string) => customers.find((customer) => customer.id === id)
   const orderTotal = totalOfOrder
   const orderPaymentStatus = (order: DashboardOrder) => statusOfPayment(totalOfOrder(order), paidOfOrder(order))
-  const recentOrders = [...orders].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0, 6)
+  const recentOrders = orders.filter((order) => inRange(order.date)).sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0, 6)
 
   return (
     <>
       <PageHeader
         title={t('dash.title')}
         description={t('dash.desc')}
-        actions={<PeriodSelect value={period} onChange={setPeriod} />}
+        actions={<DashboardDateFilter value={dateFilter} years={availableYears} locale={locale} onChange={setDateFilter} />}
       />
 
       <KpiGrid>
@@ -336,7 +337,7 @@ export function DashboardView() {
           </ul>
         </SectionCard>
 
-        <SectionCard title={t('dash.topProducts')} description={t(`period.${period}`)}>
+        <SectionCard title={t('dash.topProducts')} description={t('dash.filter.activeRange')}>
           <ul className="flex flex-col gap-3.5">
             {topProducts.map(([id, v]) => (
               <li key={id}>
