@@ -33,6 +33,8 @@ export async function POST(request: NextRequest, { params }: Ctx) {
    let supplierId=body.supplierId
    if(body.createSupplier){
     if(typeof data.supplierName!=="string"||!data.supplierName.trim())throw new Error("SUPPLIER_NAME_REQUIRED")
+    const [sameName]=await tx.select({id:suppliers.id}).from(suppliers).where(and(eq(suppliers.businessId,businessId),eq(suppliers.name,data.supplierName.trim()))).limit(1)
+    if(sameName)throw new Error("SUPPLIER_DUPLICATE")
     const supplierID=await generateEntityId(tx,suppliers,businessId,"SUP",date)
     const [created]=await tx.insert(suppliers).values({id:supplierID,businessId,name:data.supplierName.trim(),contact:null}).returning({id:suppliers.id})
     supplierId=created.id
@@ -82,7 +84,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   return NextResponse.json({message:result.alreadyConfirmed?"Invoice was already confirmed":"Invoice confirmed as purchase",...result},{status:result.alreadyConfirmed?200:201})
  }catch(error){
   const message=error instanceof Error?error.message:""
-  const status:Record<string,[string,number]>={DOCUMENT_NOT_FOUND:["Document not found",404],DOCUMENT_NOT_REVIEWABLE:["Document must be reviewed before confirmation",409],DOCUMENT_ALREADY_BEING_CONFIRMED:["Document is already being confirmed",409],INVALID_DATE:["Invoice date is invalid",400],INVALID_DUE_DATE:["Due date is invalid",400],NO_ITEMS:["Invoice contains no items",400],SUPPLIER_REQUIRED:["Select or create a supplier",400],SUPPLIER_NAME_REQUIRED:["Supplier name is required",400],SUPPLIER_NOT_FOUND:["Supplier not found in this business",404],INVALID_ITEM:["One or more invoice items have invalid quantity/cost",400],PRODUCT_MATCH_REQUIRED:["Match each item to a product or choose add new product",400],PRODUCT_NOT_FOUND:["Selected product not found in this business",404],DUPLICATE_PRODUCT_NAME:["That product name already exists. Select the existing product instead.",409]}
+  const status:Record<string,[string,number]>={DOCUMENT_NOT_FOUND:["Document not found",404],DOCUMENT_NOT_REVIEWABLE:["Document must be reviewed before confirmation",409],DOCUMENT_ALREADY_BEING_CONFIRMED:["Document is already being confirmed",409],INVALID_DATE:["Invoice date is invalid",400],INVALID_DUE_DATE:["Due date is invalid",400],NO_ITEMS:["Invoice contains no items",400],SUPPLIER_REQUIRED:["Select or create a supplier",400],SUPPLIER_NAME_REQUIRED:["Supplier name is required",400],SUPPLIER_DUPLICATE:["A supplier with this name already exists. Select the existing supplier instead.",409],SUPPLIER_NOT_FOUND:["Supplier not found in this business",404],INVALID_ITEM:["One or more invoice items have invalid quantity/cost",400],PRODUCT_MATCH_REQUIRED:["Match each item to a product or choose add new product",400],PRODUCT_NOT_FOUND:["Selected product not found in this business",404],DUPLICATE_PRODUCT_NAME:["That product name already exists. Select the existing product instead.",409]}
   if(status[message])return NextResponse.json({error:status[message][0]},{status:status[message][1]})
   console.error("Invoice confirmation failed",error)
   // Restore the review state on failure so the user can correct mappings and retry.
