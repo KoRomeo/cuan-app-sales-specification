@@ -22,3 +22,4 @@ dist/
 coverage/
 .env*
 !.env.example
+.obsidian
