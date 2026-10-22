@@ -16,7 +16,7 @@ const en = {
   'nav.deliveries': 'Deliveries',
   'nav.returns': 'Returns',
   'nav.purchases': 'Purchases',
-  'nav.invoiceScanner': 'AI Invoice Scanner',
+  'nav.invoiceScanner': 'Purchase Invoices',
   'nav.suppliers': 'Suppliers',
   'nav.products': 'Products',
   'nav.stock': 'Stock',
