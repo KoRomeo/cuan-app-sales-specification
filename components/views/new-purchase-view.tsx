@@ -22,7 +22,6 @@ type Supplier = { id: string; name: string }
 type Item = { key: string; productId: string; qty: string; unitCost: string }
 const MAX_PURCHASE_QTY = 999999
 const MAX_UNIT_PRICE = 999999999999
-const formatCompactIDR = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', notation: 'compact', maximumFractionDigits: 2 }).format(value)
 
 export function NewPurchaseView() {
   const { t } = useApp()
@@ -92,7 +91,7 @@ export function NewPurchaseView() {
                   <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-4"><Label htmlFor={'product-'+item.key}>Product</Label><select id={'product-'+item.key} className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={item.productId} required onChange={e=>updateItem(item.key,{productId:e.target.value,unitCost:''})}><option value="">Select product</option>{products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
                   <div className="flex flex-col gap-1.5 sm:col-span-2"><Label htmlFor={'qty-'+item.key}>{t('common.qty')}</Label><Input id={'qty-'+item.key} type="number" min={1} max={MAX_PURCHASE_QTY} step={1} value={item.qty} onChange={e=>updateItem(item.key,{qty:e.target.value})} required className="font-mono"/></div>
                   <div className="flex flex-col gap-1.5 sm:col-span-3"><Label htmlFor={'cost-'+item.key}>Purchase Price (Rp)</Label><Input id={'cost-'+item.key} type="number" min={0} max={MAX_UNIT_PRICE} value={item.unitCost} onChange={e=>updateItem(item.key,{unitCost:e.target.value})} required className="font-mono"/></div>
-                  <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2"><Label>Subtotal</Label><div className="flex h-10 min-w-0 items-center"><p title={formatIDR(qty*Math.max(0,Number(item.unitCost)||0))} className="truncate font-mono text-sm font-semibold tabular-nums">{formatCompactIDR(qty*Math.max(0,Number(item.unitCost)||0))}</p></div></div>
+                  <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2"><Label>Subtotal</Label><div className="flex h-10 min-w-0 items-center"><p title={formatIDR(qty*Math.max(0,Number(item.unitCost)||0))} className="truncate font-mono text-sm font-semibold tabular-nums">{formatIDR(qty*Math.max(0,Number(item.unitCost)||0))}</p></div></div>
                   <div className="flex flex-col gap-1.5 sm:col-span-1"><Label className="invisible">Remove</Label><div className="flex h-10 items-center justify-center"><Button type="button" variant="ghost" size="icon-sm" aria-label="Remove item" disabled={items.length===1} onClick={()=>setItems(current=>current.filter(row=>row.key!==item.key))}><Trash2 className="size-4"/></Button></div></div>
                 </div>
                 {item.productId&&<div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-muted-foreground"><span>Stock after purchase: <span className="font-mono">{stock.toLocaleString('id-ID')} → {(stock+qty).toLocaleString('id-ID')}</span></span><span>{product?.name} (+{qty.toLocaleString('id-ID')})</span></div>}
