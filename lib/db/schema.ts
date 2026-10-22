@@ -513,3 +513,27 @@ export const unitOperations = pgTable("unit_operations", {
   date: date("date").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 })
+
+
+// ============================================================
+// PURCHASE DOCUMENTS (private invoice originals + AI review state)
+// ============================================================
+export const purchaseDocuments = pgTable("purchase_documents", {
+  id: text("id").primaryKey(),
+  businessId: text("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  uploadedBy: text("uploaded_by").notNull(),
+  fileName: text("file_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  fileSize: integer("file_size").notNull(),
+  blobPathname: text("blob_pathname").notNull(),
+  status: text("status").notNull().default("queued"),
+  targetType: text("target_type").notNull().default("purchase"),
+  extractedData: jsonb("extracted_data").$type<Record<string, unknown> | null>(),
+  confidence: integer("confidence"),
+  reviewIssues: jsonb("review_issues").$type<string[]>().notNull().default([]),
+  purchaseId: text("purchase_id").references(() => purchases.id, { onDelete: "set null" }),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+})
