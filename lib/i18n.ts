@@ -761,7 +761,7 @@ const id: Record<TranslationKey, string> = {
   'nav.deliveries': 'Pengiriman',
   'nav.returns': 'Retur',
   'nav.purchases': 'Pembelian',
-  'nav.invoiceScanner': 'Pemindai Faktur AI',
+  'nav.invoiceScanner': 'Faktur Pembelian',
   'nav.suppliers': 'Supplier',
   'nav.products': 'Produk',
   'nav.stock': 'Stok',
