@@ -15,6 +15,7 @@
 ## Latest known product work
 
 The most recent explicit feature design discussion was the Returns page:
+
 - Two modes: return without refund, and return with monetary refund.
 - No-refund mode must not create a cash refund.
 - Refund mode must record the refund and correctly affect the relevant financial account, order/customer balances, accounting journals, and reports.
@@ -23,6 +24,7 @@ The most recent explicit feature design discussion was the Returns page:
 ## Known reported issues — re-test before fixing
 
 Last reported in earlier implementation conversations; current status unknown:
+
 - Order detail API returned HTTP 500 for `ORD-202610-0019` due to `ReferenceError: inArray is not defined` in `app/api/orders/[id]/route.ts` after return integration.
 - Order detail UI showed JSON parsing errors / “Unable to load order details.”
 - `purchasePaid is not a function` in `components/views/purchasing-views.tsx`.
@@ -58,6 +60,7 @@ These are leads, not a claim that the defects still exist.
 ## Status notation
 
 Use only:
+
 - `DONE + verified` — implemented and verification evidence exists.
 - `IMPLEMENTED, unverified` — code appears present but checks are incomplete.
 - `IN PROGRESS`
@@ -66,3 +69,12 @@ Use only:
 - `UNKNOWN / needs re-check`
 
 Never use a percentage-complete estimate without defined criteria and evidence.
+
+## Update 2026-10-21 — Unit split/combine
+
+- Backend: committed and pushed on `v0/finished-backend-frontend` (`ceb414a`, `307df82`). Routes in `app/api/units/`, logic in `lib/units/`, tables `unit_rules` and `unit_operations`. Status: IMPLEMENTED, unverified against the live app database.
+- Migration `0009_unit_conversion`: verified by applying 0000–0009 in order on an in-memory Postgres (PGlite). NOT yet applied to the app database. Status: BLOCKER for the feature.
+- UI (`/units`, sidebar under Stock Movements): written, `tsc --noEmit` passed; not yet applied to the repo, not browser-tested, production build not verified. Status: IMPLEMENTED, unverified.
+- Known issue: `/api/units` returns 500 (`relation "unit_rules" does not exist`) until migration 0009 is applied.
+- Known issue (not fixed): `POST /api/purchases` writes stock movements with reference `purchase:{id}:receive`; `POST /api/purchases/[id]/receive` checks the same reference and returns 409. Decision needed: stock enters at purchase creation or at receipt.
+- Next: apply migration 0009 to the target database; apply UI; test create/edit/delete rule and split/combine, including the negative-stock block (D-014).
