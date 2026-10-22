@@ -26,14 +26,6 @@ export async function POST(request: NextRequest, { params }: Context) {
     if (!stored || stored.statusCode !== 200) throw new Error("Unable to read the private invoice file")
     const bytes = Buffer.from(await new Response(stored.stream).arrayBuffer())
     if (!bytes.length || bytes.length > MAX_PROCESS_BYTES) throw new Error("Invoice file is empty or exceeds the processing limit")
-    if (document.mimeType === "application/pdf") {
-      // Count page dictionaries in the PDF source before sending it to the model.
-      // Fail closed when the page count cannot be verified rather than silently accepting an oversized PDF.
-      const pdfText = bytes.toString("latin1")
-      const pageCount = (pdfText.match(/\/Type\s*\/Page(?!s)\b/g) ?? []).length
-      if (pageCount === 0) throw new Error("Unable to verify PDF page count. Please re-save the PDF or upload page images.")
-      if (pageCount > 5) throw new Error("PDFs are limited to 5 pages. Split this invoice or upload page images.")
-    }
     const dataUrl = `data:${document.mimeType};base64,${bytes.toString("base64")}`
     const inputContent = document.mimeType.startsWith("image/")
       ? [{ type: "input_image", image_url: dataUrl, detail: "high" }]
