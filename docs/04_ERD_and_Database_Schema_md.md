@@ -1230,3 +1230,14 @@ Every important create/edit/delete/payment action creates an audit log.
 Soft-deleted transactional records must be restorable where business rules allow.  
 All business-owned records must contain business_id.  
 IDs and unique codes must be scoped to the business where appropriate.
+
+---
+
+## Current implementation addendum — Unit tables (2026-10-21)
+
+Added to the app schema (`lib/db/schema.ts`, migration `0009_unit_conversion`). Not part of the original archive above.
+
+- `unit_rules`: id (text, `UNT-YYYYMM-####`), business_id, big_product_id → products, small_product_id → products, ratio (int > 0), status (active | inactive), note, date, created_at.
+- `unit_operations`: id (text, `UOP-YYYYMM-####`), business_id, rule_id → unit_rules, type (split | combine), source_product_id, target_product_id, qty_out, qty_in, value_moved (numeric 14,2), note, date, created_at.
+- `movement_type` enum gained value `unit`. Unit operations write two stock movements with reference `unit:{ruleId}:{opId}`.
+- Stock is derived from `stock_movements`; products.average_cost is updated for the target product only.

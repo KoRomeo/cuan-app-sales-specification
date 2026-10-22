@@ -25,7 +25,8 @@ CUANAPP
 ├── INVENTORY  
 │ ├── Products  
 │ ├── Stock  
-│ └── Stock Movements  
+│ ├── Stock Movements
+│ └── Units (split / combine)  
 │  
 ├── FINANCE  
 │ ├── Receivables  
@@ -161,7 +162,8 @@ CUANAPP
     ├── INVENTORY  
     │ ├── Products  
     │ ├── Stock  
-    │ └── Stock Movements  
+    │ ├── Stock Movements
+    │ └── Units (split / combine)  
     │  
     ├── FINANCE  
     │ ├── Receivables  

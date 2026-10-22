@@ -9,19 +9,20 @@
 3. `11_Decision_Log.md` — binding product/business decisions.
 4. `10_Progress_Log.md` — short chronological record of work.
 5. Read only the relevant specification below for the task:
-   - `01_Master_Specification.md` — broad product blueprint/archive.
-   - `02_PRD_Product_and_Business_Rules.md` — product behavior and business rules.
-   - `03_Information_Architecture_and_User_Flows.md` — navigation and user journeys.
-   - `04_ERD_and_Database_Schema.md` — conceptual/archive schema; verify against actual code.
-   - `05_Screen_and_Component_Specifications.md` — screen-level UI requirements.
-   - `06_Design_System_and_UI_Direction.md` — visual and interaction direction.
-   - `07_Technical_Architecture_Current.md` — current implementation architecture, last inspected 2026-10-17.
-   - `07_Technical_Architecture_Original_Plan.md` — historical proposal only.
-   - `09_Recovery_Notes.md` — use only when recovering from a known failure.
+    - `01_Master_Specification.md` — broad product blueprint/archive.
+    - `02_PRD_Product_and_Business_Rules.md` — product behavior and business rules.
+    - `03_Information_Architecture_and_User_Flows.md` — navigation and user journeys.
+    - `04_ERD_and_Database_Schema.md` — conceptual/archive schema; verify against actual code.
+    - `05_Screen_and_Component_Specifications.md` — screen-level UI requirements.
+    - `06_Design_System_and_UI_Direction.md` — visual and interaction direction.
+    - `07_Technical_Architecture_Current.md` — current implementation architecture, last inspected 2026-10-17.
+    - `07_Technical_Architecture_Original_Plan.md` — historical proposal only.
+    - `09_Recovery_Notes.md` — use only when recovering from a known failure.
 
 ## Mandatory working protocol
 
 Before changing code:
+
 1. Confirm repository, active branch, working tree, latest commit, and relevant files. Do not assume old branch names or commit hashes are current.
 2. Classify the task as a requirement change, bug fix, or technical migration.
 3. Trace the real flow: UI → API → validation/authorization → database transaction → derived effects → reports/history.
@@ -29,6 +30,7 @@ Before changing code:
 5. Make the smallest safe change; preserve working behavior.
 
 Before calling a task complete:
+
 - Verify persistence, business rules, affected modules, error states, and edge cases.
 - Run relevant tests, TypeScript checks, schema/migration checks, and production build where feasible.
 - State exactly what was changed and what was actually verified. Never claim a test, commit, push, or deployment succeeded unless confirmed.
@@ -36,12 +38,14 @@ Before calling a task complete:
 ## Source-of-truth hierarchy
 
 For **what the product should do**:
+
 1. Latest explicit user decision recorded in `11_Decision_Log.md`.
 2. `02_PRD_Product_and_Business_Rules.md`.
 3. Other product specification files.
 4. Ask one focused question only if a material ambiguity remains.
 
 For **what the code currently does**:
+
 1. Actual checked-out source code, schema, migrations, tests, and runtime evidence.
 2. `07_Technical_Architecture_Current.md` (snapshot, not live truth).
 3. `08_Current_Project_Status.md` (status notes may become stale).
@@ -63,6 +67,7 @@ If sources conflict, do not silently choose. Report the conflict and update the 
 ## Task handoff template
 
 When starting a task, summarize in 3–5 lines:
+
 - Goal:
 - Relevant files/modules:
 - Current observed behavior:
