@@ -8,6 +8,7 @@ import { requireBusinessAccess } from "@/lib/api-auth"
 const MAX_BYTES: Record<string, number> = {
   "image/jpeg": 7 * 1024 * 1024,
   "image/png": 7 * 1024 * 1024,
+  "image/webp": 7 * 1024 * 1024,
   "application/pdf": 10 * 1024 * 1024,
   "text/plain": 2 * 1024 * 1024,
 }
