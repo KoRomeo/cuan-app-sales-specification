@@ -20,7 +20,8 @@ export async function GET(request: NextRequest, { params }: Context) {
     if (!document) return NextResponse.json({ error: "Document not found" }, { status: 404 })
 
     if (!process.env.BLOB_STORE_ID) throw new Error("BLOB_STORE_ID is missing. Add the Blob Store ID from Vercel Storage Settings to .env.development.local.")
-    const stored = await get(document.blobPathname, { access: "private", storeId: process.env.BLOB_STORE_ID })
+    if (!process.env.BLOB_READ_WRITE_TOKEN) throw new Error("BLOB_READ_WRITE_TOKEN is missing. Add the Blob Read-Write token to .env.development.local.")
+    const stored = await get(document.blobPathname, { access: "private", token: process.env.BLOB_READ_WRITE_TOKEN })
     if (!stored || stored.statusCode !== 200) {
       return NextResponse.json({ error: "Original invoice file is unavailable" }, { status: 404 })
     }
