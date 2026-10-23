@@ -7,43 +7,90 @@ import { requireBusinessAccess } from "@/lib/api-auth"
 
 type Context = { params: Promise<{ id: string }> }
 const MAX_PROCESS_BYTES = 10 * 1024 * 1024
+const EXTRACTION_PROMPT = "Extract this supplier invoice into strict JSON. Never invent missing values. Return invoiceNumber, date (YYYY-MM-DD or null), dueDate (YYYY-MM-DD or null), supplierName, supplierCity, total (number or null), items (array of {productName, unit, quantity, unitCost, discount, lineTotal}), confidence (0-100), issues (array of strings). Use null for missing units. Return JSON only."
+
+function getTextFromResponse(payload: Record<string, unknown>, format: string): string {
+  if (format === "responses") {
+    const outputText = payload.output_text
+    if (typeof outputText === "string" && outputText.trim()) return outputText
+    const output = Array.isArray(payload.output) ? payload.output as Array<{ content?: Array<{ text?: string }> }> : []
+    return output.flatMap((item) => item.content ?? []).map((item) => item.text ?? "").join("")
+  }
+  const choices = Array.isArray(payload.choices) ? payload.choices as Array<{ message?: { content?: string | Array<{ text?: string }> } }> : []
+  const message = choices[0]?.message?.content
+  if (typeof message === "string") return message
+  if (Array.isArray(message)) return message.map((item) => item.text ?? "").join("")
+  return ""
+}
 
 export async function POST(request: NextRequest, { params }: Context) {
   const { id } = await params
   const businessId = request.nextUrl.searchParams.get("businessId") ?? ""
   const access = await requireBusinessAccess(businessId)
   if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
+
   const [document] = await db.select().from(purchaseDocuments)
     .where(and(eq(purchaseDocuments.id, id), eq(purchaseDocuments.businessId, businessId))).limit(1)
   if (!document) return NextResponse.json({ error: "Document not found" }, { status: 404 })
-  if (!process.env.OPENAI_API_KEY) return NextResponse.json({ error: "OPENAI_API_KEY is not configured" }, { status: 503 })
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return NextResponse.json({ error: "Private Blob storage is not configured" }, { status: 503 })
+  if (document.status === "processing") return NextResponse.json({ error: "This document is already being processed" }, { status: 409 })
+  if (document.status !== "queued" && document.status !== "failed") {
+    return NextResponse.json({ error: "Only queued or failed documents can be processed" }, { status: 409 })
+  }
+
+  const apiKey = process.env.AI_API_KEY || process.env.OPENAI_API_KEY
+  const baseUrl = (process.env.AI_BASE_URL || "http://localhost:20128/v1").replace(/\/+$/, "")
+  const model = process.env.AI_MODEL || process.env.OPENAI_INVOICE_MODEL
+  const format = (process.env.AI_API_FORMAT || "chat-completions").toLowerCase()
+  if (!apiKey) return NextResponse.json({ error: "Configure AI_API_KEY in .env.development.local (use the key required by your local 9Router)." }, { status: 503 })
+  if (!model) return NextResponse.json({ error: "Configure AI_MODEL with the exact vision-capable model ID shown in 9Router." }, { status: 503 })
+  if (format !== "chat-completions" && format !== "responses") return NextResponse.json({ error: "AI_API_FORMAT must be chat-completions or responses" }, { status: 503 })
+  if (document.mimeType === "application/pdf" && format !== "responses") {
+    return NextResponse.json({ error: "This PDF requires a gateway/model that supports the Responses API input_file format. Set AI_API_FORMAT=responses only after confirming your 9Router endpoint supports POST /v1/responses. Image invoices can use chat-completions." }, { status: 415 })
+  }
 
   await db.update(purchaseDocuments).set({ status: "processing", errorMessage: null, updatedAt: new Date() })
     .where(and(eq(purchaseDocuments.id, id), eq(purchaseDocuments.businessId, businessId)))
   try {
+    if (!process.env.BLOB_READ_WRITE_TOKEN) throw new Error("Private Blob storage is not configured. The current upload flow stores original files in Vercel Blob and queue metadata in the database.")
     const stored = await get(document.blobPathname, { access: "private" })
     if (!stored || stored.statusCode !== 200) throw new Error("Unable to read the private invoice file")
     const bytes = Buffer.from(await new Response(stored.stream).arrayBuffer())
-    if (!bytes.length || bytes.length > MAX_PROCESS_BYTES) throw new Error("Invoice file is empty or exceeds the processing limit")
+    if (!bytes.length || bytes.length > MAX_PROCESS_BYTES) throw new Error("Invoice file is empty or exceeds the 10 MB processing limit")
     const dataUrl = `data:${document.mimeType};base64,${bytes.toString("base64")}`
-    const inputContent = document.mimeType.startsWith("image/")
-      ? [{ type: "input_image", image_url: dataUrl, detail: "high" }]
-      : [{ type: "input_file", filename: document.fileName, file_data: dataUrl }]
-    const response = await fetch("https://api.openai.com/v1/responses", {
+
+    let endpoint: string
+    let body: Record<string, unknown>
+    if (format === "responses") {
+      endpoint = `${baseUrl}/responses`
+      const fileContent = document.mimeType.startsWith("image/")
+        ? [{ type: "input_image", image_url: dataUrl, detail: "high" }]
+        : document.mimeType === "application/pdf"
+          ? [{ type: "input_file", filename: document.fileName, file_data: dataUrl }]
+          : [{ type: "input_text", text: bytes.toString("utf8") }]
+      body = { model, input: [{ role: "user", content: [...fileContent, { type: "input_text", text: EXTRACTION_PROMPT }] }] }
+    } else {
+      endpoint = `${baseUrl}/chat/completions`
+      const content = document.mimeType.startsWith("image/")
+        ? [{ type: "image_url", image_url: { url: dataUrl, detail: "high" } }, { type: "text", text: EXTRACTION_PROMPT }]
+        : [{ type: "text", text: `Invoice file text:\n${bytes.toString("utf8")}\n\n${EXTRACTION_PROMPT}` }]
+      body = { model, messages: [{ role: "user", content: document.mimeType.startsWith("image/") ? content : content[0].text }], temperature: 0 }
+    }
+
+    const response = await fetch(endpoint, {
       method: "POST",
-      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: process.env.OPENAI_INVOICE_MODEL || "gpt-4.1-mini", input: [{
-        role: "user", content: [...inputContent, { type: "input_text", text:
-          "Extract this supplier invoice into strict JSON. Never invent missing values. Return invoiceNumber, date (YYYY-MM-DD or null), dueDate (YYYY-MM-DD or null), supplierName, supplierCity, total (number or null), items (array of {productName, unit, quantity, unitCost, discount, lineTotal}), confidence (0-100), issues (array of strings). Use null for missing units. Return JSON only."
-        }]
-      }] }),
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(120_000),
     })
-    if (!response.ok) throw new Error(`OpenAI request failed (${response.status})`)
-    const payload = await response.json() as { output_text?: string; output?: Array<{ content?: Array<{ text?: string }> }> }
-    const raw = payload.output_text ?? payload.output?.flatMap((item) => item.content ?? []).map((item) => item.text ?? "").join("")
-    if (!raw) throw new Error("OpenAI returned no extracted invoice data")
-    const parsed = JSON.parse(raw.replace(/^```json\s*/i, "").replace(/\s*```$/, ""))
+    if (!response.ok) {
+      const details = (await response.text()).slice(0, 500)
+      throw new Error(`9Router request failed (${response.status}) at ${endpoint}: ${details || response.statusText}`)
+    }
+    const payload = await response.json() as Record<string, unknown>
+    const raw = getTextFromResponse(payload, format).trim()
+    if (!raw) throw new Error("The selected model returned no extracted invoice data")
+    const parsed = JSON.parse(raw.replace(/^```json\s*/i, "").replace(/\s*```$/, "")) as Record<string, unknown>
+    if (!Array.isArray(parsed.items)) parsed.items = []
     const confidence = Number.isFinite(Number(parsed.confidence)) ? Math.max(0, Math.min(100, Math.round(Number(parsed.confidence)))) : null
     const issues = Array.isArray(parsed.issues) ? parsed.issues.filter((item: unknown): item is string => typeof item === "string").slice(0, 50) : []
     await db.update(purchaseDocuments).set({ status: "review", extractedData: parsed, confidence, reviewIssues: issues, errorMessage: null, updatedAt: new Date() })
