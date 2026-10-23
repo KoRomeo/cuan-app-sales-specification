@@ -4,6 +4,7 @@ import { ThemeProvider, useTheme } from 'next-themes'
 import { Toaster as SonnerToaster } from 'sonner'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { dictionaries, type Locale, type TranslationKey } from '@/lib/i18n'
+import { GlobalLoadingOverlay } from '@/components/common/global-loading-overlay'
 
 export type FeatureKey =
   | 'inventory'
@@ -90,6 +91,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
       <AppContext.Provider value={value}>
         {children}
+        <GlobalLoadingOverlay />
         <ThemeAwareToaster />
       </AppContext.Provider>
     </ThemeProvider>
