@@ -39,7 +39,7 @@ export async function POST(request: NextRequest, { params }: Context) {
 
   const apiKey = process.env.AI_API_KEY
   const baseUrl = (process.env.AI_BASE_URL || "http://localhost:20128/v1").replace(/\/+$/, "")
-  const model = process.env.AI_MODEL || "cl/z-ai/glm-5v-turbo"
+  const model = process.env.AI_MODEL || "cl/~anthropic/claude-opus-latest"
   const format = (process.env.AI_API_FORMAT || "chat-completions").toLowerCase()
   if (!apiKey) return NextResponse.json({ error: "Configure AI_API_KEY in .env.development.local (use the key required by your local 9Router)." }, { status: 503 })
   
