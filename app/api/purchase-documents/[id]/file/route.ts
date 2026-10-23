@@ -19,7 +19,8 @@ export async function GET(request: NextRequest, { params }: Context) {
       .limit(1)
     if (!document) return NextResponse.json({ error: "Document not found" }, { status: 404 })
 
-    const stored = await get(document.blobPathname, { access: "private" })
+    if (!process.env.BLOB_STORE_ID) throw new Error("BLOB_STORE_ID is missing. Add the Blob Store ID from Vercel Storage Settings to .env.development.local.")
+    const stored = await get(document.blobPathname, { access: "private", storeId: process.env.BLOB_STORE_ID })
     if (!stored || stored.statusCode !== 200) {
       return NextResponse.json({ error: "Original invoice file is unavailable" }, { status: 404 })
     }
