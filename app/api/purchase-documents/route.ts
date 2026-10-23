@@ -15,6 +15,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(documents)
   } catch (error) {
     console.error("GET purchase documents failed", error)
+    const databaseError = error as { code?: string; cause?: { code?: string } }
+    if (databaseError?.code === "42P01" || databaseError?.cause?.code === "42P01") {
+      return NextResponse.json(
+        {
+          error: "The purchase_documents table is missing from the connected database. Apply drizzle/0010_purchase_documents.sql to the same database used by this app, then retry.",
+          code: "PURCHASE_DOCUMENTS_TABLE_MISSING",
+        },
+        { status: 503 },
+      )
+    }
     return NextResponse.json({ error: "Unable to load purchase documents" }, { status: 500 })
   }
 }
