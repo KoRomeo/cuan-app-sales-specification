@@ -37,15 +37,18 @@ export async function POST(request: NextRequest, { params }: Context) {
     return NextResponse.json({ error: "Only queued or failed documents can be processed" }, { status: 409 })
   }
 
-  const apiKey = process.env.AI_API_KEY || process.env.OPENAI_API_KEY
+  const apiKey = process.env.AI_API_KEY
   const baseUrl = (process.env.AI_BASE_URL || "http://localhost:20128/v1").replace(/\/+$/, "")
-  const model = process.env.AI_MODEL || process.env.OPENAI_INVOICE_MODEL
+  const model = process.env.AI_MODEL
   const format = (process.env.AI_API_FORMAT || "chat-completions").toLowerCase()
   if (!apiKey) return NextResponse.json({ error: "Configure AI_API_KEY in .env.development.local (use the key required by your local 9Router)." }, { status: 503 })
   if (!model) return NextResponse.json({ error: "Configure AI_MODEL with the exact vision-capable model ID shown in 9Router." }, { status: 503 })
   if (format !== "chat-completions" && format !== "responses") return NextResponse.json({ error: "AI_API_FORMAT must be chat-completions or responses" }, { status: 503 })
   if (document.mimeType === "application/pdf" && format !== "responses") {
-    return NextResponse.json({ error: "This PDF requires a gateway/model that supports the Responses API input_file format. Set AI_API_FORMAT=responses only after confirming your 9Router endpoint supports POST /v1/responses. Image invoices can use chat-completions." }, { status: 415 })
+    const message = "This PDF requires a gateway/model that supports the Responses API input_file format. Set AI_API_FORMAT=responses only after confirming your 9Router endpoint supports POST /v1/responses. Image invoices can use chat-completions."
+    await db.update(purchaseDocuments).set({ status: "failed", errorMessage: message, updatedAt: new Date() })
+      .where(and(eq(purchaseDocuments.id, id), eq(purchaseDocuments.businessId, businessId)))
+    return NextResponse.json({ error: message }, { status: 415 })
   }
 
   await db.update(purchaseDocuments).set({ status: "processing", errorMessage: null, updatedAt: new Date() })
