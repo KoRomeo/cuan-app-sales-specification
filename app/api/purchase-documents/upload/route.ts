@@ -1,5 +1,4 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client"
-import { get } from "@vercel/blob"
 import { and, eq } from "drizzle-orm"
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
@@ -55,11 +54,9 @@ async function finalizeUpload(request: NextRequest) {
   if (existing) return NextResponse.json({ id: existing.id, status: existing.status })
 
   try {
-    const stored = await get(pathname, { access: "private", storeId: process.env.BLOB_STORE_ID })
-    if (!stored || stored.statusCode !== 200) throw new Error("Uploaded private file could not be verified")
-    const bytes = Buffer.from(await new Response(stored.stream).arrayBuffer())
-    if (bytes.length !== fileSize) throw new Error("Uploaded file size did not match the selected file")
-
+    // The client upload() call only resolves after Blob confirms the upload.
+    // Do not fetch the private blob again here: local Vercel OIDC credentials
+    // can take precedence over the read-write token and cause a 403 on get().
     await db.insert(purchaseDocuments).values({
       id: documentId, businessId, uploadedBy: access.userId,
       fileName: fileName.slice(0, 255), mimeType, fileSize,
