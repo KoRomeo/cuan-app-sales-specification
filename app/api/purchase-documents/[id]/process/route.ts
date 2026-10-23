@@ -70,10 +70,13 @@ export async function POST(request: NextRequest, { params }: Context) {
       body = { model, input: [{ role: "user", content: [...fileContent, { type: "input_text", text: EXTRACTION_PROMPT }] }] }
     } else {
       endpoint = `${baseUrl}/chat/completions`
-      const content = document.mimeType.startsWith("image/")
-        ? [{ type: "image_url", image_url: { url: dataUrl, detail: "high" } }, { type: "text", text: EXTRACTION_PROMPT }]
-        : [{ type: "text", text: `Invoice file text:\n${bytes.toString("utf8")}\n\n${EXTRACTION_PROMPT}` }]
-      body = { model, messages: [{ role: "user", content: document.mimeType.startsWith("image/") ? content : content[0].text }], temperature: 0 }
+      const messageContent = document.mimeType.startsWith("image/")
+        ? [
+            { type: "image_url", image_url: { url: dataUrl, detail: "high" } },
+            { type: "text", text: EXTRACTION_PROMPT },
+          ]
+        : `Invoice file text:\n${bytes.toString("utf8")}\n\n${EXTRACTION_PROMPT}`
+      body = { model, messages: [{ role: "user", content: messageContent }], temperature: 0 }
     }
 
     const response = await fetch(endpoint, {
