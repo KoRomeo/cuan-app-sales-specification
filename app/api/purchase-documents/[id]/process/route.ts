@@ -39,10 +39,10 @@ export async function POST(request: NextRequest, { params }: Context) {
 
   const apiKey = process.env.AI_API_KEY
   const baseUrl = (process.env.AI_BASE_URL || "http://localhost:20128/v1").replace(/\/+$/, "")
-  const model = process.env.AI_MODEL
+  const model = process.env.AI_MODEL || "cl/z-ai/glm-5v-turbo"
   const format = (process.env.AI_API_FORMAT || "chat-completions").toLowerCase()
   if (!apiKey) return NextResponse.json({ error: "Configure AI_API_KEY in .env.development.local (use the key required by your local 9Router)." }, { status: 503 })
-  if (!model) return NextResponse.json({ error: "Configure AI_MODEL with the exact vision-capable model ID shown in 9Router." }, { status: 503 })
+  
   if (format !== "chat-completions" && format !== "responses") return NextResponse.json({ error: "AI_API_FORMAT must be chat-completions or responses" }, { status: 503 })
   if (document.mimeType === "application/pdf" && format !== "responses") {
     const message = "This PDF requires a gateway/model that supports the Responses API input_file format. Set AI_API_FORMAT=responses only after confirming your 9Router endpoint supports POST /v1/responses. Image invoices can use chat-completions."
