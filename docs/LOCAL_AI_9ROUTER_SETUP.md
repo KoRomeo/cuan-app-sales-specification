@@ -17,7 +17,7 @@ AI_API_FORMAT=chat-completions
 - `AI_API_KEY` is read by the server only. Do not put it in client-side variables such as `NEXT_PUBLIC_*`, and never paste it into chat or commit it.
 - The default API format is `chat-completions`, which calls `POST /v1/chat/completions`. This is the first endpoint to test for local image extraction.
 - `AI_API_FORMAT=responses` calls `POST /v1/responses`. Use it only after verifying that your installed 9Router gateway and selected model support this endpoint and PDF `input_file` content. Support must not be assumed from OpenAI compatibility alone.
-- `OPENAI_API_KEY` and `OPENAI_INVOICE_MODEL` remain fallback variable names for backward compatibility, but new local configuration should use the `AI_*` variables.
+- The invoice processor uses only `AI_API_KEY` and `AI_MODEL`; it does not fall back to OpenAI-specific variables, so the local 9Router configuration is explicit.
 
 ## Upload and queue behavior
 
