@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const documents = await db.select().from(purchaseDocuments)
       .where(eq(purchaseDocuments.businessId, businessId))
-      .orderBy(desc(purchaseDocuments.createdAt)).limit(200)
+      .orderBy(desc(purchaseDocuments.createdAt)).limit(1000)
     return NextResponse.json(documents)
   } catch (error) {
     console.error("GET purchase documents failed", error)
