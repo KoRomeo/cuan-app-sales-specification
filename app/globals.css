@@ -29,18 +29,18 @@
   --color-warning: var(--warning);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --color-foreground: var(--foreground);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
   --color-background: var(--background);
+  --color-foreground: var(--foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -103,7 +103,7 @@
   --secondary-foreground: oklch(0.92 0.01 258);
   --muted: oklch(0.24 0.032 264);
   --muted-foreground: oklch(0.68 0.025 260);
-  --accent: oklch(0.26 0.045 264);
+  --accent: oklch(0.26 0.045 258);
   --accent-foreground: oklch(0.95 0.008 258);
   --destructive: oklch(0.66 0.2 25);
   --success: oklch(0.7 0.14 155);
@@ -161,6 +161,74 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
+  }
+}
+
+.cuan-loading-overlay {
+  background: rgb(255 255 255 / 5%);
+  -webkit-backdrop-filter: blur(1px);
+  backdrop-filter: blur(1px);
+  animation: cuan-overlay-in 180ms ease-out both;
+  pointer-events: none;
+}
+
+.cuan-loading-orbit {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  animation: cuan-orbit-spin 1.1s linear infinite;
+}
+
+.cuan-loading-orbit__ring {
+  position: absolute;
+  inset: 3px;
+  border: 1.5px solid rgb(255 255 255 / 24%);
+  border-top-color: rgb(255 255 255 / 95%);
+  border-right-color: rgb(255 255 255 / 62%);
+  border-radius: 50%;
+  filter: drop-shadow(0 0 5px rgb(255 255 255 / 20%));
+}
+
+.cuan-loading-orbit__dot {
+  position: absolute;
+  top: 0;
+  left: 21px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 9px rgb(255 255 255 / 70%);
+}
+
+.cuan-loading-orbit__core {
+  position: absolute;
+  inset: 17px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 78%);
+  box-shadow: 0 0 12px rgb(255 255 255 / 30%);
+  animation: cuan-core-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes cuan-orbit-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes cuan-core-pulse {
+  0%, 100% { transform: scale(.8); opacity: .65; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+
+@keyframes cuan-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cuan-loading-orbit,
+  .cuan-loading-orbit__core,
+  .cuan-loading-overlay {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
 
