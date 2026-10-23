@@ -1,8 +1,7 @@
-import { handleUploadPresigned, type HandleUploadPresignedBody } from "@vercel/blob/client"
-import { get, issueSignedToken } from "@vercel/blob"
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client"
+import { get } from "@vercel/blob"
 import { and, eq } from "drizzle-orm"
 import { NextRequest, NextResponse } from "next/server"
-import { randomUUID } from "node:crypto"
 import { db } from "@/lib/db"
 import { purchaseDocuments } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
@@ -78,12 +77,11 @@ export async function POST(request: NextRequest) {
     const incoming = await request.clone().json() as { action?: string }
     if (incoming.action === "finalize") return await finalizeUpload(request)
 
-    const body = incoming as HandleUploadPresignedBody
-    const result = await handleUploadPresigned({
+    const body = incoming as HandleUploadBody
+    const result = await handleUpload({
       body,
       request,
-      webhookPublicKey: process.env.BLOB_WEBHOOK_PUBLIC_KEY,
-      getSignedToken: async (pathname, clientPayload) => {
+      onBeforeGenerateToken: async (pathname, clientPayload) => {
         if (!clientPayload) throw new Error("Upload metadata is required")
         const metadata = JSON.parse(clientPayload) as UploadMetadata
         const businessId = metadata.businessId ?? ""
@@ -99,23 +97,12 @@ export async function POST(request: NextRequest) {
         if (!Number.isInteger(fileSize) || fileSize < 1 || fileSize > limit) throw new Error("File exceeds the allowed size")
         const expectedPath = `purchase-invoices/${businessId}/${documentId}/${safePathName(fileName)}`
         if (pathname !== expectedPath) throw new Error("Upload path is not authorized")
-        if (!process.env.BLOB_STORE_ID) throw new Error("BLOB_STORE_ID is missing. Add the Blob Store ID from Vercel Storage Settings to .env.development.local.")
-        const token = await issueSignedToken({
-          pathname,
-          operations: ["put"],
+        if (!process.env.BLOB_READ_WRITE_TOKEN) throw new Error("BLOB_READ_WRITE_TOKEN is missing. Add the Blob Read-Write token to the Development environment.")
+        return {
           allowedContentTypes: [mimeType],
           maximumSizeInBytes: limit,
-          storeId: process.env.BLOB_STORE_ID,
-        })
-        return {
-          token,
-          urlOptions: {
-            allowedContentTypes: [mimeType],
-            maximumSizeInBytes: limit,
-            addRandomSuffix: false,
-            allowOverwrite: false,
-            validUntil: Date.now() + 10 * 60 * 1000,
-          },
+          addRandomSuffix: false,
+          tokenPayload: JSON.stringify({ businessId, documentId }),
         }
       },
     })
