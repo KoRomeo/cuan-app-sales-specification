@@ -54,8 +54,8 @@ export async function POST(request: NextRequest, { params }: Context) {
   await db.update(purchaseDocuments).set({ status: "processing", errorMessage: null, updatedAt: new Date() })
     .where(and(eq(purchaseDocuments.id, id), eq(purchaseDocuments.businessId, businessId)))
   try {
-    if (!process.env.BLOB_READ_WRITE_TOKEN) throw new Error("Private Blob storage is not configured. The current upload flow stores original files in Vercel Blob and queue metadata in the database.")
-    const stored = await get(document.blobPathname, { access: "private" })
+    if (!process.env.BLOB_STORE_ID) throw new Error("BLOB_STORE_ID is missing. Add the Blob Store ID from Vercel Storage Settings to .env.development.local.")
+    const stored = await get(document.blobPathname, { access: "private", storeId: process.env.BLOB_STORE_ID })
     if (!stored || stored.statusCode !== 200) throw new Error("Unable to read the private invoice file")
     const bytes = Buffer.from(await new Response(stored.stream).arrayBuffer())
     if (!bytes.length || bytes.length > MAX_PROCESS_BYTES) throw new Error("Invoice file is empty or exceeds the 10 MB processing limit")
