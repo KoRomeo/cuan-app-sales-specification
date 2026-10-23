@@ -9,11 +9,11 @@ Add these to `.env.development.local` (never commit this file):
 ```dotenv
 AI_BASE_URL=http://localhost:20128/v1
 AI_API_KEY=your-local-9router-api-key-if-required
-AI_MODEL=cl/z-ai/glm-5v-turbo
+AI_MODEL=cl/~anthropic/claude-opus-latest
 AI_API_FORMAT=chat-completions
 ```
 
-- Initial test model from your current 9Router list: `cl/z-ai/glm-5v-turbo`. The name suggests a vision-capable model, but we have not verified its vision support or free quota from the local gateway; confirm by testing one image. You can override it with `AI_MODEL` if needed.
+- Selected high-capability test candidate from your current 9Router list: `cl/~anthropic/claude-opus-latest`. This is the Opus-labeled option and is likely the strongest general-purpose candidate in the list, but its exact capability, vision support, and free quota are not verified. Confirm by testing one image. You can override it with `AI_MODEL` if needed.
 - `AI_API_KEY` is read by the server only. Do not put it in client-side variables such as `NEXT_PUBLIC_*`, and never paste it into chat or commit it.
 - The default API format is `chat-completions`, which calls `POST /v1/chat/completions`. This is the first endpoint to test for local image extraction.
 - `AI_API_FORMAT=responses` calls `POST /v1/responses`. Use it only after verifying that your installed 9Router gateway and selected model support this endpoint and PDF `input_file` content. Support must not be assumed from OpenAI compatibility alone.
@@ -37,7 +37,7 @@ AI_API_FORMAT=chat-completions
 ## First test
 
 1. Start the local 9Router app and confirm its gateway is active.
-2. Confirm `cl/z-ai/glm-5v-turbo` is available in your local model list and whether your 9Router account marks it free; vision compatibility will be tested with one image.
+2. Confirm `cl/~anthropic/claude-opus-latest` is available in your local model list. Check any usage cost/quota before testing; it may not be free. Vision compatibility will be tested with one image.
 3. Start CuanApp locally and upload one non-sensitive invoice image.
 4. Click **Process queue** and confirm the document changes from `queued` to `review`.
 5. Only after image extraction works, test one PDF and confirm the installed gateway's Responses API support.
