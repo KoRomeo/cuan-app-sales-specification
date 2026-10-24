@@ -10,9 +10,10 @@ type Ctx = { params: Promise<{ id: string }> }
 type InvoiceItem = { productName?: string; unit?: string | null; quantity?: number; unitCost?: number; lineTotal?: number }
 export async function POST(request: NextRequest, { params }: Ctx) {
  const { id } = await params
+ let businessId = ""
  try {
   const body = await request.json() as { businessId?:string; supplierId?:string; createSupplier?:boolean; itemProductIds?:Record<string,string>; createProductIndexes?:number[]; date?:string; dueDate?:string|null; notes?:string|null }
-  const businessId=body.businessId??""
+  businessId=body.businessId??""
   const access=await requireBusinessAccess(businessId)
   if(!access.ok)return NextResponse.json({error:access.error},{status:access.status})
   const result=await db.transaction(async tx=>{
