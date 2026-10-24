@@ -73,7 +73,7 @@ export function ProductsView() {
 
   const columns: Column<Product>[] = [
     { key: 'id', header: t('products.id'), cell: (p) => <IdCell>{p.id}</IdCell> },
-    { key: 'name', header: t('common.product'), cell: (p) => <Link href={`/products/${encodeURIComponent(p.id)}`} className="font-medium text-primary hover:underline">{p.name}</Link> },
+    { key: 'name', header: t('common.product'), cell: (p) => <Link href={`/products/${encodeURIComponent(p.id)}`} className="block min-w-[220px] whitespace-normal break-words font-medium text-primary hover:underline">{p.name}</Link> },
     { key: 'price', header: t('products.sellingPrice'), align: 'right', cell: (p) => <Money value={p.sellingPrice} /> },
     { key: 'avg', header: t('products.averageCost'), align: 'right', cell: (p) => <Money value={p.averageCost} className="text-muted-foreground" /> },
     { key: 'ref', header: t('products.costReference'), align: 'right', cell: (p) => <Money value={p.costReference} className="text-muted-foreground" /> },
