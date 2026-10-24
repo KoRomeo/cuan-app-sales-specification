@@ -23,6 +23,30 @@ export async function GET(request: Request, { params }: Context) {
 }
 
 
+
+export async function PATCH(request: Request, { params }: Context) {
+  try {
+    const { id } = await params
+    const businessId = new URL(request.url).searchParams.get("businessId")
+    if (!businessId) return NextResponse.json({ error: "businessId is required" }, { status: 400 })
+    const session = await auth.api.getSession({ headers: await headers() })
+    if (!session?.user) return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    const [member] = await db.select({ role: businessMembers.role }).from(businessMembers).where(and(eq(businessMembers.businessId, businessId), eq(businessMembers.userId, session.user.id))).limit(1)
+    if (!member) return NextResponse.json({ error: "You do not have access to this business" }, { status: 403 })
+    const body = await request.json()
+    const dueDate = body.dueDate === "" || body.dueDate === null ? null : body.dueDate
+    if (dueDate !== null && (typeof dueDate !== "string" || !/^\\d{4}-\\d{2}-\\d{2}$/.test(dueDate) || Number.isNaN(Date.parse(dueDate)))) {
+      return NextResponse.json({ error: "dueDate must be a valid YYYY-MM-DD date or null" }, { status: 400 })
+    }
+    const [updated] = await db.update(purchases).set({ dueDate }).where(and(eq(purchases.id, id), eq(purchases.businessId, businessId))).returning()
+    if (!updated) return NextResponse.json({ error: "Purchase not found" }, { status: 404 })
+    return NextResponse.json({ message: "Due date updated", dueDate: updated.dueDate })
+  } catch (error) {
+    console.error("PATCH /api/purchases/[id]", error)
+    return NextResponse.json({ error: "Failed to update purchase due date" }, { status: 500 })
+  }
+}
+
 export async function DELETE(request: Request, { params }: Context) {
   try {
     const { id } = await params
