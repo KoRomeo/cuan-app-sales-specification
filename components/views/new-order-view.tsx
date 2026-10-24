@@ -230,10 +230,10 @@ export function NewOrderView() {
                 <Label htmlFor="paid">{t('common.paid')}</Label>
                 <Input id="paid" name="paidAmount" type="number" min={0} max={Math.max(total, 0)} className="font-mono" value={paid} onChange={(e) => setPaid(e.target.value)} />
               </div>
-              <div className="flex flex-col gap-1.5">
+              {total > 0 && Number(paid || 0) < total && <div className="flex flex-col gap-1.5">
                 <Label htmlFor="due">{t('common.dueDate')}</Label>
                 <Input id="due" name="dueDate" type="date" />
-              </div>
+              </div>}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('common.outstanding')}</span>
                 <span className="font-mono font-semibold tabular-nums text-warning">{formatIDR(Math.max(total - Number(paid || 0), 0))}</span>
