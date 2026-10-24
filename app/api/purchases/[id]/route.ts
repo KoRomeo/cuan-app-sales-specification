@@ -37,9 +37,10 @@ export async function DELETE(request: Request, { params }: Context) {
       if (!purchase) return NextResponse.json({ error: "Purchase not found" }, { status: 404 })
       const [payment] = await tx.select({ id: payments.id }).from(payments).where(and(eq(payments.businessId, businessId), eq(payments.purchaseId, id))).limit(1)
       if (payment) return NextResponse.json({ error: "Purchases with any partial or full payment cannot be deleted." }, { status: 409 })
-      const [movement] = await tx.select({ id: stockMovements.id }).from(stockMovements).where(and(eq(stockMovements.businessId, businessId), eq(stockMovements.reference, `purchase:${id}:receive`))).limit(1)
-      const [journal] = await tx.select({ id: journalEntries.id }).from(journalEntries).where(and(eq(journalEntries.businessId, businessId), eq(journalEntries.reference, id))).limit(1)
-      if (movement || journal) return NextResponse.json({ error: "This purchase has already affected inventory or accounting. It cannot be deleted without reversing those entries." }, { status: 409 })
+      // A purchase may be deleted while unpaid. Remove its own receipt movement and journal
+      // entry in the same transaction so inventory and accounting do not retain orphaned effects.
+      await tx.delete(stockMovements).where(and(eq(stockMovements.businessId, businessId), eq(stockMovements.reference, `purchase:${id}:receive`)))
+      await tx.delete(journalEntries).where(and(eq(journalEntries.businessId, businessId), eq(journalEntries.reference, id)))
       await tx.delete(purchaseItems).where(eq(purchaseItems.purchaseId, id))
       await tx.delete(purchases).where(and(eq(purchases.id, id), eq(purchases.businessId, businessId)))
       return NextResponse.json({ message: "Purchase deleted successfully", id })
