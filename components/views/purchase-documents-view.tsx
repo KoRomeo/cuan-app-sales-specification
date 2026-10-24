@@ -29,7 +29,6 @@ export function PurchaseDocumentsView(){
  const [createSupplier,setCreateSupplier]=useState<Record<string,boolean>>({})
  const [productChoice,setProductChoice]=useState<Record<string,Record<number,string>>>({})
  const [createProducts,setCreateProducts]=useState<Record<string,number[]>>({})
- const [dismissedProductSuggestions,setDismissedProductSuggestions]=useState<Record<string,number[]>>({})
  const [productMatchMode,setProductMatchMode]=useState<Record<string,Record<number,"existing"|"new">>>({})
  const update=(doc:Doc,patch:Partial<Invoice>)=>setEdited(old=>({...old,[doc.id]:{...(old[doc.id]||doc.extractedData!),...patch}}))
  const getInvoice=(doc:Doc)=>edited[doc.id]||doc.extractedData!
