@@ -111,7 +111,7 @@ export function NewPurchaseView() {
           </dl>
           <div className="mt-4 flex flex-col gap-3 border-t pt-4">
             <div className="flex flex-col gap-1.5"><Label htmlFor="paid">Paid</Label><Input id="paid" type="number" min={0} max={Math.max(total,0)} className="font-mono" value={paid} onChange={e=>setPaid(e.target.value)}/></div>
-            <div className="flex flex-col gap-1.5"><Label htmlFor="due-date">{t('common.dueDate')}</Label><Input id="due-date" type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)}/></div>
+            {total > 0 && paidAmount < total && <div className="flex flex-col gap-1.5"><Label htmlFor="due-date">{t('common.dueDate')}</Label><Input id="due-date" type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)}/></div>}
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">{t('common.outstanding')}</span><span className="font-mono font-semibold tabular-nums text-warning">{formatIDR(Math.max(total-paidAmount,0))}</span></div>
           </div>
           <div className="mt-5 flex gap-2"><Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/purchases"/>}>{t('common.cancel')}</Button><Button type="submit" className="flex-1" disabled={saving}>{saving?'Saving…':'Save Purchase'}</Button></div>
