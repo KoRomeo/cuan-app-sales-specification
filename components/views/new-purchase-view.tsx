@@ -51,7 +51,7 @@ export function NewPurchaseView() {
     try {
       const stamp=crypto.randomUUID()
       const response=await fetch('/api/purchases',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({
-        businessId:business.id,date,supplierId,dueDate:dueDate||null,notes,paidAmount,
+        businessId:business.id,date,supplierId,dueDate:(total > 0 && paidAmount >= total) ? null : (dueDate||null),notes,paidAmount,
         paymentId:paidAmount>0?'PAY-'+stamp:undefined,paymentDate:date,paymentAccount:'Cash',
         items:items.map(item=>({id:'PI-'+crypto.randomUUID(),productId:item.productId,qty:Number(item.qty),unitCost:Number(item.unitCost)}))
       })})
