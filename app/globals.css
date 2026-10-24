@@ -331,3 +331,19 @@
   .print-area .py-5 { padding-top: 1.5mm !important; padding-bottom: 1.5mm !important; }
   .print-area .py-4 { padding-top: 1.5mm !important; padding-bottom: 1.5mm !important; }
 }
+
+/* Keep the loading indicator visible on both light and dark pages. */
+.cuan-loading-orbit__ring {
+  border-color: color-mix(in oklch, var(--foreground) 22%, transparent);
+  border-top-color: var(--primary);
+  border-right-color: color-mix(in oklch, var(--primary) 62%, transparent);
+  filter: drop-shadow(0 0 5px color-mix(in oklch, var(--primary) 20%, transparent));
+}
+.cuan-loading-orbit__dot {
+  background: var(--primary);
+  box-shadow: 0 0 9px color-mix(in oklch, var(--primary) 48%, transparent);
+}
+.cuan-loading-orbit__core {
+  background: var(--primary);
+  box-shadow: 0 0 12px color-mix(in oklch, var(--primary) 30%, transparent);
+}
