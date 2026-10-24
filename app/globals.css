@@ -347,3 +347,29 @@
   background: var(--primary);
   box-shadow: 0 0 12px color-mix(in oklch, var(--primary) 30%, transparent);
 }
+
+/* High-contrast loading mark: the overlay stays subtle, but the animation must be visible. */
+.cuan-loading-orbit {
+  width: 56px;
+  height: 56px;
+  filter: drop-shadow(0 2px 12px rgb(15 23 42 / 18%));
+}
+.cuan-loading-orbit__ring {
+  inset: 2px;
+  border-width: 3px;
+  border-color: color-mix(in oklch, var(--primary) 22%, transparent);
+  border-top-color: var(--primary);
+  border-right-color: var(--primary);
+}
+.cuan-loading-orbit__dot {
+  left: 25px;
+  width: 7px;
+  height: 7px;
+  background: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 16%, transparent), 0 0 12px color-mix(in oklch, var(--primary) 45%, transparent);
+}
+.cuan-loading-orbit__core {
+  inset: 20px;
+  background: var(--primary);
+  box-shadow: 0 0 0 5px color-mix(in oklch, var(--primary) 12%, transparent);
+}
