@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
-import { businessMembers, journalEntries, payments, products, purchaseItems, purchases, stockMovements, suppliers } from "@/lib/db/schema"
+import { businessMembers, journalEntries, journalEntryLines, payments, products, purchaseItems, purchases, stockMovements, suppliers } from "@/lib/db/schema"
 import { headers } from "next/headers"
 
 type Context = { params: Promise<{ id: string }> }
@@ -61,13 +61,25 @@ export async function DELETE(request: Request, { params }: Context) {
       if (!purchase) return NextResponse.json({ error: "Purchase not found" }, { status: 404 })
       const [payment] = await tx.select({ id: payments.id }).from(payments).where(and(eq(payments.businessId, businessId), eq(payments.purchaseId, id))).limit(1)
       if (payment) return NextResponse.json({ error: "Purchases with any partial or full payment cannot be deleted." }, { status: 409 })
-      // A purchase may be deleted while unpaid. Remove its own receipt movement and journal
-      // entry in the same transaction so inventory and accounting do not retain orphaned effects.
+      // Reconcile affected products in the same transaction so inventory reflects the deletion.
+      const items = await tx.select().from(purchaseItems).where(eq(purchaseItems.purchaseId, id))
+      const affectedProductIds = [...new Set(items.map((item) => item.productId))]
       await tx.delete(stockMovements).where(and(eq(stockMovements.businessId, businessId), eq(stockMovements.reference, `purchase:${id}:receive`)))
-      await tx.delete(journalEntries).where(and(eq(journalEntries.businessId, businessId), eq(journalEntries.reference, id)))
+      const [entry] = await tx.select({ id: journalEntries.id }).from(journalEntries).where(and(eq(journalEntries.businessId, businessId), eq(journalEntries.reference, id))).limit(1)
+      if (entry) {
+        await tx.delete(journalEntryLines).where(eq(journalEntryLines.journalEntryId, entry.id))
+        await tx.delete(journalEntries).where(eq(journalEntries.id, entry.id))
+      }
       await tx.delete(purchaseItems).where(eq(purchaseItems.purchaseId, id))
       await tx.delete(purchases).where(and(eq(purchases.id, id), eq(purchases.businessId, businessId)))
-      return NextResponse.json({ message: "Purchase deleted successfully", id })
+      for (const productId of affectedProductIds) {
+        const remainingPurchases = await tx.select({ qty: purchaseItems.qty, unitCost: purchaseItems.unitCost }).from(purchaseItems).innerJoin(purchases, eq(purchaseItems.purchaseId, purchases.id)).where(and(eq(purchases.businessId, businessId), eq(purchaseItems.productId, productId)))
+        const totalQty = remainingPurchases.reduce((sum, row) => sum + Number(row.qty), 0)
+        const totalCost = remainingPurchases.reduce((sum, row) => sum + Number(row.qty) * Number(row.unitCost), 0)
+        const [product] = await tx.select({ costReference: products.costReference }).from(products).where(and(eq(products.id, productId), eq(products.businessId, businessId))).limit(1)
+        if (product) await tx.update(products).set({ averageCost: String(totalQty > 0 ? totalCost / totalQty : Number(product.costReference)) }).where(and(eq(products.id, productId), eq(products.businessId, businessId)))
+      }
+      return NextResponse.json({ message: "Purchase deleted successfully; inventory recalculated", id, affectedProductIds })
     })
   } catch (error) {
     console.error("DELETE /api/purchases/[id]", error)
