@@ -35,6 +35,7 @@ function mapPurchase(row: PersistedPurchase, payments: PersistedPayment[]): Purc
 export function PurchasesView() {
   const { t } = useApp()
   const { mutate: globalMutate } = useSWRConfig()
+  const [deleteTarget, setDeleteTarget] = useState<Purchase | null>(null)
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: persistedPurchases, error: purchasesError, mutate: mutatePurchases } = useSWR<PersistedPurchase[]>(business?.id ? `/api/purchases?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: payments, error: paymentsError, mutate: mutatePayments } = useSWR<PersistedPayment[]>(business?.id ? `/api/payments?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
@@ -82,6 +83,10 @@ export function PurchasesView() {
         getRowId={(p) => p.id}
         searchText={(p) => `${p.id} ${supplierByIdMap.get(p.supplierId)?.name} ${p.items.map((i) => productByIdMap.get(i.productId)?.name).join(' ')}`}
         rowHref={(p) => `/purchases/${encodeURIComponent(p.id)}`}
+        contextActions={(purchase) => [
+          { label: t('common.view'), onSelect: () => { window.location.href = `/purchases/${encodeURIComponent(purchase.id)}` } },
+          ...(purchase.payments.length === 0 ? [{ label: t('common.delete'), onSelect: () => setDeleteTarget(purchase) }] : []),
+        ]}
         filters={[
           { value: 'all', label: t('common.all'), predicate: () => true },
           { value: 'unpaid', label: t('pay.unpaid'), predicate: (p) => purchasePaymentStatus(p) === 'unpaid' },
@@ -91,7 +96,27 @@ export function PurchasesView() {
         addLabel={t('purchases.add')}
         onAdd={() => { window.location.href = '/purchases/new' }}
       />
-
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(nextOpen) => { if (!nextOpen) setDeleteTarget(null) }}
+        title={t('common.delete')}
+        description={deleteTarget ? `Delete unpaid purchase ${deleteTarget.id}? This permanently removes the purchase, its stock-receipt movement and linked accounting entry, then refreshes inventory and balances. Purchases with any payment cannot be deleted.` : ''}
+        confirmLabel={t('common.delete')}
+        onConfirm={() => {
+          void (async () => {
+            if (!business?.id || !deleteTarget) return
+            const target = deleteTarget
+            const response = await fetch(`/api/purchases/${encodeURIComponent(target.id)}?businessId=${encodeURIComponent(business.id)}`, { method: 'DELETE' })
+            const result = await response.json().catch(() => ({}))
+            if (!response.ok) throw new Error(result.error ?? 'Unable to delete purchase')
+            setDeleteTarget(null)
+            await Promise.all([
+              globalMutate((key) => typeof key === 'string' && ['/api/purchases', '/api/products', '/api/inventory', '/api/stock-movements', '/api/dashboard', '/api/general-ledger', '/api/payables'].some((prefix) => key.startsWith(prefix))),
+            ])
+            toast.success(t('common.delete'))
+          })().catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to delete purchase'))
+        }}
+      />
     </>
   )
 }
