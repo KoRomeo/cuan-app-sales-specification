@@ -102,6 +102,7 @@ export function ProductsView() {
         columns={columns}
         getRowId={(p) => p.id}
         searchText={(p) => `${p.id} ${p.name}`}
+        rowHref={(p) => `/products/${encodeURIComponent(p.id)}`}
         filters={[
           { value: 'all', label: t('common.all'), predicate: () => true },
           { value: 'low', label: t('stock.low'), predicate: (p) => stockStatusOf(p) === 'low' },
