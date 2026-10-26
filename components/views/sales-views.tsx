@@ -142,7 +142,7 @@ export function CustomersView() {
       { method: 'DELETE' },
     )
     const result = await response.json()
-    if (!response.ok) throw new Error(result.error || 'Failed to delete customer')
+    if (!response.ok) throw new Error(result.error || t('toast.customerDeleteFailed'))
     setDeleteTarget(null)
     await mutate()
   }
@@ -293,7 +293,7 @@ export function CustomersView() {
         title={t('common.delete')}
         description={
           deleteTarget
-            ? `Delete customer ${deleteTarget.name}? Customers with order history cannot be deleted.`
+            ? t('customers.deleteConfirm', { name: deleteTarget.name })
             : ''
         }
         confirmLabel={t('common.delete')}
