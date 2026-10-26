@@ -158,7 +158,7 @@ export function DocumentPreview({
                   {Array.from({ length: Math.max(12, order.items.length) }, (_, index) => {
                     const item = order.items[index]
                     return (
-                      <tr key={item ? item.productId : `blank-${index}`} className="h-[26px] border-b border-black">
+                      <tr key={`${item ? item.productId : "blank"}-${index}`} className="h-[26px] border-b border-black">
                         <td className="border-r border-black px-1 py-1 text-center">{item ? index + 1 : ''}</td>
                         <td className="border-r border-black px-1 py-1">{item ? productNames?.[item.productId] ?? productById(item.productId)?.name ?? item.productId : ''}</td>
                         <td className="border-r border-black px-2 py-1 text-right">{item ? item.qty : ''}</td>
