@@ -83,17 +83,22 @@ export async function POST(request: Request) {
       // Persist one delivery row per order. This uses the legacy deliveries.order_id column
       // directly, so delivery creation does not depend on the optional delivery_orders table.
       const deliveryIds: string[] = []
-      for (const orderId of orderIds) {
+      const totalTransportCents = Math.round(Number(transportCost) * 100)
+      const baseTransportCents = Math.floor(totalTransportCents / orderIds.length)
+      let allocatedTransportCents = 0
+      for (const [orderIndex, orderId] of orderIds.entries()) {
+        const allocatedCents = orderIndex === orderIds.length - 1 ? totalTransportCents - allocatedTransportCents : baseTransportCents
+        allocatedTransportCents += allocatedCents
+        const cost = allocatedCents / 100
         const deliveryId = await generateEntityId(tx, deliveries, businessId, "DEL", date)
         await tx.insert(deliveries).values({
           id: deliveryId,
           orderId,
           date, method: method as "own" | "expedition" | "pickup", recipient: String(recipient), driverName: String(driverName).trim(), address: String(address),
-          transportCost: (Number(transportCost) / orderIds.length).toFixed(2),
+          transportCost: cost.toFixed(2),
           transportAccount: resolvedTransportAccount,
         })
         deliveryIds.push(deliveryId)
-        const cost = Number((Number(transportCost) / orderIds.length).toFixed(2))
         if (cost > 0) {
           const journalId = "JE-DEL-TRANSPORT-" + deliveryId
           await tx.insert(journalEntries).values({ id: journalId, businessId, entryDate: date, kind: "transport", reference: deliveryId, description: "Delivery transport cost " + deliveryId })
