@@ -71,6 +71,9 @@ export async function DELETE(request: Request, { params }: Context) {
         await tx.delete(journalEntryLines).where(eq(journalEntryLines.journalEntryId, entry.id))
         await tx.delete(journalEntries).where(eq(journalEntries.id, entry.id))
       }
+      // Preserve the linked invoice as an audit record when its unpaid purchase is cancelled.
+      await tx.update(purchaseDocuments).set({ status: "purchase_cancelled", updatedAt: new Date(), errorMessage: null })
+        .where(and(eq(purchaseDocuments.businessId, businessId), eq(purchaseDocuments.purchaseId, id)))
       await tx.delete(purchaseItems).where(eq(purchaseItems.purchaseId, id))
       await tx.delete(purchases).where(and(eq(purchases.id, id), eq(purchases.businessId, businessId)))
       for (const productId of affectedProductIds) {
