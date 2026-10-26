@@ -84,6 +84,7 @@ export function NewOrderView() {
         onSubmit={async (event) => {
           event.preventDefault()
           if (isSaving) return
+          if (Number(paid || 0) > 0 && !selectedPaymentAccount) { toast.error(t('returns.createAccountHint')); return }
           if (lines.some((line) => !Number.isInteger(line.qty) || line.qty < 1 || line.qty > MAX_ORDER_QTY || !Number.isFinite(line.price) || line.price < 0)) {
             toast.error('Quantity must be between 1 and 999,999 and price must be valid.')
             return
