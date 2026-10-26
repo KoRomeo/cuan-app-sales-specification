@@ -515,7 +515,7 @@ export function LedgerView() {
       breadcrumbs={[{ label: t("nav.reports"), href: "/reports" }, { label: t("reports.ledger") }]}
       title={t("reports.ledger")}
       description={t("reports.glDesc")}
-      actions={<div className="w-56"><SearchableSelect value={accountName} onChange={(value) => setAccountName(String(value))} options={accounts.map((name) => ({value:name,label:name}))} placeholder={t("common.all")} searchPlaceholder={t("common.search")} emptyText={t("common.noResults")} /></div>}
+      actions={<div className="w-56"><SearchableSelect id="ledger-account-filter" value={accountName} onChange={(value) => setAccountName(String(value))} options={[{value:"",label:t("common.all")}, ...accounts.map((name) => ({value:name,label:name}))]} placeholder={t("common.all")} searchPlaceholder={t("common.search")} emptyText={t("common.noResults")} /></div>}
     />
     <AccountingGate>
       {error ? <div role="alert" className="rounded-xl border border-destructive/30 bg-card p-6 text-sm text-destructive">{error.message}</div> :
