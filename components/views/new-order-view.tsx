@@ -133,7 +133,7 @@ export function NewOrderView() {
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-12">
                       <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-4">
                         <Label htmlFor={`p-${l.key}`}>{t('common.product')}</Label>
-                        <SearchableSelect name={`product-${l.key}`} value={l.productId} onChange={(value) => update(l.key, { productId: String(value), price: productsById.get(String(value))?.sellingPrice ?? 0 })} options={productRows.map((product) => ({ value: product.id, label: product.name, description: `${t('inventory.stock')}: ${productsById.get(product.id)?.stock ?? 0}` }))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />
+                        <SearchableSelect id={`p-${l.key}`} name={`product-${l.key}`} value={l.productId} onChange={(value) => update(l.key, { productId: String(value), price: productsById.get(String(value))?.sellingPrice ?? 0 })} options={productRows.map((product) => ({ value: product.id, label: product.name, description: `${t('inventory.stock')}: ${productsById.get(product.id)?.stock ?? 0}` }))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />
                       </div>
                       <div className="flex flex-col gap-1.5 sm:col-span-2">
                         <Label htmlFor={`q-${l.key}`}>{t('common.qty')}</Label>
