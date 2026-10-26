@@ -48,12 +48,10 @@ export function DocumentPreview({
           {isInvoice ? (
             <article className="print-area mx-auto aspect-[105/148] w-full max-w-[105mm] overflow-hidden bg-white px-4 py-4 text-[9px] leading-tight text-black shadow-sm print:aspect-[105/148] print:h-[148mm] print:w-[105mm] print:max-w-none print:px-[5mm] print:py-[5mm] print:shadow-none">
               <div className="border-t border-black pt-2">
-                <div className="flex items-start justify-between gap-4">
+                <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-2">
                   <h1 className="text-[20px] font-black leading-none tracking-tight">INVOICE</h1>
-                  <span className="text-xs">Page 1 of 1</span>
-                </div>
-                <div className="mt-1 flex justify-end text-[10px]">
-                  <span>No. Telp: 089677569870</span>
+                  <span className="pt-1 text-center text-[9px] whitespace-nowrap">No. Telp: 089677569870</span>
+                  <span className="justify-self-end whitespace-nowrap text-[10px]">Page 1 of 1</span>
                 </div>
               </div>
 
@@ -97,8 +95,8 @@ export function DocumentPreview({
 
               <section className="mt-2 grid grid-cols-[1fr_1fr] gap-3">
                 <div>
-                  <p className="pt-2 text-[10px]">TOTAL TAGIHAN</p>
-                  <div className="mt-1 px-1 py-1 text-center text-[13px] font-medium leading-tight">
+                  <p className="pt-2 text-[10px] font-bold">TOTAL TAGIHAN</p>
+                  <div className="mt-1 px-1 py-1 text-center text-[13px] font-bold leading-tight">
                     {formatIDR(total)}
                   </div>
                 </div>
@@ -110,14 +108,13 @@ export function DocumentPreview({
                 </dl>
               </section>
 
-              <section className="mt-5 grid grid-cols-2 text-center text-[10px]">
+              <section className="mt-8 grid grid-cols-2 text-center text-[10px]">
                 <div>Tanda Terima</div>
                 <div>Hormat Kami</div>
               </section>
-              <section className="mt-5 space-y-1 text-[9px]">
+              <section className="mt-6 space-y-1 text-[9px]">
                 <p>Metode Pembayaran :</p>
                 <p>Cash atau Transfer Bank BCA | No. Rekening: 123-456-789</p>
-                <p className="pt-4">Catatan: {order.notes || ''}</p>
               </section>
             </article>
           ) : (
