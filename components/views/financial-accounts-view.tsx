@@ -138,7 +138,7 @@ export function FinancialAccountsView() {
         <h3 className="mb-4 font-semibold">Add financial account</h3>
         <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2"><Label htmlFor="account-name">Account name</Label><Input id="account-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Bank BCA" /></div>
-          <div className="space-y-2"><Label htmlFor="account-type">Account type</Label><SearchableSelect value={type} onChange={(value) => setType(String(value) as 'cash' | 'bank')} options={[{value:'cash',label:t('fin.cash')},{value:'bank',label:t('fin.bank')}]} placeholder={t('common.select')} searchPlaceholder={t('common.search')} /></div>
+          <div className="space-y-2"><Label htmlFor="account-type">Account type</Label><SearchableSelect id="account-type" value={type} onChange={(value) => setType(String(value) as 'cash' | 'bank')} options={[{value:'cash',label:t('fin.cash')},{value:'bank',label:t('fin.bank')}]} placeholder={t('common.select')} searchPlaceholder={t('common.search')} /></div>
           <div className="space-y-2"><Label htmlFor="opening-balance">Opening balance (Rp)</Label><Input id="opening-balance" type="number" min="0" value={openingBalance} onChange={(event) => setOpeningBalance(event.target.value)} /></div>
         </div>
         {formError && <p role="alert" className="mt-3 text-sm text-destructive">{formError}</p>}
