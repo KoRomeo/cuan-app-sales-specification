@@ -376,12 +376,13 @@ type PersistedDelivery = {
   driverName: string
   address: string
   transportCost: string | number
+  transportAccount: string
   orders: Array<{ id: string; customerId: string; customerName: string }>
 }
 type DeliveryOrderOption = { id: string; status: string; customerId: string; date: string }
 
 export function DeliveriesView() {
-  const { t } = useApp()
+  const { t, locale } = useApp()
   const [selectedDeliveryIds, setSelectedDeliveryIds] = useState<string[]>([])
   const [open, setOpen] = useState(false)
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', customersFetcher)
@@ -389,6 +390,7 @@ export function DeliveriesView() {
     business?.id ? `/api/deliveries?businessId=${encodeURIComponent(business.id)}` : null,
     customersFetcher,
   )
+  const { data: financialAccounts } = useSWR<Array<{ id: string; name: string; type: "cash" | "bank"; active: boolean }>>(business?.id ? `/api/financial-accounts?businessId=${encodeURIComponent(business.id)}` : null, customersFetcher)
   const { data: orderRows, mutate: mutateOrders } = useSWR<DeliveryOrderOption[]>(
     business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null,
     customersFetcher,
@@ -415,7 +417,7 @@ export function DeliveriesView() {
       body: JSON.stringify({
         businessId: business.id, orderIds, date: values.date, method: values.method,
         recipient: values.recipient?.trim() ?? '', driverName: values.driverName?.trim() ?? '', address: values.address?.trim() ?? '',
-        transportCost: Number(values.transportCost || 0),
+        transportCost: Number(values.transportCost || 0), transportAccount: values.transportAccount || "",
       }),
     })
     const result = await response.json()
@@ -467,6 +469,7 @@ export function DeliveriesView() {
           { name: 'driverName', label: 'Driver name', placeholder: 'Enter driver name', half: true },
           { name: 'address', label: t('common.address'), type: 'textarea', required: false },
           { name: 'transportCost', label: t('orders.transportCost'), type: 'number', defaultValue: '0', min: 0 },
+          { name: 'transportAccount', label: locale === 'id' ? 'Akun kas/bank biaya pengiriman' : 'Cash/bank account for transport', type: 'select', options: (financialAccounts ?? []).filter((account) => account.active).map((account) => ({ value: account.name, label: account.name })), required: false, hint: locale === 'id' ? 'Wajib dipilih jika biaya pengiriman lebih dari Rp0.' : 'Required when transport cost is greater than Rp0.' },
         ]}
         onSubmit={saveDelivery}
       />
