@@ -77,7 +77,7 @@ export function NewPurchaseView() {
       <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
         <SectionCard title="Purchase Information">
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="flex flex-col gap-1.5 sm:col-span-2"><Label htmlFor="supplier">{t('common.supplier')}</Label><SearchableSelect value={supplierId} onChange={(value)=>setSupplierId(String(value))} options={suppliers.map((supplier)=>({value:supplier.id,label:supplier.name}))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required /></div>
+            <div className="flex flex-col gap-1.5 sm:col-span-2"><Label htmlFor="supplier">{t('common.supplier')}</Label><SearchableSelect id="supplier" value={supplierId} onChange={(value)=>setSupplierId(String(value))} options={suppliers.map((supplier)=>({value:supplier.id,label:supplier.name}))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required /></div>
             <div className="flex flex-col gap-1.5"><Label htmlFor="purchase-date">Purchase Date</Label><Input id="purchase-date" type="date" value={date} onChange={e=>setDate(e.target.value)} required /></div>
           </div>
         </SectionCard>
