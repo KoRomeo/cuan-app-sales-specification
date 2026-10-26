@@ -4,7 +4,7 @@ import { db } from "@/lib/db"
 import { generateEntityId } from "@/lib/db/ids"
 import { writeAudit } from "@/lib/audit"
 import { requireBusinessAccess } from "@/lib/api-auth"
-import { purchaseDocuments, purchases, purchaseItems, suppliers, products, stockMovements, journalEntries, journalEntryLines } from "@/lib/db/schema"
+import { purchaseDocuments, purchases, purchaseItems, suppliers, products, stockMovements, journalEntries, journalEntryLines, payments, financialAccounts } from "@/lib/db/schema"
 
 type Ctx = { params: Promise<{ id: string }> }
 type InvoiceItem = { productName?: string; unit?: string | null; quantity?: number; unitCost?: number; lineTotal?: number }
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
  const { id } = await params
  let businessId = ""
  try {
-  const body = await request.json() as { businessId?:string; supplierId?:string; createSupplier?:boolean; itemProductIds?:Record<string,string>; createProductIndexes?:number[]; date?:string; dueDate?:string|null; notes?:string|null }
+  const body = await request.json() as { businessId?:string; supplierId?:string; createSupplier?:boolean; itemProductIds?:Record<string,string>; createProductIndexes?:number[]; date?:string; dueDate?:string|null; notes?:string|null; paidAmount?:number; paymentAccount?:string; paymentId?:string; paymentDate?:string }
   businessId=body.businessId??""
   const access=await requireBusinessAccess(businessId)
   if(!access.ok)return NextResponse.json({error:access.error},{status:access.status})
@@ -65,7 +65,13 @@ export async function POST(request: NextRequest, { params }: Ctx) {
    }
    const purchaseId=await generateEntityId(tx,purchases,businessId,"PUR",date)
    const total=resolved.reduce((sum,line)=>sum+line.qty*line.unitCost,0)
-   await tx.insert(purchases).values({id:purchaseId,businessId,date,supplierId,dueDate:dueDate||null,notes:body.notes||("Imported from invoice "+(typeof data.invoiceNumber==="string"?data.invoiceNumber:doc.fileName))})
+   const paidAmount=Number(body.paidAmount??0)
+   if(!Number.isFinite(paidAmount)||paidAmount<0||paidAmount>total)throw new Error("INVALID_PAID_AMOUNT")
+   const paymentDate=body.paymentDate||date
+   if(paidAmount>0&&(!body.paymentId?.trim()||!/^\\d{4}-\\d{2}-\\d{2}$/.test(paymentDate)||Number.isNaN(Date.parse(paymentDate+"T00:00:00Z"))||!body.paymentAccount?.trim()))throw new Error("INVALID_PAYMENT")
+   let paymentAccount=""
+   if(paidAmount>0){const [account]=await tx.select({name:financialAccounts.name}).from(financialAccounts).where(and(eq(financialAccounts.businessId,businessId),eq(financialAccounts.name,body.paymentAccount!.trim()),eq(financialAccounts.active,true))).limit(1);if(!account)throw new Error("PAYMENT_ACCOUNT_NOT_FOUND");paymentAccount=account.name}
+   await tx.insert(purchases).values({id:purchaseId,businessId,date,supplierId,dueDate:paidAmount>=total?null:(dueDate||null),notes:body.notes||("Imported from invoice "+(typeof data.invoiceNumber==="string"?data.invoiceNumber:doc.fileName))})
    await tx.insert(purchaseItems).values(resolved.map((line,i)=>({id:"PI-"+purchaseId+"-"+(i+1),purchaseId,productId:line.id,qty:line.qty,unitCost:line.unitCost.toFixed(2)})))
    const productIds=[...new Set(resolved.map(x=>x.id))]
    const oldProducts=await tx.select({id:products.id,averageCost:products.averageCost}).from(products).where(and(eq(products.businessId,businessId),inArray(products.id,productIds)))
@@ -78,6 +84,12 @@ export async function POST(request: NextRequest, { params }: Ctx) {
    const je="JE-PUR-"+purchaseId
    await tx.insert(journalEntries).values({id:je,businessId,entryDate:date,kind:"purchase",reference:purchaseId,description:"Invoice purchase from "+supplierId})
    await tx.insert(journalEntryLines).values([{id:je+"-inventory",journalEntryId:je,account:"Inventory",debit:total.toFixed(2),credit:"0"},{id:je+"-payable",journalEntryId:je,account:"Accounts Payable",debit:"0",credit:total.toFixed(2)}])
+   if(paidAmount>0){
+    await tx.insert(payments).values({id:body.paymentId!,businessId,orderId:null,purchaseId,date:paymentDate,amount:paidAmount.toFixed(2),account:paymentAccount})
+    const paymentJournalId="JE-AI-PAY-"+purchaseId
+    await tx.insert(journalEntries).values({id:paymentJournalId,businessId,entryDate:paymentDate,kind:"supplier-payment",reference:purchaseId,description:"Payment for AI invoice purchase"})
+    await tx.insert(journalEntryLines).values([{id:paymentJournalId+"-payable",journalEntryId:paymentJournalId,account:"Accounts Payable",debit:paidAmount.toFixed(2),credit:"0"},{id:paymentJournalId+"-cash",journalEntryId:paymentJournalId,account:paymentAccount,debit:"0",credit:paidAmount.toFixed(2)}])
+   }
    await tx.update(purchaseDocuments).set({status:"confirmed",purchaseId,confirmedAt:new Date(),updatedAt:new Date(),errorMessage:null}).where(and(eq(purchaseDocuments.id,id),eq(purchaseDocuments.businessId,businessId)))
    return {purchaseId,alreadyConfirmed:false}
   })
@@ -85,7 +97,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   return NextResponse.json({message:result.alreadyConfirmed?"Invoice was already confirmed":"Invoice confirmed as purchase",...result},{status:result.alreadyConfirmed?200:201})
  }catch(error){
   const message=error instanceof Error?error.message:""
-  const status:Record<string,[string,number]>={DOCUMENT_NOT_FOUND:["Document not found",404],DOCUMENT_NOT_REVIEWABLE:["Document must be reviewed before confirmation",409],DOCUMENT_ALREADY_BEING_CONFIRMED:["Document is already being confirmed",409],INVALID_DATE:["Invoice date is invalid",400],INVALID_DUE_DATE:["Due date is invalid",400],NO_ITEMS:["Invoice contains no items",400],SUPPLIER_REQUIRED:["Select or create a supplier",400],SUPPLIER_NAME_REQUIRED:["Supplier name is required",400],SUPPLIER_DUPLICATE:["A supplier with this name already exists. Select the existing supplier instead.",409],SUPPLIER_NOT_FOUND:["Supplier not found in this business",404],INVALID_ITEM:["One or more invoice items have invalid quantity/cost",400],PRODUCT_MATCH_REQUIRED:["Match each item to a product or choose add new product",400],PRODUCT_NOT_FOUND:["Selected product not found in this business",404],DUPLICATE_PRODUCT_NAME:["That product name already exists. Select the existing product instead.",409]}
+  const status:Record<string,[string,number]>={DOCUMENT_NOT_FOUND:["Document not found",404],DOCUMENT_NOT_REVIEWABLE:["Document must be reviewed before confirmation",409],DOCUMENT_ALREADY_BEING_CONFIRMED:["Document is already being confirmed",409],INVALID_DATE:["Invoice date is invalid",400],INVALID_DUE_DATE:["Due date is invalid",400],NO_ITEMS:["Invoice contains no items",400],SUPPLIER_REQUIRED:["Select or create a supplier",400],SUPPLIER_NAME_REQUIRED:["Supplier name is required",400],SUPPLIER_DUPLICATE:["A supplier with this name already exists. Select the existing supplier instead.",409],SUPPLIER_NOT_FOUND:["Supplier not found in this business",404],INVALID_ITEM:["One or more invoice items have invalid quantity/cost",400],INVALID_PAID_AMOUNT:["Paid amount must be between zero and the invoice total",400],INVALID_PAYMENT:["A payment ID, date, and account are required when an amount is paid",400],PAYMENT_ACCOUNT_NOT_FOUND:["Select an active cash or bank account for this business",400],PRODUCT_MATCH_REQUIRED:["Match each item to a product or choose add new product",400],PRODUCT_NOT_FOUND:["Selected product not found in this business",404],DUPLICATE_PRODUCT_NAME:["That product name already exists. Select the existing product instead.",409]}
   if(status[message])return NextResponse.json({error:status[message][0]},{status:status[message][1]})
   console.error("Invoice confirmation failed",error)
   // Restore the review state on failure so the user can correct mappings and retry.
