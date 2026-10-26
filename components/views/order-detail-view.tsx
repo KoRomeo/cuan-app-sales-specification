@@ -148,8 +148,8 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
         <div role="alert" className="mb-4 flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/8 p-4 sm:flex-row sm:items-center">
           <AlertTriangle className="size-5 shrink-0 text-destructive" />
           <div className="flex-1 text-sm">
-            {negativeItems.map((p) => (
-              <p key={p.id}>{t('orders.negativeWarning', { product: p.name, stock: p.stock })}</p>
+            {negativeItems.map((p, index) => (
+              <p key={`${p.id}-${index}`}>{t('orders.negativeWarning', { product: p.name, stock: p.stock })}</p>
             ))}
           </div>
           {features.purchasing && (
@@ -176,10 +176,10 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {order.items.map((it) => {
+                  {order.items.map((it, index) => {
                     const p = productById.get(it.productId)
                     return (
-                      <tr key={it.productId}>
+                      <tr key={`${it.productId}-${index}`}>
                         <td className="w-[42%] px-4 py-3 md:px-5">
                           <p className="truncate font-medium" title={p?.name}>{p?.name}</p>
                           <p className="font-mono text-[11px] text-muted-foreground">{p?.id} · {t('orders.cogs')} {formatIDR(it.unitCost)}</p>
