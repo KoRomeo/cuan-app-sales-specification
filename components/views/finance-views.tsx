@@ -24,6 +24,7 @@ import { PeriodSelect } from '@/components/common/period-select'
 import { SectionCard } from '@/components/common/section-card'
 import { Pill } from '@/components/common/status-badge'
 import { useApp } from '@/components/providers'
+import { SearchableSelect } from '@/components/common/searchable-select'
 import {
   accountBalance,
   balanceSheet,
@@ -514,10 +515,7 @@ export function LedgerView() {
       breadcrumbs={[{ label: t("nav.reports"), href: "/reports" }, { label: t("reports.ledger") }]}
       title={t("reports.ledger")}
       description={t("reports.glDesc")}
-      actions={<select value={accountName} onChange={(e) => setAccountName(e.target.value)} aria-label={t("reports.account")} className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 dark:bg-input/30 dark:[&>option]:bg-popover">
-        <option value="">{t("common.all")}</option>
-        {accounts.map((name) => <option key={name} value={name}>{name}</option>)}
-      </select>}
+      actions={<div className="w-56"><SearchableSelect value={accountName} onChange={(value) => setAccountName(String(value))} options={accounts.map((name) => ({value:name,label:name}))} placeholder={t("common.all")} searchPlaceholder={t("common.search")} emptyText={t("common.noResults")} /></div>}
     />
     <AccountingGate>
       {error ? <div role="alert" className="rounded-xl border border-destructive/30 bg-card p-6 text-sm text-destructive">{error.message}</div> :
