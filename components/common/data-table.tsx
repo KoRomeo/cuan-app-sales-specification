@@ -140,7 +140,6 @@ export function DataTable<T>({
   pageSize = 10,
   toolbarExtra,
   footer,
-  scrollable = true,
   selectable = false,
   selectedRowIds = [],
   onSelectedRowIdsChange,
