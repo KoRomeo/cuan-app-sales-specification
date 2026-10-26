@@ -56,6 +56,7 @@ export function PurchasesView() {
     {
       key: 'items',
       header: t('common.items'),
+      className: 'w-[30%]',
       cell: (p) => (
         <span className="block max-w-60 truncate text-muted-foreground">
           {p.items.map((it) => `${productByIdMap.get(it.productId)?.name} ×${it.qty}`).join(', ')}
