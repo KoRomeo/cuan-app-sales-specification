@@ -20,6 +20,7 @@ type UploadMetadata = {
   businessId?: string
   documentId?: string
   fileName?: string
+  storageFileName?: string
   mimeType?: string
   fileSize?: number
 }
@@ -31,12 +32,14 @@ async function finalizeUpload(request: NextRequest) {
     documentId?: string
     pathname?: string
     fileName?: string
+    storageFileName?: string
     mimeType?: string
     fileSize?: number
   }
   const businessId = body.businessId ?? ""
   const documentId = body.documentId ?? ""
   const fileName = String(body.fileName ?? "")
+  const storageFileName = String(body.storageFileName ?? fileName)
   const mimeType = body.mimeType ?? ""
   const fileSize = Number(body.fileSize)
   const pathname = body.pathname ?? ""
@@ -47,7 +50,7 @@ async function finalizeUpload(request: NextRequest) {
   if (!allowed.includes(mimeType) || !Number.isInteger(fileSize) || fileSize < 1 || fileSize > MAX_BYTES[mimeType]) {
     return NextResponse.json({ error: "Unsupported file type or size" }, { status: 400 })
   }
-  const expectedPath = `purchase-invoices/${businessId}/${documentId}/${safePathName(fileName)}`
+  const expectedPath = `purchase-invoices/${businessId}/${documentId}/${safePathName(storageFileName)}`
   if (pathname !== expectedPath) return NextResponse.json({ error: "Uploaded file path does not match the authorized document" }, { status: 400 })
 
   const [existing] = await db.select().from(purchaseDocuments)
@@ -88,6 +91,7 @@ export async function POST(request: NextRequest) {
         const businessId = metadata.businessId ?? ""
         const documentId = metadata.documentId ?? ""
         const fileName = String(metadata.fileName ?? "")
+        const storageFileName = String(metadata.storageFileName ?? fileName)
         const mimeType = metadata.mimeType ?? ""
         const fileSize = Number(metadata.fileSize)
         const access = await requireBusinessAccess(businessId)
@@ -96,7 +100,7 @@ export async function POST(request: NextRequest) {
         if (!mimeType || !allowed.includes(mimeType)) throw new Error("Unsupported file type")
         const limit = MAX_BYTES[mimeType]
         if (!Number.isInteger(fileSize) || fileSize < 1 || fileSize > limit) throw new Error("File exceeds the allowed size")
-        const expectedPath = `purchase-invoices/${businessId}/${documentId}/${safePathName(fileName)}`
+        const expectedPath = `purchase-invoices/${businessId}/${documentId}/${safePathName(storageFileName)}`
         if (pathname !== expectedPath) throw new Error("Upload path is not authorized")
         if (!process.env.BLOB_READ_WRITE_TOKEN) throw new Error("BLOB_READ_WRITE_TOKEN is missing. Add the Blob Read-Write token to the Development environment.")
         return {
