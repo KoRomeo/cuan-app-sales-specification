@@ -168,7 +168,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
               <table className="w-full min-w-[560px] text-sm">
                 <thead>
                   <tr className="border-b bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
-                    <th scope="col" className="h-10 px-4 text-left font-medium md:px-5">{t('common.product')}</th>
+                    <th scope="col" className="h-10 w-[42%] px-4 text-left font-medium md:px-5">{t('common.product')}</th>
                     <th scope="col" className="h-10 px-4 text-right font-medium">{t('common.qty')}</th>
                     <th scope="col" className="h-10 px-4 text-right font-medium">{t('orders.sellingPrice')}</th>
                     <th scope="col" className="h-10 px-4 text-right font-medium">{t('orders.discount')}</th>
@@ -180,8 +180,8 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
                     const p = productById.get(it.productId)
                     return (
                       <tr key={it.productId}>
-                        <td className="px-4 py-3 md:px-5">
-                          <p className="font-medium">{p?.name}</p>
+                        <td className="w-[42%] px-4 py-3 md:px-5">
+                          <p className="truncate font-medium" title={p?.name}>{p?.name}</p>
                           <p className="font-mono text-[11px] text-muted-foreground">{p?.id} · {t('orders.cogs')} {formatIDR(it.unitCost)}</p>
                           <p className={`mt-1 text-xs ${p && p.stock < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>Stock before order: {p ? p.stock + Number(it.qty) : '—'} · After order: {p ? p.stock : '—'}</p>
                         </td>
