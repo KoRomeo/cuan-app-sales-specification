@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { PayablesView } from '@/components/views/finance-views'
+import { PayablesView } from '@/components/views/payables-view'
 
 export const metadata: Metadata = { title: 'Payables' }
 
