@@ -399,7 +399,7 @@ export function DataTable<T>({
                               {t('common.view')}
                             </DropdownMenuItem>
                           )}
-                          {editable && !extra.some((action) => action.label === t('common.edit')) && (
+                          {editable && !extra.some((action) => actionKind(action.label) === 'edit') && (
                             <DropdownMenuItem className="cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300 dark:focus:bg-blue-950/40" onClick={() => toast.info(t('form.editUnavailable'))}>
                               <Pencil />
                               {t('common.edit')}
@@ -432,7 +432,7 @@ export function DataTable<T>({
                               </DropdownMenuItem>
                             )
                           })}
-                          {deletable && !extra.some((action) => action.label === t('common.delete')) && (
+                          {deletable && !extra.some((action) => actionKind(action.label) === 'delete') && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
