@@ -4,6 +4,7 @@ import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import {
   businessMembers,
+  financialAccounts,
   journalEntries,
   journalEntryLines,
   payments,
@@ -50,6 +51,7 @@ function failure(error: unknown) {
     PRODUCT_NOT_FOUND: ["One or more products were not found for this business", 404],
     PURCHASE_ID_EXISTS: ["Purchase ID already exists", 409],
     PAYMENT_ID_EXISTS: ["Payment ID already exists", 409],
+    INVALID_FINANCIAL_ACCOUNT: ["Select an active Cash & Bank account for this business", 400],
     PAYMENT_EXCEEDS_TOTAL: ["Payment cannot exceed the purchase total", 400],
   }
   if (known[message]) return NextResponse.json({ error: known[message][0] }, { status: known[message][1] })
@@ -146,6 +148,8 @@ export async function POST(request: NextRequest) {
       if (existing) throw new Error("PURCHASE_ID_EXISTS")
 
       if (paidAmount > 0) {
+        const [account] = await tx.select({ id: financialAccounts.id }).from(financialAccounts).where(and(eq(financialAccounts.businessId, businessId), eq(financialAccounts.name, paymentAccount!.trim()), eq(financialAccounts.active, true))).limit(1)
+        if (!account) throw new Error("INVALID_FINANCIAL_ACCOUNT")
         const [existingPayment] = await tx.select({ id: payments.id }).from(payments).where(eq(payments.id, paymentId!)).limit(1)
         if (existingPayment) throw new Error("PAYMENT_ID_EXISTS")
       }
