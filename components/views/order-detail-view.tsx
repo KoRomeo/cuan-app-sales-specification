@@ -354,7 +354,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
         </div>
       </div>
 
-      {doc && <DocumentPreview order={order} kind={doc} open={!!doc} onOpenChange={(o) => !o && setDoc(null)} />}
+      {doc && <DocumentPreview order={order} kind={doc} open={!!doc} onOpenChange={(o) => !o && setDoc(null)} customerOverride={customer ? { id: customer.id, name: customer.name, address: customer.address } : null} productNames={Object.fromEntries(data.products.map((product) => [product.id, product.name]))} />}
       <FormDialog
         open={editOpen}
         onOpenChange={setEditOpen}
