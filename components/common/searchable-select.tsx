@@ -19,6 +19,7 @@ export function SearchableSelect({
   multiple = false,
   className,
   name,
+  id,
   selectedText = 'selected',
   doneLabel = 'Done',
   clearSearchLabel = 'Clear search',
@@ -34,6 +35,7 @@ export function SearchableSelect({
   multiple?: boolean
   className?: string
   name?: string
+  id?: string
   selectedText?: string
   doneLabel?: string
   clearSearchLabel?: string
@@ -60,7 +62,7 @@ export function SearchableSelect({
   return (
     <div className={cn('relative min-w-0', className)}>
       {name && <input type="hidden" name={name} value={selected.join(',')} />}{required && <input aria-hidden="true" tabIndex={-1} className="pointer-events-none absolute size-px opacity-0" value={selected.length ? 'selected' : ''} onChange={() => {}} required />}
-      <button type="button" disabled={disabled} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="flex min-h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2 text-left text-sm shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50">
+      <button id={id} type="button" disabled={disabled} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="flex min-h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2 text-left text-sm shadow-xs outline-none transition-colors hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50">
         <span className={cn('min-w-0 truncate', selected.length === 0 && 'text-muted-foreground')}>{selected.length ? selectedLabels.join(', ') : placeholder}</span>
         <span className="flex shrink-0 items-center gap-1">{multiple && selected.length > 0 && <span className="rounded bg-muted px-1.5 text-xs">{selected.length}</span>}<ChevronDown className="size-4 opacity-60" /></span>
       </button>
