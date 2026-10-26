@@ -104,8 +104,8 @@ export function UnitsView() {
 
   const columns: Column<UnitRow>[] = [
     { key: 'id', header: t('units.id'), cell: (r) => <IdCell>{r.id}</IdCell> },
-    { key: 'big', header: t('units.fromProduct'), sortValue: (r) => r.bigProductName, cell: (r) => <span className="font-medium">{r.bigProductName}</span> },
-    { key: 'small', header: t('units.toProduct'), sortValue: (r) => r.smallProductName, cell: (r) => r.smallProductName },
+    { key: 'big', header: t('units.fromProduct'), className: 'w-[30%]', sortValue: (r) => r.bigProductName, cell: (r) => <span className="block truncate font-medium" title={r.bigProductName}>{r.bigProductName}</span> },
+    { key: 'small', header: t('units.toProduct'), className: 'w-[30%]', sortValue: (r) => r.smallProductName, cell: (r) => <span className="block truncate" title={r.smallProductName}>{r.smallProductName}</span> },
     { key: 'ratio', header: t('units.conversion'), align: 'right', sortValue: (r) => r.ratio, cell: (r) => <span className="font-mono tabular-nums">1 : {r.ratio}</span> },
     {
       key: 'status',
