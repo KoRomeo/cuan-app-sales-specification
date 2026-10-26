@@ -72,20 +72,21 @@ export function ProductsView() {
   }, [])
 
   const columns: Column<Product>[] = [
-    { key: 'id', header: t('products.id'), className: 'w-[14%]', cell: (p) => <IdCell>{p.id}</IdCell> },
-    { key: 'name', header: t('common.product'), className: 'w-[30%]', cell: (p) => <Link href={`/products/${encodeURIComponent(p.id)}`} title={p.name} className="block truncate font-medium text-primary hover:underline">{p.name}</Link> },
-    { key: 'price', header: t('products.sellingPrice'), className: 'w-[11%]', align: 'right', cell: (p) => <Money value={p.sellingPrice} /> },
+    { key: 'id', header: t('products.id'), className: 'w-[12%]', cell: (p) => <IdCell>{p.id}</IdCell> },
+    { key: 'name', header: t('common.product'), className: 'w-[27%]', cell: (p) => <Link href={`/products/${encodeURIComponent(p.id)}`} title={p.name} className="block truncate font-medium text-primary hover:underline">{p.name}</Link> },
+    { key: 'price', header: t('products.sellingPrice'), className: 'w-[10%]', align: 'right', cell: (p) => <Money value={p.sellingPrice} /> },
     { key: 'avg', header: t('products.averageCost'), className: 'w-[11%]', align: 'right', cell: (p) => <Money value={p.averageCost} className="text-muted-foreground" /> },
-    { key: 'ref', header: t('products.costReference'), className: 'w-[12%]', align: 'right', cell: (p) => <Money value={p.costReference} className="text-muted-foreground" /> },
+    { key: 'ref', header: t('products.costReference'), className: 'w-[11%]', align: 'right', cell: (p) => <Money value={p.costReference} className="text-muted-foreground" /> },
     {
       key: 'margin',
       header: t('products.margin'),
+      className: 'w-[9%]',
       sortValue: (p) => (p.sellingPrice - p.averageCost) / p.sellingPrice,
       align: 'right',
       cell: (p) => <span className="font-mono text-xs tabular-nums text-success">{formatPercent(((p.sellingPrice - p.averageCost) / p.sellingPrice) * 100)}</span>,
     },
-    { key: 'stock', header: t('products.stock'), align: 'right', sortValue: (p) => p.stock, cell: (p) => <span className={`font-mono font-medium tabular-nums ${p.stock < 0 ? 'text-destructive' : ''}`}>{p.stock}</span> },
-    { key: 'status', header: t('common.status'), sortValue: (p) => stockStatusOf(p), cell: (p) => <StockStatusBadge status={stockStatusOf(p)} /> },
+    { key: 'stock', header: t('products.stock'), className: 'w-[7%]', align: 'right', sortValue: (p) => p.stock, cell: (p) => <span className={`font-mono font-medium tabular-nums ${p.stock < 0 ? 'text-destructive' : ''}`}>{p.stock}</span> },
+    { key: 'status', header: t('common.status'), className: 'w-[12%] whitespace-nowrap', sortValue: (p) => stockStatusOf(p), cell: (p) => <StockStatusBadge status={stockStatusOf(p)} /> },
   ]
 
   return (
@@ -165,7 +166,7 @@ export function ProductsView() {
           ])
           setOpen(false)
           setEditingProduct(null)
-          toast.success('Product saved')
+          toast.success(t('toast.productSaved'))
         }}
         persisted
       />
@@ -173,7 +174,7 @@ export function ProductsView() {
         open={!!deleteTarget}
         onOpenChange={(nextOpen) => { if (!nextOpen) setDeleteTarget(null) }}
         title={t('common.delete')}
-        description={deleteTarget ? `Delete product ${deleteTarget.name}? Products with transaction or stock history cannot be deleted.` : ''}
+        description={deleteTarget ? t('products.deleteConfirm', { name: deleteTarget.name }) : ''}
         confirmLabel={t('common.delete')}
         onConfirm={() => {
           void (async () => {
@@ -184,7 +185,7 @@ export function ProductsView() {
             setDeleteTarget(null)
             await loadProducts()
             await globalMutate(`/api/dashboard?businessId=${encodeURIComponent(businessId)}`)
-            toast.success('Product deleted')
+            toast.success(t('toast.productDeleted'))
           })().catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to delete product'))
         }}
       />
@@ -299,7 +300,7 @@ export function StockView() {
           if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to save stock adjustment')
           await loadStock()
           setOpen(false)
-          toast.success('Stock adjustment saved')
+          toast.success(t('toast.stockSaved'))
         }}
       />
     </>
