@@ -407,3 +407,18 @@ select:not([multiple]) {
   background-position: right 0.75rem center;
   background-size: 0.875rem;
 }
+
+
+/* Data values stay on a single line; scroll containers handle wider tables. */
+table:not(.invoice-print-table) th,
+table:not(.invoice-print-table) td {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+table:not(.invoice-print-table) td p,
+table:not(.invoice-print-table) td span,
+table:not(.invoice-print-table) td a {
+  white-space: nowrap !important;
+  word-break: normal !important;
+}
