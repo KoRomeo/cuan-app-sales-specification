@@ -101,7 +101,7 @@ export function PurchasesView() {
         open={!!deleteTarget}
         onOpenChange={(nextOpen) => { if (!nextOpen) setDeleteTarget(null) }}
         title={t('common.delete')}
-        description={deleteTarget ? `Delete unpaid purchase ${deleteTarget.id}? This permanently removes the purchase, its stock-receipt movement and linked accounting entry, then refreshes inventory and balances. Purchases with any payment cannot be deleted.` : ''}
+        description={deleteTarget ? t('purchases.deleteConfirm', { id: deleteTarget.id }) : ''}
         confirmLabel={t('common.delete')}
         onConfirm={() => {
           void (async () => {
@@ -265,7 +265,7 @@ export function SuppliersView() {
         open={!!deleteTarget}
         onOpenChange={(nextOpen) => { if (!nextOpen) setDeleteTarget(null) }}
         title={t('common.delete')}
-        description={deleteTarget ? `Delete supplier ${deleteTarget.name}? Suppliers with purchase history cannot be deleted.` : ''}
+        description={deleteTarget ? t('suppliers.deleteConfirm', { name: deleteTarget.name }) : ''}
         confirmLabel={t('common.delete')}
         onConfirm={() => {
           void deleteSupplier().catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to delete supplier'))
