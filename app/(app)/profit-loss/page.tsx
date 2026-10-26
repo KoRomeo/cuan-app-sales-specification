@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { ProfitLossView } from '@/components/views/finance-views'
+import { ProfitLossView } from '@/components/views/finance-extra-views'
 
 export const metadata: Metadata = { title: 'Profit & Loss' }
 
