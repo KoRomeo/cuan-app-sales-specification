@@ -34,10 +34,10 @@ type ActionKind = 'view' | 'edit' | 'delete' | 'cancel' | 'other'
 
 function actionKind(label: string): ActionKind {
   const value = label.trim().toLocaleLowerCase()
-  if (/^(view|lihat|detail|preview|pratinjau|tinjau)(\\b|$)/.test(value)) return 'view'
-  if (/^(edit|ubah|sunting)(\\b|$)/.test(value)) return 'edit'
-  if (/^(delete|hapus|remove)(\\b|$)/.test(value)) return 'delete'
-  if (/^(cancel|batalkan|batal)(\\b|$)/.test(value)) return 'cancel'
+  if (/^(view|lihat|detail|preview|pratinjau|tinjau)(\b|$)/.test(value)) return 'view'
+  if (/^(edit|ubah|sunting)(\b|$)/.test(value)) return 'edit'
+  if (/^(delete|hapus|remove)(\b|$)/.test(value)) return 'delete'
+  if (/^(cancel|batalkan|batal)(\b|$)/.test(value)) return 'cancel'
   return 'other'
 }
 
