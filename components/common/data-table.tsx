@@ -393,7 +393,7 @@ export function DataTable<T>({
                           <MoreHorizontal />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                          {href && (
+                          {href && !extra.some((action) => actionKind(action.label) === 'view') && (
                             <DropdownMenuItem className="cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300 dark:focus:bg-blue-950/40" onClick={() => router.push(href)}>
                               <Eye />
                               {t('common.view')}
