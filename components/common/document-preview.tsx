@@ -68,7 +68,7 @@ export function DocumentPreview({
                 </dl>
               </section>
 
-              <table className="mt-3 w-full table-fixed border-collapse text-[9px]">
+              <table className="invoice-print-table mt-3 w-full table-fixed border-collapse text-[9px]">
                 <colgroup><col className="w-[7%]" /><col className="w-[53%]" /><col className="w-[18%]" /><col className="w-[22%]" /></colgroup>
                 <thead>
                   <tr className="border-y-2 border-black text-center text-[10px]">
@@ -144,7 +144,7 @@ export function DocumentPreview({
                 </div>
               </section>
 
-              <table className="mt-3 w-full table-fixed border-collapse text-[8px]">
+              <table className="invoice-print-table mt-3 w-full table-fixed border-collapse text-[8px]">
                 <colgroup><col className="w-[9%]" /><col className="w-[61%]" /><col className="w-[15%]" /><col className="w-[15%]" /></colgroup>
                 <thead>
                   <tr className="border-y-[3px] border-black text-center text-xs">
