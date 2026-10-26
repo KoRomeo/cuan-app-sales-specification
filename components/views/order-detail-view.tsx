@@ -463,7 +463,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
               recipient: values.recipient,
               driverName: values.driverName,
               address: values.address,
-              transportCost: Number(values.transport || 0),
+              transportCost: Number(values.transport || 0), transportAccount: values.transportAccount || "",
             }),
           })
           const result = await response.json()
@@ -482,6 +482,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
           { name: 'recipient', label: t('orders.recipient'), defaultValue: customer?.name ?? '', half: true },
           { name: 'driverName', label: 'Driver name', placeholder: 'Enter driver name', half: true },
           { name: 'transport', label: t('orders.transportCost'), type: 'number', prefix: 'Rp', defaultValue: '0', min: 0, half: true },
+          { name: 'transportAccount', label: t('returns.refundAccount'), type: 'select', options: (financialAccounts ?? []).filter((item) => item.active).map((item) => ({ value: item.name, label: item.name })), required: false, hint: t('returns.selectCashBank') },
           { name: 'address', label: t('common.address'), type: 'textarea', defaultValue: customer?.address ?? '', required: false },
         ]}
       />
