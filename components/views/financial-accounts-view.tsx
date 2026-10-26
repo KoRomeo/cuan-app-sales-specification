@@ -128,7 +128,7 @@ export function FinancialAccountsView() {
 
   return (
     <>
-      <PageHeader breadcrumbs={[{ label: t('nav.finance') }, { label: t('reports.cash') }]} title="Cash & Bank" description="Manage the cash and bank accounts used to receive payments and pay business expenses." actions={<div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => { setTransactionMode('transfer'); setFormError('') }}><ArrowLeftRight className="mr-2 h-4 w-4" />Transfer funds</Button><Button variant="outline" onClick={() => { setTransactionMode('money_in'); setFormError('') }}><CirclePlus className="mr-2 h-4 w-4" />Add funds</Button><Button onClick={() => setShowForm((value) => !value)}><Plus className="mr-2 h-4 w-4" />Add account</Button></div>} />
+      <PageHeader breadcrumbs={[{ label: t('nav.finance') }, { label: t('reports.cash') }]} title="Cash & Bank" description={t('finance.accountsDesc')} actions={<div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => { setTransactionMode('transfer'); setFormError('') }}><ArrowLeftRight className="mr-2 h-4 w-4" />Transfer funds</Button><Button variant="outline" onClick={() => { setTransactionMode('money_in'); setFormError('') }}><CirclePlus className="mr-2 h-4 w-4" />Add funds</Button><Button onClick={() => setShowForm((value) => !value)}><Plus className="mr-2 h-4 w-4" />Add account</Button></div>} />
       <KpiGrid>
         <KpiCard label={t('fin.totalBalance')} value={formatIDR(total)} icon={Landmark} />
         <KpiCard label={t('fin.cash')} value={formatIDR(cash)} icon={Banknote} tone="warning" />
