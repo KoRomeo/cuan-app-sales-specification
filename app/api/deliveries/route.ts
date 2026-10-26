@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     const orderIds: string[] = Array.from(new Set<string>(rawOrderIds.filter((id: unknown): id is string => typeof id === "string" && !!id.trim()).map((id: string) => id.trim())))
     if (typeof businessId !== "string" || !businessId.trim() || orderIds.length === 0 ||
       !validDate(date) || typeof method !== "string" || !["own", "expedition", "pickup"].includes(method) || typeof driverName !== "string" || !driverName.trim() ||
-      !Number.isFinite(Number(transportCost)) || Number(transportCost) < 0) {
+      !Number.isFinite(Number(transportCost)) || Number(transportCost) < 0 || (Number(transportCost) > 0 && (typeof transportAccount !== "string" || !transportAccount.trim()))) {
       return NextResponse.json({ error: "Provide businessId, orderIds, a valid date, method, driver name, and non-negative transport cost" }, { status: 400 })
     }
     const allowed = await access(businessId)
