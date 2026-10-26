@@ -23,8 +23,8 @@ async function optimizeInvoiceImage(file:File):Promise<{file:File;storageFileNam
   const context=canvas.getContext("2d");if(!context)return {file,storageFileName:file.name,optimized:false}
   context.drawImage(image,0,0)
   const blob=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,"image/webp",0.9))
-  if(!blob||blob.size>=file.size)return {file,storageFileName:file.name,optimized:false}
-  const baseName=file.name.replace(/\\.[^.]+$/,"")||"invoice"
+  if(!blob||blob.type!=="image/webp"||blob.size>=file.size)return {file,storageFileName:file.name,optimized:false}
+  const baseName=file.name.replace(/\.[^.]+$/,"")||"invoice"
   return {file:new File([blob],baseName+".webp",{type:"image/webp",lastModified:file.lastModified}),storageFileName:baseName+".webp",optimized:true}
  }finally{URL.revokeObjectURL(objectUrl)}
 }
