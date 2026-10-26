@@ -1,6 +1,7 @@
 'use client'
 
 import useSWR from 'swr'
+import { ClockAlert, Users, Wallet } from 'lucide-react'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
 import { PageHeader } from '@/components/common/page-header'
@@ -42,9 +43,9 @@ export function ReceivablesView() {
   return <>
     <PageHeader breadcrumbs={[{ label: t('nav.sales') }, { label: t('nav.receivables') }]} title={t('nav.receivables')} description={t('finance.receivablesDesc')} />
     <KpiGrid>
-      <KpiCard label={t('common.outstanding')} value={<Money value={rows.reduce((s,r)=>s+r.outstanding,0)} />} icon={Money as never} tone="warning" />
-      <KpiCard label={t('common.overdue')} value={rows.filter(r=>r.status==='overdue').length} icon={Money as never} tone="destructive" />
-      <KpiCard label={t('common.customer')} value={new Set(rows.map(r=>r.customer)).size} icon={Money as never} tone="neutral" />
+      <KpiCard label={t('common.outstanding')} value={<Money value={rows.reduce((s,r)=>s+r.outstanding,0)} />} icon={Wallet} tone="warning" />
+      <KpiCard label={t('common.overdue')} value={rows.filter(r=>r.status==='overdue').length} icon={ClockAlert} tone="destructive" />
+      <KpiCard label={t('common.customer')} value={new Set(rows.map(r=>r.customer)).size} icon={Users} tone="neutral" />
     </KpiGrid>
     <DataTable rows={rows} columns={columns} getRowId={r=>r.id} searchText={r=>r.id+' '+r.customer} editable={false} deletable={false} />
   </>
