@@ -26,6 +26,7 @@ const fetcher = (url: string) => fetch(url).then(async (response) => {
 type Party = { id: string; name: string }
 type Product = { id: string; name: string; sellingPrice: string | number; averageCost: string | number; stock?: string | number }
 type StockRow = { productId: string; stock: number | string }
+type FinancialAccountRow = { id: string; name: string; type: 'cash' | 'bank'; active: boolean }
 const MAX_ORDER_QTY = 999999
 
 interface Line {
@@ -44,11 +45,13 @@ export function NewOrderView() {
   const { data: customerRows, error: customersError } = useSWR<Party[]>(business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: productRows, error: productsError } = useSWR<Product[]>(business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const { data: stockRows } = useSWR<StockRow[]>(business?.id ? `/api/stock?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: financialAccounts } = useSWR<FinancialAccountRow[]>(business?.id ? `/api/financial-accounts?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const error = businessError || customersError || productsError
   const productsById = new Map((productRows ?? []).map((product) => [product.id, { ...product, sellingPrice: Number(product.sellingPrice), averageCost: Number(product.averageCost), stock: Number(stockRows?.find((row) => row.productId === product.id)?.stock ?? product.stock ?? 0) }]))
   const [lines, setLines] = useState<Line[]>([])
   const [customerId, setCustomerId] = useState('')
   const [paid, setPaid] = useState('0')
+  const [paymentAccount, setPaymentAccount] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [lineToRemove, setLineToRemove] = useState<number | null>(null)
 
@@ -66,6 +69,8 @@ export function NewOrderView() {
     return { current: product?.stock ?? 0, after: (product?.stock ?? 0) - quantity, quantity }
   }
   const cogs = lines.reduce((s, l) => s + l.qty * (productsById.get(l.productId)?.averageCost ?? 0), 0)
+  const activeFinancialAccounts = (financialAccounts ?? []).filter((account) => account.active)
+  const selectedPaymentAccount = paymentAccount || activeFinancialAccounts.find((account) => account.name.toLowerCase() === 'cash')?.name || activeFinancialAccounts[0]?.name || ''
   if (error) return <p role="alert" className="text-sm text-destructive">{error.message}</p>
   if (!business || !customerRows || !productRows) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
   return (
@@ -88,7 +93,7 @@ export function NewOrderView() {
             const form = new FormData(event.currentTarget)
             const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
             const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-              id: `ORD-${Date.now()}`, businessId: business.id, date: form.get('orderDate'), customerId: form.get('customerId'), status: 'requested', dueDate: form.get('dueDate') || null, notes: form.get('notes') || null, paidAmount: Number(paid || 0), paymentAccount: 'Cash', paymentDate: form.get('orderDate'), paymentId: Number(paid || 0) > 0 ? `PAY-ORD-${Date.now()}` : undefined,
+              id: `ORD-${Date.now()}`, businessId: business.id, date: form.get('orderDate'), customerId: form.get('customerId'), status: 'requested', dueDate: form.get('dueDate') || null, notes: form.get('notes') || null, paidAmount: Number(paid || 0), paymentAccount: selectedPaymentAccount, paymentDate: form.get('orderDate'), paymentId: Number(paid || 0) > 0 ? `PAY-ORD-${Date.now()}` : undefined,
               items: lines.map((line) => ({ id: `OI-${Date.now()}-${line.key}`, productId: line.productId, qty: line.qty, price: line.price, discount: line.discount, unitCost: productsById.get(line.productId)?.averageCost ?? 0 })),
             }) })
             const result = await response.json()
@@ -215,6 +220,11 @@ export function NewOrderView() {
               {total > 0 && Number(paid || 0) < total && <div className="flex flex-col gap-1.5">
                 <Label htmlFor="due">{t('common.dueDate')}</Label>
                 <Input id="due" name="dueDate" type="date" />
+              </div>}
+              {Number(paid || 0) > 0 && <div className="flex flex-col gap-1.5">
+                <Label htmlFor="sale-payment-account">{t('common.paymentAccount')}</Label>
+                <SearchableSelect id="sale-payment-account" value={selectedPaymentAccount} onChange={(value) => setPaymentAccount(String(value))} options={activeFinancialAccounts.map((account) => ({ value: account.name, label: account.name, description: account.type === 'cash' ? t('accounts.cash') : t('accounts.bank') }))} placeholder={t('returns.selectCashBank')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />
+                {activeFinancialAccounts.length === 0 && <p className="text-xs text-destructive">{t('returns.createAccountHint')}</p>}
               </div>}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('common.outstanding')}</span>
