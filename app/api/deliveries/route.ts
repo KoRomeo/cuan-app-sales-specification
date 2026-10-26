@@ -66,6 +66,12 @@ export async function POST(request: Request) {
     if (!allowed.ok) return NextResponse.json({ error: allowed.error }, { status: allowed.status })
 
     const deliveryIds = await db.transaction(async (tx) => {
+      let resolvedTransportAccount = "Cash"
+      if (Number(transportCost) > 0) {
+        const [account] = await tx.select({ name: financialAccounts.name }).from(financialAccounts).where(and(eq(financialAccounts.businessId, businessId), eq(financialAccounts.name, String(transportAccount).trim()), eq(financialAccounts.active, true))).limit(1)
+        if (!account) throw new Error("TRANSPORT_ACCOUNT_NOT_FOUND")
+        resolvedTransportAccount = account.name
+      }
       const foundOrders = await tx.select().from(orders)
         .where(and(eq(orders.businessId, businessId), inArray(orders.id, orderIds))).for("update")
       if (foundOrders.length !== orderIds.length) throw new Error("ORDER_NOT_FOUND")
@@ -84,6 +90,7 @@ export async function POST(request: Request) {
           orderId,
           date, method: method as "own" | "expedition" | "pickup", recipient: String(recipient), driverName: String(driverName).trim(), address: String(address),
           transportCost: (Number(transportCost) / orderIds.length).toFixed(2),
+          transportAccount: resolvedTransportAccount,
         })
         deliveryIds.push(deliveryId)
       }
