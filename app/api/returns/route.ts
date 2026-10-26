@@ -57,10 +57,18 @@ export async function POST(request: Request) {
       let total = 0
       const lines: Array<{ productId: string; qty: number; price: number; unitCost: number; replacementUnitCost: number }> = []
       for (const [productId, qty] of requestedQty) {
-        const soldLine = sold.find((line) => line.productId === productId)
-        if (!soldLine) throw new Error("PRODUCT_NOT_IN_ORDER")
+        const matchingSoldLines = sold.filter((line) => line.productId === productId)
+        if (matchingSoldLines.length === 0) throw new Error("PRODUCT_NOT_IN_ORDER")
+        const soldQty = matchingSoldLines.reduce((sum, line) => sum + Number(line.qty), 0)
+        const soldLine = {
+          ...matchingSoldLines[0],
+          qty: soldQty,
+          price: matchingSoldLines.reduce((sum, line) => sum + Number(line.price) * Number(line.qty), 0) / Math.max(1, soldQty),
+          discount: matchingSoldLines.reduce((sum, line) => sum + Number(line.discount), 0),
+          unitCost: matchingSoldLines.reduce((sum, line) => sum + Number(line.unitCost) * Number(line.qty), 0) / Math.max(1, soldQty),
+        }
         const already = priorReturns.filter((line) => line.productId === productId).reduce((sum, line) => sum + Number(line.qty), 0)
-        if (already + qty > Number(soldLine.qty)) throw new Error("RETURN_QTY_EXCEEDS_SOLD")
+        if (already + qty > soldQty) throw new Error("RETURN_QTY_EXCEEDS_SOLD")
         const [product] = await tx.select({ id: products.id, averageCost: products.averageCost }).from(products)
           .where(and(eq(products.id, productId), eq(products.businessId, businessId))).for("update").limit(1)
         if (!product) throw new Error("PRODUCT_NOT_FOUND")
