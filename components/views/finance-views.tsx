@@ -482,6 +482,7 @@ interface LedgerRow {
   date: string
   entryId: string
   reference: string
+  account: string
   description: string
   debit: number
   credit: number
