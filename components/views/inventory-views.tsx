@@ -210,7 +210,7 @@ export function StockView() {
   const sorted = [...products].sort((a, b) => a.stock - b.stock)
 
   const columns: Column<Product>[] = [
-    { key: 'name', header: t('common.product'), cell: (p) => (
+    { key: 'name', header: t('common.product'), className: 'w-[42%]', cell: (p) => (
       <span className="flex items-center gap-2 font-medium">
         {p.stock < 0 && <AlertTriangle className="size-3.5 text-destructive" />}
         {p.name}
@@ -341,7 +341,7 @@ export function StockMovementsView() {
   const columns: Column<StockMovement>[] = [
     { key: 'id', header: t('movements.id'), cell: (m) => <IdCell>{m.id}</IdCell> },
     { key: 'date', header: t('common.date'), cell: (m) => <span className="font-mono text-xs text-muted-foreground">{formatDate(m.date)}</span> },
-    { key: 'product', header: t('common.product'), cell: (m) => <span className="font-medium">{productNames[m.productId] ?? m.productId}</span> },
+    { key: 'product', header: t('common.product'), className: 'w-[30%]', cell: (m) => <span className="block truncate font-medium" title={productNames[m.productId] ?? m.productId}>{productNames[m.productId] ?? m.productId}</span> },
     { key: 'type', header: t('movements.type'), cell: (m) => <Pill tone={movementTone[m.type]}>{t(`mov.${m.type}`)}</Pill> },
     { key: 'ref', header: t('common.reference'), cell: (m) => <span className="font-mono text-xs text-muted-foreground">{m.reference}</span> },
     {
