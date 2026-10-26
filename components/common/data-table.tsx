@@ -406,7 +406,7 @@ export function DataTable<T>({
                             </DropdownMenuItem>
                           )}
                           {selectable && <DropdownMenuItem onClick={() => setSelectionMode((current) => !current)} className="cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"><Eye className="size-4" />{selectionMode ? t('common.hideSelection') : t('common.select')}</DropdownMenuItem>}
-                          {extra.length > 0 && <DropdownMenuSeparator />}
+                          {extra.length > 0 && (href || editable || selectable) && <DropdownMenuSeparator />}
                           {extra.map((a) => {
                             const kind = actionKind(a.label)
                             const destructive = kind === 'delete' || kind === 'cancel'
@@ -506,5 +506,5 @@ function formatMoney(v: number) {
 }
 
 export function IdCell({ children }: { children: React.ReactNode }) {
-  return <span className="font-mono text-xs font-medium text-primary">{children}</span>
+  return <span className="whitespace-nowrap font-mono text-xs font-medium text-primary">{children}</span>
 }
