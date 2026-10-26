@@ -408,30 +408,28 @@ export function DataTable<T>({
                           {selectable && <DropdownMenuItem onClick={() => setSelectionMode((current) => !current)} className="cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"><Eye className="size-4" />{selectionMode ? t('common.hideSelection') : t('common.select')}</DropdownMenuItem>}
                           {extra.length > 0 && <DropdownMenuSeparator />}
                           {extra.map((a) => {
-                            const Icon = a.icon
+                            const kind = actionKind(a.label)
+                            const destructive = kind === 'delete' || kind === 'cancel'
+                            const label = kind === 'view' ? t('common.view') : kind === 'edit' ? t('common.edit') : kind === 'delete' ? t('common.delete') : kind === 'cancel' ? t('common.cancel') : a.label
+                            const Icon = a.icon ?? (destructive ? Trash2 : kind === 'edit' ? Pencil : kind === 'view' ? Eye : undefined)
                             return (
-                              {(() => {
-                                const kind = actionKind(a.label)
-                                const destructive = kind === 'delete' || kind === 'cancel'
-                                const label = kind === 'view' ? t('common.view') : kind === 'edit' ? t('common.edit') : kind === 'delete' ? t('common.delete') : kind === 'cancel' ? t('common.cancel') : a.label
-                                return <DropdownMenuItem
-                                  key={a.label}
-                                  variant={destructive ? 'destructive' : 'default'}
-                                  className={destructive
-                                    ? 'cursor-pointer transition-colors hover:bg-pink-100 hover:text-red-700 focus:bg-pink-100 focus:text-red-700 dark:hover:bg-red-950/50 dark:hover:text-red-300 dark:focus:bg-red-950/50'
-                                    : kind !== 'other'
-                                      ? 'cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300 dark:focus:bg-blue-950/40'
-                                      : undefined}
-                                  disabled={a.disabled}
-                                  onClick={() => {
-                                    if (a.onSelect) a.onSelect()
-                                    else if (a.href) router.push(a.href)
-                                  }}
-                                >
-                                  {Icon ? <Icon className="size-4" /> : destructive ? <Trash2 className="size-4" /> : kind === 'edit' ? <Pencil className="size-4" /> : kind === 'view' ? <Eye className="size-4" /> : null}
-                                  {label}
-                                </DropdownMenuItem>
-                              })()}
+                              <DropdownMenuItem
+                                key={a.label}
+                                variant={destructive ? 'destructive' : 'default'}
+                                className={destructive
+                                  ? 'cursor-pointer transition-colors hover:bg-pink-100 hover:text-red-700 focus:bg-pink-100 focus:text-red-700 dark:hover:bg-red-950/50 dark:hover:text-red-300 dark:focus:bg-red-950/50'
+                                  : kind !== 'other'
+                                    ? 'cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300 dark:focus:bg-blue-950/40'
+                                    : undefined}
+                                disabled={a.disabled}
+                                onClick={() => {
+                                  if (a.onSelect) a.onSelect()
+                                  else if (a.href) router.push(a.href)
+                                }}
+                              >
+                                {Icon && <Icon className="size-4" />}
+                                {label}
+                              </DropdownMenuItem>
                             )
                           })}
                           {deletable && !extra.some((action) => action.label === t('common.delete')) && (
