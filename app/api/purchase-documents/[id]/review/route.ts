@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { and, eq } from "drizzle-orm"
 import { db } from "@/lib/db"
-import { purchaseDocuments } from "@/lib/db/schema"
+import { purchaseDocuments, purchases } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -24,6 +24,26 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
       if (!Number.isFinite(Number(item.unitCost)) || Number(item.unitCost) < 0) issues.push(`Item ${i + 1}: unit cost must be non-negative`)
     }
     if (issues.length) return NextResponse.json({ error: "Review validation failed", issues }, { status: 400 })
+    const [document] = await db.select().from(purchaseDocuments)
+      .where(and(eq(purchaseDocuments.id, id), eq(purchaseDocuments.businessId, businessId))).limit(1)
+    if (!document) return NextResponse.json({ error: "Document not found" }, { status: 404 })
+    if (document.status === "confirmed" && document.purchaseId) {
+      const current = (document.extractedData ?? {}) as Record<string, unknown>
+      const date = typeof data.date === "string" ? data.date : ""
+      const dueDate = typeof data.dueDate === "string" && data.dueDate ? data.dueDate : null
+      const validDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value + "T00:00:00Z"))
+      if (!validDate(date)) return NextResponse.json({ error: "Invoice date must be a valid YYYY-MM-DD date" }, { status: 400 })
+      if (dueDate && !validDate(dueDate)) return NextResponse.json({ error: "Due date must be a valid YYYY-MM-DD date or empty" }, { status: 400 })
+      const updatedData = { ...current, invoiceNumber: typeof data.invoiceNumber === "string" ? data.invoiceNumber : current.invoiceNumber, date, dueDate }
+      const [updated] = await db.transaction(async (tx) => {
+        await tx.update(purchases).set({ date, dueDate }).where(and(eq(purchases.id, document.purchaseId!), eq(purchases.businessId, businessId)))
+        return tx.update(purchaseDocuments).set({ extractedData: updatedData, updatedAt: new Date() })
+          .where(and(eq(purchaseDocuments.id, id), eq(purchaseDocuments.businessId, businessId), eq(purchaseDocuments.status, "confirmed"))).returning()
+      })
+      if (!updated) return NextResponse.json({ error: "Invoice could not be updated" }, { status: 409 })
+      return NextResponse.json({ id, status: updated.status, extractedData: updated.extractedData })
+    }
+    if (document.status !== "review") return NextResponse.json({ error: "Document is not editable in its current status" }, { status: 409 })
     const [updated] = await db.update(purchaseDocuments).set({ extractedData: data, reviewIssues: [], updatedAt: new Date() })
       .where(and(eq(purchaseDocuments.id, id), eq(purchaseDocuments.businessId, businessId), eq(purchaseDocuments.status, "review"))).returning()
     if (!updated) return NextResponse.json({ error: "Document not found or not editable in its current status" }, { status: 409 })
