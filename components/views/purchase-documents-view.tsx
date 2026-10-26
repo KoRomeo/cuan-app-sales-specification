@@ -4,6 +4,7 @@ import { FileText, RefreshCw, UploadCloud, Save, CheckCircle2, Eye, Trash2 } fro
 import { useState } from "react"
 import useSWR from "swr"
 import { PageHeader } from "@/components/common/page-header"
+import { SearchableSelect } from "@/components/common/searchable-select"
 import { useApp } from "@/components/providers"
 
 type Line={productName:string;unit?:string|null;quantity:number;unitCost:number;discount?:number;lineTotal?:number;productId?:string}
