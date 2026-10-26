@@ -14,6 +14,7 @@ import { TODAY } from '@/lib/data'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { SearchableSelect } from '@/components/common/searchable-select'
 
 const fetcher = (url: string) => fetch(url).then(async r => { if (!r.ok) throw new Error((await r.json()).error ?? 'Unable to load data'); return r.json() })
 type Product = { id: string; name: string; averageCost?: number | string }
@@ -76,7 +77,7 @@ export function NewPurchaseView() {
       <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
         <SectionCard title="Purchase Information">
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="flex flex-col gap-1.5 sm:col-span-2"><Label htmlFor="supplier">{t('common.supplier')}</Label><select id="supplier" className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={supplierId} onChange={e=>setSupplierId(e.target.value)} required><option value="">Select supplier</option>{suppliers.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+            <div className="flex flex-col gap-1.5 sm:col-span-2"><Label htmlFor="supplier">{t('common.supplier')}</Label><SearchableSelect value={supplierId} onChange={(value)=>setSupplierId(String(value))} options={suppliers.map((supplier)=>({value:supplier.id,label:supplier.name}))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required /></div>
             <div className="flex flex-col gap-1.5"><Label htmlFor="purchase-date">Purchase Date</Label><Input id="purchase-date" type="date" value={date} onChange={e=>setDate(e.target.value)} required /></div>
           </div>
         </SectionCard>
@@ -88,7 +89,7 @@ export function NewPurchaseView() {
               const stock=currentStock(item.productId)
               return <li key={item.key} className="rounded-lg border p-3">
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-12">
-                  <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-4"><Label htmlFor={'product-'+item.key}>Product</Label><select id={'product-'+item.key} className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={item.productId} required onChange={e=>updateItem(item.key,{productId:e.target.value,unitCost:''})}><option value="">Select product</option>{products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+                  <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-4"><Label htmlFor={'product-'+item.key}>Product</Label><SearchableSelect value={item.productId} onChange={(value)=>updateItem(item.key,{productId:String(value),unitCost:''})} options={products.map((product)=>({value:product.id,label:product.name}))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required /></div>
                   <div className="flex flex-col gap-1.5 sm:col-span-2"><Label htmlFor={'qty-'+item.key}>{t('common.qty')}</Label><Input id={'qty-'+item.key} type="number" min={1} max={MAX_PURCHASE_QTY} step={1} value={item.qty} onChange={e=>updateItem(item.key,{qty:e.target.value})} required className="font-mono"/></div>
                   <div className="flex flex-col gap-1.5 sm:col-span-3"><Label htmlFor={'cost-'+item.key}>Purchase Price (Rp)</Label><Input id={'cost-'+item.key} type="number" min={0} max={MAX_UNIT_PRICE} value={item.unitCost} onChange={e=>updateItem(item.key,{unitCost:e.target.value})} required className="font-mono"/></div>
                   <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2"><Label>Subtotal</Label><div className="flex h-10 min-w-0 items-center"><p title={formatIDR(qty*Math.max(0,Number(item.unitCost)||0))} className="truncate font-mono text-sm font-semibold tabular-nums">{formatIDR(qty*Math.max(0,Number(item.unitCost)||0))}</p></div></div>
