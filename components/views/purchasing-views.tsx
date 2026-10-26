@@ -50,9 +50,9 @@ export function PurchasesView() {
   const sorted = [...purchaseRows].sort((a, b) => (a.id < b.id ? 1 : -1))
 
   const columns: Column<Purchase>[] = [
-    { key: 'id', header: t('purchases.id'), cell: (p) => <IdCell>{p.id}</IdCell> },
+    { key: 'id', header: t('purchases.id'), className: 'min-w-[145px] whitespace-nowrap', cell: (p) => <IdCell>{p.id}</IdCell> },
     { key: 'date', header: t('common.date'), cell: (p) => <span className="font-mono text-xs text-muted-foreground">{formatDate(p.date)}</span> },
-    { key: 'supplier', header: t('common.supplier'), cell: (p) => <span className="font-medium">{supplierByIdMap.get(p.supplierId)?.name}</span> },
+    { key: 'supplier', header: t('common.supplier'), className: 'min-w-[180px]', cell: (p) => <span className="block whitespace-nowrap font-medium" title={supplierByIdMap.get(p.supplierId)?.name}>{supplierByIdMap.get(p.supplierId)?.name}</span> },
     {
       key: 'items',
       header: t('common.items'),
