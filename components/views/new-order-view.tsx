@@ -223,8 +223,8 @@ export function NewOrderView() {
                 <Input id="due" name="dueDate" type="date" />
               </div>}
               {Number(paid || 0) > 0 && <div className="flex flex-col gap-1.5">
-                <Label htmlFor="sale-payment-account">{t('common.paymentAccount')}</Label>
-                <SearchableSelect id="sale-payment-account" value={selectedPaymentAccount} onChange={(value) => setPaymentAccount(String(value))} options={activeFinancialAccounts.map((account) => ({ value: account.name, label: account.name, description: account.type === 'cash' ? t('accounts.cash') : t('accounts.bank') }))} placeholder={t('returns.selectCashBank')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />
+                <Label htmlFor="sale-payment-account">{t('returns.refundAccount')}</Label>
+                <SearchableSelect id="sale-payment-account" value={selectedPaymentAccount} onChange={(value) => setPaymentAccount(String(value))} options={activeFinancialAccounts.map((account) => ({ value: account.name, label: account.name, description: account.type === 'cash' ? t('fin.cash') : t('fin.bank') }))} placeholder={t('returns.selectCashBank')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />
                 {activeFinancialAccounts.length === 0 && <p className="text-xs text-destructive">{t('returns.createAccountHint')}</p>}
               </div>}
               <div className="flex justify-between text-sm">
@@ -236,7 +236,7 @@ export function NewOrderView() {
               <Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/orders" />}>
                 {t('common.cancel')}
               </Button>
-              <Button type="submit" className="flex-1" disabled={isSaving}>{isSaving ? 'Saving…' : 'Save Order'}</Button>
+              <Button type="submit" className="flex-1" disabled={isSaving || (Number(paid || 0) > 0 && !selectedPaymentAccount)}>{isSaving ? 'Saving…' : 'Save Order'}</Button>
             </div>
           </SectionCard>
         </div>
