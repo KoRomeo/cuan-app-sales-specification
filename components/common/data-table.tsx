@@ -282,6 +282,7 @@ export function DataTable<T>({
                     className={cn(
                       'h-10 whitespace-nowrap px-5 text-xs font-medium uppercase tracking-wider text-muted-foreground',
                       c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
+                      c.className,
                     )}
                   >
                     {sortable ? (
