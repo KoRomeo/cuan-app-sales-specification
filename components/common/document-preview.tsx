@@ -108,7 +108,7 @@ export function DocumentPreview({
                 </dl>
               </section>
 
-              <section className="mt-8 grid grid-cols-2 text-center text-[10px]">
+              <section className="mt-14 grid grid-cols-2 text-center text-[10px]">
                 <div>Tanda Terima</div>
                 <div>Hormat Kami</div>
               </section>
