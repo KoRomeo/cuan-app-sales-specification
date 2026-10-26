@@ -30,6 +30,7 @@ type PurchaseDetail = {
   items: Array<{ id: string; productId: string; qty: number; unitCost: string | number }>
   products: Array<{ id: string; name: string; stock: string | number; averageCost: string | number }>
   payments: Array<{ id: string; date: string; amount: string | number; account: string }>
+  sourceInvoice: { id: string; fileName: string; createdAt: string; mimeType: string | null } | null
 }
 export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
   const { t } = useApp()
@@ -85,6 +86,12 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
     />
     <div className="grid gap-4 lg:grid-cols-3">
       <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
+        {data.sourceInvoice && <SectionCard title="Source invoice">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0"><p className="truncate font-medium" title={data.sourceInvoice.fileName}>{data.sourceInvoice.fileName}</p><p className="mt-1 text-xs text-muted-foreground">{new Date(data.sourceInvoice.createdAt).toLocaleString()}</p></div>
+            <Button variant="outline" size="sm" nativeButton={false} render={<a href={"/api/purchase-documents/" + encodeURIComponent(data.sourceInvoice.id) + "/file?businessId=" + encodeURIComponent(business.id)} target="_blank" rel="noreferrer" />}><History /> View invoice</Button>
+          </div>
+        </SectionCard>}
         <SectionCard title="Purchase items" bodyClassName="p-0 md:p-0">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
