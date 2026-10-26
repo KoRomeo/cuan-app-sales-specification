@@ -410,6 +410,10 @@ select:not([multiple]) {
 
 
 /* Data values stay on a single line; scroll containers handle wider tables. */
+table:not(.invoice-print-table) {
+  width: max-content;
+  min-width: 100%;
+}
 table:not(.invoice-print-table) th,
 table:not(.invoice-print-table) td {
   white-space: nowrap;
