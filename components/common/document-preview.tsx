@@ -52,33 +52,32 @@ export function DocumentPreview({
                   <h1 className="text-[20px] font-black leading-none tracking-tight">INVOICE</h1>
                   <span className="text-xs">Page 1 of 1</span>
                 </div>
-                <div className="mt-[-2px] flex justify-end gap-8 text-xs">
-                  <span>Jumlah Koli : {order.items.reduce((sum, item) => sum + Number(item.qty), 0)}</span>
+                <div className="mt-1 flex justify-end text-[10px]">
                   <span>No. Telp: 089677569870</span>
                 </div>
               </div>
 
-              <section className="mt-1 grid grid-cols-2 gap-4 bg-[#ededed] px-6 py-5 text-xs">
+              <section className="mt-2 grid grid-cols-2 gap-3 px-1 py-1 text-[10px]">
                 <div className="self-center">
                   <p>Yth. Kepada</p>
-                  <p className="mt-1 text-sm font-bold">{customer?.name ?? '—'}</p>
-                  <p className="mt-1 text-sm font-bold">{customer?.address ?? ''}</p>
+                  <p className="mt-1 text-[11px] font-medium">{customer?.name ?? '—'}</p>
+                  <p className="mt-1 text-[10px]">{customer?.address ?? ''}</p>
                 </div>
-                <div className="text-right">
-                  <p>No. Invoice: <strong>{order.id}</strong></p>
-                  <p className="mt-1">Tanggal: <strong>{formatDate(order.date)}</strong></p>
-                  <p className="mt-1">Jatuh Tempo: <strong>{order.dueDate ? formatDate(order.dueDate) : '-'}</strong></p>
-                </div>
+                <dl className="grid grid-cols-[auto_1fr] content-start gap-x-2 gap-y-1 text-[10px]">
+                  <dt>No. Invoice:</dt><dd className="whitespace-nowrap">{order.id}</dd>
+                  <dt>Tanggal:</dt><dd className="whitespace-nowrap">{formatDate(order.date)}</dd>
+                  <dt>Jatuh Tempo:</dt><dd className="whitespace-nowrap">{order.dueDate ? formatDate(order.dueDate) : '-'}</dd>
+                </dl>
               </section>
 
-              <table className="mt-10 w-full table-fixed border-collapse text-xs">
+              <table className="mt-3 w-full table-fixed border-collapse text-[9px]">
                 <colgroup><col className="w-[7%]" /><col className="w-[53%]" /><col className="w-[18%]" /><col className="w-[22%]" /></colgroup>
                 <thead>
-                  <tr className="border-y-[3px] border-black text-center text-sm">
-                    <th className="border-r border-black px-1 py-3 font-bold">QTY</th>
-                    <th className="border-r border-black px-1 py-1 font-bold">DESKRIPSI</th>
-                    <th className="border-r border-black px-2 py-3 font-bold">HARGA</th>
-                    <th className="px-2 py-3 font-bold">JUMLAH</th>
+                  <tr className="border-y-2 border-black text-center text-[10px]">
+                    <th className="border-r border-black px-1 py-1 font-medium">QTY</th>
+                    <th className="border-r border-black px-1 py-1 font-medium">DESKRIPSI</th>
+                    <th className="border-r border-black px-1 py-1 font-medium">HARGA</th>
+                    <th className="px-1 py-1 font-medium">JUMLAH</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -87,7 +86,7 @@ export function DocumentPreview({
                     return (
                       <tr key={item ? item.productId : `blank-${index}`} className="h-[5mm] border-b border-black">
                         <td className="border-r border-black px-1 py-1 text-right">{item ? item.qty : ''}</td>
-                        <td className="border-r border-black px-1 py-1">{item ? productNames?.[item.productId] ?? productById(item.productId)?.name ?? 'Unknown product' : ''}</td>
+                        <td className="border-r border-black px-1 py-1">{item ? productNames?.[item.productId] ?? productById(item.productId)?.name ?? item.productId : ''}</td>
                         <td className="border-r border-black px-2 py-1 text-right">{item ? formatIDR(item.price) : ''}</td>
                         <td className="px-2 py-1 text-right">{item ? formatIDR(lineSubtotal(item)) : ''}</td>
                       </tr>
@@ -96,26 +95,26 @@ export function DocumentPreview({
                 </tbody>
               </table>
 
-              <section className="mt-1 grid grid-cols-[1fr_1fr] gap-5">
+              <section className="mt-2 grid grid-cols-[1fr_1fr] gap-3">
                 <div>
-                  <p className="pt-7 text-xs font-bold">TOTAL TAGIHAN</p>
-                  <div className="mt-1 bg-[repeating-linear-gradient(135deg,#e5e5e5_0px,#e5e5e5_1px,#fff_1px,#fff_3px)] px-2 py-2 text-center text-[16px] font-bold leading-tight">
+                  <p className="pt-2 text-[10px]">TOTAL TAGIHAN</p>
+                  <div className="mt-1 px-1 py-1 text-center text-[13px] font-medium leading-tight">
                     {formatIDR(total)}
                   </div>
                 </div>
-                <dl className="space-y-2 text-xs">
-                  <div className="flex justify-between gap-3"><dt className="font-bold">HARGA :</dt><dd>{formatIDR(order.items.reduce((sum, item) => sum + Number(item.qty) * Number(item.price), 0))}</dd></div>
-                  <div className="flex justify-between gap-3"><dt className="font-bold">DISKON :</dt><dd>{formatIDR(order.items.reduce((sum, item) => sum + Number(item.discount ?? 0), 0))}</dd></div>
-                  <div className="flex justify-between gap-3"><dt className="font-bold">PAJAK :</dt><dd>{features.tax ? formatIDR(tax) : '-'}</dd></div>
-                  <div className="flex justify-between gap-3"><dt className="font-bold">TOTAL :</dt><dd className="font-bold">{formatIDR(total + tax)}</dd></div>
+                <dl className="space-y-1 text-[10px]">
+                  <div className="flex justify-between gap-3"><dt>HARGA :</dt><dd>{formatIDR(order.items.reduce((sum, item) => sum + Number(item.qty) * Number(item.price), 0))}</dd></div>
+                  <div className="flex justify-between gap-3"><dt>DISKON :</dt><dd>{formatIDR(order.items.reduce((sum, item) => sum + Number(item.discount ?? 0), 0))}</dd></div>
+                  <div className="flex justify-between gap-3"><dt>PAJAK :</dt><dd>{features.tax ? formatIDR(tax) : '-'}</dd></div>
+                  <div className="flex justify-between gap-3"><dt>TOTAL :</dt><dd>{formatIDR(total + tax)}</dd></div>
                 </dl>
               </section>
 
-              <section className="mt-12 grid grid-cols-2 text-center text-xs">
+              <section className="mt-5 grid grid-cols-2 text-center text-[10px]">
                 <div>Tanda Terima</div>
                 <div>Hormat Kami</div>
               </section>
-              <section className="mt-20 space-y-1 text-xs">
+              <section className="mt-5 space-y-1 text-[9px]">
                 <p>Metode Pembayaran :</p>
                 <p>Cash atau Transfer Bank BCA | No. Rekening: 123-456-789</p>
                 <p className="pt-4">Catatan: {order.notes || ''}</p>
