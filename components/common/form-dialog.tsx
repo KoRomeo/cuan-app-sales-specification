@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Search } from 'lucide-react'
+import { SearchableSelect } from '@/components/common/searchable-select'
 import { cn } from '@/lib/utils'
 
 export interface FormField {
@@ -63,6 +64,7 @@ export function FormDialog({
   const { t } = useApp()
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({})
+  const [selectValues, setSelectValues] = useState<Record<string, string | string[]>>({})
   const [validated, setValidated] = useState(false)
   const [isChecking, setIsChecking] = useState(false)
   const timerRef = useRef<number | null>(null)
@@ -72,6 +74,10 @@ export function FormDialog({
   }, [])
 
   const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      setSelectValues(Object.fromEntries(fields.filter((field) => field.type === 'select' || field.type === 'multiselect').map((field) => [field.name, field.type === 'multiselect' ? (field.defaultValue ? field.defaultValue.split(',').filter(Boolean) : []) : field.defaultValue ?? '']))
+      setSearchTerms({})
+    }
     if (!nextOpen) {
       if (timerRef.current !== null) {
         window.clearTimeout(timerRef.current)
@@ -155,56 +161,29 @@ export function FormDialog({
                     {field.label}
                     {required && <span aria-hidden="true" className="ml-1 text-destructive">*</span>}
                   </Label>
-                  {field.type === 'select' && field.searchable ? (
-                    <div className="flex flex-col gap-2">
-                      <div className="relative">
-                        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          value={searchTerms[field.name] ?? ''}
-                          onChange={(event) => setSearchTerms((previous) => ({ ...previous, [field.name]: event.target.value }))}
-                          placeholder={t('common.search')}
-                          aria-label={`Search ${field.label}`}
-                          className="pl-8"
-                          disabled={isChecking}
-                        />
-                      </div>
-                      <select
-                        key={field.name + '-' + (field.defaultValue ?? '')}
-                        id={id}
-                        name={field.name}
-                        defaultValue={field.defaultValue}
-                        required={required}
-                        disabled={isChecking}
-                        aria-invalid={Boolean(errors[field.name])}
-                        aria-describedby={describedBy}
-                        size={Math.min(Math.max((field.options ?? []).filter((option) => option.label.toLowerCase().includes((searchTerms[field.name] ?? '').toLowerCase())).length, 3), 5)}
-                        className={cn(selectClass, 'h-auto min-h-24 py-2')}
-                        onChange={(event) => { clearFieldError(field.name); field.onValueChange?.(event.currentTarget.value) }}
-                      >
-                        {(field.options ?? []).filter((option) => option.label.toLowerCase().includes((searchTerms[field.name] ?? '').toLowerCase())).map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : field.type === 'select' || field.type === 'multiselect' ? (
-                    <select
-                      key={field.name + '-' + (field.defaultValue ?? '')}
-                      id={id}
+                  {field.type === 'select' || field.type === 'multiselect' ? (
+                    <SearchableSelect
                       name={field.name}
-                      defaultValue={field.defaultValue}
+                      value={selectValues[field.name] ?? (field.type === 'multiselect' ? [] : field.defaultValue ?? '')}
+                      onChange={(value) => {
+                        setSelectValues((current) => ({ ...current, [field.name]: value }))
+                        clearFieldError(field.name)
+                        if (typeof value === 'string') field.onValueChange?.(value)
+                      }}
+                      options={[
+                        ...(field.type === 'select' && !required ? [{ value: '', label: field.placeholder ?? '—' }] : []),
+                        ...(field.options ?? []),
+                      ]}
+                      placeholder={field.placeholder ?? t('common.select')}
+                      searchPlaceholder={t('common.search')}
+                      emptyText={t('common.noResults')}
+                      selectedText={t('common.selected')}
+                      doneLabel={t('common.done')}
+                      clearSearchLabel={t('common.clearSearch')}
                       multiple={field.type === 'multiselect'}
-                      required={required}
                       disabled={isChecking}
-                      aria-invalid={Boolean(errors[field.name])}
-                      aria-describedby={describedBy}
-                      size={field.type === 'multiselect' ? Math.min(Math.max(field.options?.length ?? 0, 3), 6) : undefined}
-                      className={cn(selectClass, field.type === 'multiselect' && 'h-auto min-h-24 py-2')}
-                      onChange={(event) => { clearFieldError(field.name); field.onValueChange?.(event.currentTarget.value) }}
-                    >
-                      {field.options?.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
+                      required={required}
+                    />
                   ) : field.type === 'textarea' ? (
                     <Textarea
                       key={field.name + '-' + (field.defaultValue ?? '')}
