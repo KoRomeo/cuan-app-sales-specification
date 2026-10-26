@@ -366,12 +366,12 @@ export function DataTable<T>({
                       <td
                         key={c.key}
                         className={cn(
-                          'h-12 min-w-0 max-w-0 overflow-hidden text-ellipsis whitespace-nowrap px-5',
+                          'h-12 whitespace-nowrap px-5',
                           c.align === 'right' ? 'text-right' : c.align === 'center' ? 'text-center' : 'text-left',
                           c.className,
                         )}
                       >
-                        <div className={cn("block min-w-0 max-w-full overflow-hidden text-ellipsis whitespace-nowrap", (typeof content === 'string' || typeof content === 'number') && "truncate")} title={nodeText(content) !== '' ? String(nodeText(content)) : undefined}>
+                        <div className="whitespace-nowrap" title={nodeText(content) !== '' ? String(nodeText(content)) : undefined}>
                         {href && index === 0 ? (
                           <Link
                             href={href}
