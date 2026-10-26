@@ -34,7 +34,7 @@ function DropdownMenuContent({
       <MenuPrimitive.Positioner
         className="isolate z-50 outline-none"
         align={align}
-        alignOffset={alignOffset}
+        alignOffset={align === "end" && alignOffset === 0 ? -4 : alignOffset}
         side={side}
         sideOffset={sideOffset}
       >
