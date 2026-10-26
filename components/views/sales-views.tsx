@@ -456,7 +456,7 @@ export function DeliveriesView() {
         open={open}
         onOpenChange={setOpen}
         title={t('deliveries.title')}
-        description="Select one or more ready Orders. Each selected Order gets a delivery record; stock and HPP are not deducted again."
+        description={t('deliveries.createHelp')}
         submitLabel={t('common.save')}
         persisted
         fields={[
