@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     const entries = await db.select().from(journalEntries)
-      .where(and(eq(journalEntries.businessId, businessId), inArray(journalEntries.kind, ["opening", "money_in", "transfer", "payment", "expense"])))
+      .where(and(eq(journalEntries.businessId, businessId), inArray(journalEntries.kind, ["opening", "money_in", "transfer", "payment", "supplier-payment", "transport", "expense"])))
       .orderBy(desc(journalEntries.entryDate), desc(journalEntries.createdAt))
     const ids = entries.map((entry) => entry.id)
     const lines = ids.length ? await db.select().from(journalEntryLines).where(inArray(journalEntryLines.journalEntryId, ids)) : []
