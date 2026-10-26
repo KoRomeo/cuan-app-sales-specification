@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import useSWR from 'swr'
-import { ArrowLeft, FileText } from 'lucide-react'
+import { useState } from 'react'
+import { ArrowLeft, FileText, Pencil, Save, X } from 'lucide-react'
 import { PageHeader } from '@/components/common/page-header'
 import { SectionCard } from '@/components/common/section-card'
 import { Button } from '@/components/ui/button'
@@ -15,8 +16,14 @@ type PurchaseDocument = { id: string; fileName: string; fileSize: number; mimeTy
 const fetcher = async (url: string) => { const response = await fetch(url); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Unable to load invoice'); return data }
 export function PurchaseInvoiceDetailView({ documentId }: { documentId: string }) {
   const { locale, t } = useApp()
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+  const [invoiceNumber, setInvoiceNumber] = useState('')
+  const [invoiceDate, setInvoiceDate] = useState('')
+  const [dueDate, setDueDate] = useState('')
   const { data: business, error: businessError } = useSWR<{id:string}>('/api/businesses/current', fetcher)
-  const { data: documents, error: documentsError } = useSWR<PurchaseDocument[]>(business?.id ? '/api/purchase-documents?businessId='+encodeURIComponent(business.id) : null, fetcher)
+  const { data: documents, error: documentsError, mutate: mutateDocuments } = useSWR<PurchaseDocument[]>(business?.id ? '/api/purchase-documents?businessId='+encodeURIComponent(business.id) : null, fetcher)
   const error = businessError || documentsError
   if (error) return <div role="alert" className="text-sm text-destructive">{error.message}</div>
   if (!business || !documents) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
@@ -26,14 +33,43 @@ export function PurchaseInvoiceDetailView({ documentId }: { documentId: string }
   const label = (en: string, id: string) => locale === 'id' ? id : en
   const fileUrl = '/api/purchase-documents/'+encodeURIComponent(doc.id)+'/file?businessId='+encodeURIComponent(business.id)
   return <>
-    <PageHeader breadcrumbs={[{label:t('nav.purchasing')},{label:label('Purchase Invoice','Faktur Pembelian'),href:'/purchase-documents'},{label:doc.fileName}]} title={label('Invoice details','Detail faktur')} description={doc.fileName} actions={<Button variant="outline" nativeButton={false} render={<Link href="/purchase-invoice" />}><ArrowLeft />{label('Back to invoices','Kembali ke faktur')}</Button>} />
+    <PageHeader breadcrumbs={[{label:t('nav.purchasing')},{label:label('Purchase Invoice','Faktur Pembelian'),href:'/purchase-documents'},{label:doc.fileName}]} title={label('Invoice details','Detail faktur')} description={doc.fileName} actions={<Button variant="outline" nativeButton={false} render={<Link href="/purchase-documents" />}><ArrowLeft />{label('Back to invoices','Kembali ke faktur')}</Button>} />
     <div className="grid min-w-0 gap-5 xl:grid-cols-2">
       <SectionCard title={label('Stored invoice file','File faktur tersimpan')}>
         <p className="mb-3 text-xs text-muted-foreground">{new Date(doc.createdAt).toLocaleString(locale === 'id' ? 'id-ID' : 'en-US')} · {(doc.fileSize/1048576).toFixed(2)} MB</p>
         <iframe title={doc.fileName} src={fileUrl} className="h-[70vh] min-h-[420px] w-full rounded-md border bg-muted" />
       </SectionCard>
       <div className="space-y-4">
-        <SectionCard title={label('Extracted details','Detail hasil ekstraksi')}>
+        <SectionCard title={label('Extracted details','Detail hasil ekstraksi')} action={doc.status === 'confirmed' && invoice ? <Button variant="outline" size="sm" onClick={() => { setInvoiceNumber(invoice.invoiceNumber || ''); setInvoiceDate(invoice.date || ''); setDueDate(invoice.dueDate || ''); setMessage(''); setEditing(v => !v) }}>{editing ? <X /> : <Pencil />}{editing ? label('Cancel edit','Batal mengedit') : label('Edit details','Edit detail')}</Button> : undefined}>
+          {message && <p role="status" className="mb-3 text-sm">{message}</p>}
+          {editing && invoice && doc.status === 'confirmed' && <form className="mb-4 space-y-3 rounded-lg border bg-muted/20 p-3" onSubmit={async event => {
+            event.preventDefault()
+            setSaving(true)
+            setMessage('')
+            try {
+              const response = await fetch('/api/purchase-documents/' + encodeURIComponent(doc.id) + '/review', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ businessId: business.id, extractedData: { ...invoice, invoiceNumber, date: invoiceDate, dueDate: dueDate || null } }),
+              })
+              const result = await response.json()
+              if (!response.ok) throw new Error(result.error || label('Unable to save changes','Tidak dapat menyimpan perubahan'))
+              await mutateDocuments()
+              setMessage(label('Invoice details saved.','Detail faktur berhasil disimpan.'))
+              setEditing(false)
+            } catch (error) {
+              setMessage(error instanceof Error ? error.message : label('Unable to save changes','Tidak dapat menyimpan perubahan'))
+            } finally {
+              setSaving(false)
+            }
+          }}>
+            <label className="block space-y-1 text-sm"><span>{label('Invoice number','Nomor faktur')}</span><input value={invoiceNumber} onChange={event => setInvoiceNumber(event.target.value)} className="w-full rounded-md border bg-background px-3 py-2" /></label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block space-y-1 text-sm"><span>{label('Invoice date','Tanggal faktur')}</span><input required type="date" value={invoiceDate} onChange={event => setInvoiceDate(event.target.value)} className="w-full rounded-md border bg-background px-3 py-2" /></label>
+              <label className="block space-y-1 text-sm"><span>{label('Due date','Jatuh tempo')}</span><input type="date" value={dueDate} onChange={event => setDueDate(event.target.value)} className="w-full rounded-md border bg-background px-3 py-2" /></label>
+            </div>
+            <div className="flex justify-end"><Button type="submit" disabled={saving}>{saving ? label('Saving…','Menyimpan…') : <><Save />{label('Save changes','Simpan perubahan')}</>}</Button></div>
+          </form>}
           {!invoice ? <p className="text-sm text-muted-foreground">{doc.errorMessage || label('No extracted invoice data is available.','Data hasil ekstraksi faktur belum tersedia.')}</p> : <div className="space-y-3 text-sm">
             <Detail label={label('Status','Status')} value={doc.status} />
             <Detail label={label('Accuracy','Akurasi')} value={doc.confidence == null ? '—' : doc.confidence+'%'} />
