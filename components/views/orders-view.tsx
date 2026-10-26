@@ -74,7 +74,7 @@ export function OrdersView() {
         globalMutate(`/api/accounting?businessId=${encodeURIComponent(business.id)}`),
         globalMutate(`/api/dashboard?businessId=${encodeURIComponent(business.id)}`),
       ])
-      toast.success('Order status updated')
+      toast.success(t('toast.orderStatusUpdated'))
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to update order status')
     }
@@ -100,7 +100,7 @@ export function OrdersView() {
         globalMutate(`/api/accounting?businessId=${encodeURIComponent(business.id)}`),
         globalMutate(`/api/dashboard?businessId=${encodeURIComponent(business.id)}`),
       ])
-      toast.success('Order cancelled successfully')
+      toast.success(t('toast.orderCancelled'))
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to cancel order')
     }
@@ -121,7 +121,7 @@ export function OrdersView() {
     if (!response.ok) throw new Error(result.error ?? 'Unable to update order')
     setEditTarget(null)
     await mutateOrders()
-    toast.success('Order updated successfully')
+    toast.success(t('toast.orderUpdated'))
   }
 
   const error = businessError || ordersError || paymentsError || customersError || productsError || returnsError
@@ -222,7 +222,7 @@ export function OrdersView() {
         open={!!editTarget}
         onOpenChange={(nextOpen) => { if (!nextOpen) setEditTarget(null) }}
         title={t('common.edit') + ' Order'}
-        description="Edit the due date and notes. Posted order dates, customer, quantities, prices, stock and accounting entries stay locked to preserve transaction history."
+        description={t('orders.editHelp')}
         persisted
         fields={[
           {
@@ -245,8 +245,8 @@ export function OrdersView() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
-        title="Cancel Order"
-        description={deleteTarget ? `Cancel Order ${deleteTarget.id}? This preserves its audit trail and reverses stock and accounting entries. Orders with payments or deliveries cannot be cancelled.` : ''}
+        title={t('orders.cancelTitle')}
+        description={deleteTarget ? t('orders.cancelConfirm', { id: deleteTarget.id }) : ''}
         confirmLabel="Cancel Order"
         onConfirm={() => { void cancelOrder() }}
       />
