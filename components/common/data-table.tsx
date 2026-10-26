@@ -371,7 +371,7 @@ export function DataTable<T>({
                           c.className,
                         )}
                       >
-                        <div className="block min-w-0 max-w-full truncate" title={typeof content === 'string' || typeof content === 'number' ? String(content) : undefined}>
+                        <div className={cn("block min-w-0 max-w-full", (typeof content === 'string' || typeof content === 'number') && "truncate")} title={typeof content === 'string' || typeof content === 'number' ? String(content) : undefined}>
                         {href && index === 0 ? (
                           <Link
                             href={href}
