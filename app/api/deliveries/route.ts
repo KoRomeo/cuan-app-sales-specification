@@ -93,6 +93,15 @@ export async function POST(request: Request) {
           transportAccount: resolvedTransportAccount,
         })
         deliveryIds.push(deliveryId)
+        const cost = Number((Number(transportCost) / orderIds.length).toFixed(2))
+        if (cost > 0) {
+          const journalId = "JE-DEL-TRANSPORT-" + deliveryId
+          await tx.insert(journalEntries).values({ id: journalId, businessId, entryDate: date, kind: "transport", reference: deliveryId, description: "Delivery transport cost " + deliveryId })
+          await tx.insert(journalEntryLines).values([
+            { id: journalId + "-expense", journalEntryId: journalId, account: "Transport Expense", debit: cost.toFixed(2), credit: "0" },
+            { id: journalId + "-cash", journalEntryId: journalId, account: resolvedTransportAccount, debit: "0", credit: cost.toFixed(2) },
+          ])
+        }
       }
       // Stock and COGS are recorded when the Order is created. Delivery only updates per-Order delivery status.
       await tx.update(orders).set({ status: "delivered" })
@@ -107,6 +116,7 @@ export async function POST(request: Request) {
       ORDER_NOT_FOUND: ["One or more orders were not found for this business", 404],
       ORDER_STATE: ["Cancelled or already delivered orders cannot be added to a new delivery", 409],
       ORDER_ALREADY_ASSIGNED: ["Each order can be assigned to only one delivery", 409],
+      TRANSPORT_ACCOUNT_NOT_FOUND: ["Select an active cash or bank account for delivery costs", 400],
     }
     if (map[message]) return NextResponse.json({ error: map[message][0] }, { status: map[message][1] })
     console.error("POST /api/deliveries", error)
