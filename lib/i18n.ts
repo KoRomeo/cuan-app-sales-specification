@@ -880,7 +880,7 @@ const id: Record<TranslationKey, string> = {
   'toast.stockSaved': 'Penyesuaian stok berhasil disimpan',
   'toast.orderStatusUpdated': 'Status pesanan berhasil diperbarui',
   'toast.orderCancelled': 'Pesanan berhasil dibatalkan',
-  'toast.orderUpdated': 'Pesanan berhasil diperbarui'
+  'toast.orderUpdated': 'Pesanan berhasil diperbarui',
   'common.all': 'Semua',
   'common.showing': 'Menampilkan',
   'common.of': 'dari',
