@@ -28,7 +28,7 @@ const fetcher = async (url: string) => {
 }
 
 export function FinancialAccountsView() {
-  const { t } = useApp()
+  const { t, locale } = useApp()
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [type, setType] = useState<'cash' | 'bank'>('bank')
@@ -151,7 +151,7 @@ export function FinancialAccountsView() {
           <div className="space-y-2"><Label htmlFor="cash-transaction-amount">Amount (Rp)</Label><Input id="cash-transaction-amount" type="number" min="1" value={transactionAmount} onChange={(event) => setTransactionAmount(event.target.value)} placeholder="0" /></div>
           {transactionMode === 'money_in' ? <>
             <div className="space-y-2"><Label htmlFor="money-in-account">Deposit to</Label><SearchableSelect value={transactionAccount} onChange={(value) => setTransactionAccount(String(value))} options={activeAccounts.map((item) => ({value:item.name,label:item.name}))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} /></div>
-            <div className="space-y-2"><Label htmlFor="money-in-category">Source / category</Label><SearchableSelect value={category} onChange={(value) => setCategory(String(value))} options={[{value:'owner_capital',label:t('finance.ownerCapital')},{value:'loan_received',label:t('finance.loanReceived')},{value:'other_income',label:t('finance.otherIncome')}]} placeholder={t('common.select')} searchPlaceholder={t('common.search')} /></div>
+            <div className="space-y-2"><Label htmlFor="money-in-category">Source / category</Label><SearchableSelect value={category} onChange={(value) => setCategory(String(value))} options={[{value:'owner_capital',label:locale === 'id' ? 'Modal pemilik' : 'Owner capital'},{value:'loan_received',label:locale === 'id' ? 'Pinjaman diterima' : 'Loan received'},{value:'other_income',label:locale === 'id' ? 'Pendapatan lain' : 'Other income'}]} placeholder={t('common.select')} searchPlaceholder={t('common.search')} /></div>
           </> : <>
             <div className="space-y-2"><Label htmlFor="transfer-from">From account</Label><SearchableSelect value={fromAccount} onChange={(value) => setFromAccount(String(value))} options={activeAccounts.map((item) => ({value:item.name,label:item.name}))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} /></div>
             <div className="space-y-2"><Label htmlFor="transfer-to">To account</Label><SearchableSelect value={toAccount} onChange={(value) => setToAccount(String(value))} options={activeAccounts.filter((item) => item.name !== fromAccount).map((item) => ({value:item.name,label:item.name}))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} /></div>
