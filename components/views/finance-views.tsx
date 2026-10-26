@@ -212,7 +212,7 @@ export function SalesReportView() {
   }, [period])
 
   const columns = (nameHeader: string): Column<SalesRow>[] => [
-    { key: 'name', header: nameHeader, cell: (r) => <span className="font-medium">{r.name}</span> },
+    { key: 'name', header: nameHeader, className: nameHeader === t('common.product') ? 'w-[32%]' : undefined, cell: (r) => <span className="block truncate font-medium" title={r.name}>{r.name}</span> },
     { key: 'qty', header: t('common.qty'), align: 'right', cell: (r) => <span className="font-mono tabular-nums">{formatNumber(r.qty)}</span> },
     { key: 'revenue', header: t('reports.revenue'), align: 'right', cell: (r) => <Money value={r.revenue} /> },
     { key: 'profit', header: t('reports.grossProfit'), align: 'right', cell: (r) => <Money value={r.revenue - r.cogs} /> },
