@@ -280,7 +280,7 @@ export function DataTable<T>({
         <table aria-label={t('common.dataTable')} aria-busy={loading} className={cn('w-full table-fixed text-sm', scrollable ? 'min-w-[720px]' : '')}>
           <thead>
             <tr className="border-b bg-muted/40">
-              {selectable && selectionMode && <th className="w-10 px-3"><input aria-label="Select all visible rows" type="checkbox" checked={visibleRows.length > 0 && visibleRows.every((row) => selectedRowIds.includes(getRowId(row)))} onChange={(event) => { const ids = new Set(selectedRowIds); visibleRows.forEach((row) => event.target.checked ? ids.add(getRowId(row)) : ids.delete(getRowId(row))); onSelectedRowIdsChange?.([...ids]) }} /></th>}
+              {selectable && selectionMode && <th className="w-10 px-3"><input aria-label={t('common.selectAllRows')} type="checkbox" checked={visibleRows.length > 0 && visibleRows.every((row) => selectedRowIds.includes(getRowId(row)))} onChange={(event) => { const ids = new Set(selectedRowIds); visibleRows.forEach((row) => event.target.checked ? ids.add(getRowId(row)) : ids.delete(getRowId(row))); onSelectedRowIdsChange?.([...ids]) }} /></th>}
               {visibleColumns.map((c) => {
                 const sortable = c.sortable !== false
                 const direction = sort?.key === c.key ? sort.dir : null
@@ -359,7 +359,7 @@ export function DataTable<T>({
                   onClick={href ? () => router.push(href) : undefined}
                   className={cn('border-b transition-colors last:border-0 hover:bg-muted/40', href && 'cursor-pointer')}
                 >
-                  {selectable && selectionMode && <td className="w-10 px-3"><input aria-label={`Select ${getRowId(row)}`} type="checkbox" checked={selectedRowIds.includes(getRowId(row))} onClick={(event) => event.stopPropagation()} onChange={(event) => { const ids = new Set(selectedRowIds); event.target.checked ? ids.add(getRowId(row)) : ids.delete(getRowId(row)); onSelectedRowIdsChange?.([...ids]) }} /></td>}
+                  {selectable && selectionMode && <td className="w-10 px-3"><input aria-label={t('common.selectRow', { id: getRowId(row) })} type="checkbox" checked={selectedRowIds.includes(getRowId(row))} onClick={(event) => event.stopPropagation()} onChange={(event) => { const ids = new Set(selectedRowIds); event.target.checked ? ids.add(getRowId(row)) : ids.delete(getRowId(row)); onSelectedRowIdsChange?.([...ids]) }} /></td>}
                   {visibleColumns.map((c, index) => {
                     const content = c.cell(row)
                     return (
