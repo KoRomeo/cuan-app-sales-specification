@@ -112,7 +112,7 @@ export function NewOrderView() {
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <Label htmlFor="customer">{t('common.customer')}</Label>
-                <SearchableSelect name="customerId" value={customerId} onChange={(value) => setCustomerId(String(value))} options={customerRows.map((customer) => ({ value: customer.id, label: customer.name }))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />
+                <SearchableSelect id="customer" name="customerId" value={customerId} onChange={(value) => setCustomerId(String(value))} options={customerRows.map((customer) => ({ value: customer.id, label: customer.name }))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="date">{t('orders.orderDate')}</Label>
