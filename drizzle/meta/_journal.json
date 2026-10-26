@@ -85,6 +85,13 @@
       "when": 1792713600000,
       "tag": "0011_repair_purchase_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793011200000,
+      "tag": "0012_delivery_transport_account",
+      "breakpoints": true
     }
   ]
 }
