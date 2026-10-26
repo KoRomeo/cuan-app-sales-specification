@@ -170,6 +170,7 @@ export function FormDialog({
                   </Label>
                   {field.type === 'select' || field.type === 'multiselect' ? (
                     <SearchableSelect
+                      id={id}
                       name={field.name}
                       value={selectValues[field.name] ?? (field.type === 'multiselect' ? [] : field.defaultValue ?? '')}
                       onChange={(value) => {
