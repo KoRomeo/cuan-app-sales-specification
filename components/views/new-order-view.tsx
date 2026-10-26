@@ -8,6 +8,7 @@ import { useSWRConfig } from 'swr'
 import useSWR from 'swr'
 import { appToast as toast } from '@/lib/toast'
 import { selectClass } from '@/components/common/form-dialog'
+import { SearchableSelect } from '@/components/common/searchable-select'
 import { PageHeader } from '@/components/common/page-header'
 import { SectionCard } from '@/components/common/section-card'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
@@ -112,12 +113,7 @@ export function NewOrderView() {
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <Label htmlFor="customer">{t('common.customer')}</Label>
-                <select id="customer" name="customerId" className={selectClass} value={customerId} onChange={(event) => setCustomerId(event.target.value)} required>
-                  <option value="">Select</option>
-                  {customerRows.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                <SearchableSelect name="customerId" value={customerId} onChange={(value) => setCustomerId(String(value))} options={customerRows.map((customer) => ({ value: customer.id, label: customer.name }))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="date">{t('orders.orderDate')}</Label>
@@ -138,20 +134,7 @@ export function NewOrderView() {
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-12">
                       <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-4">
                         <Label htmlFor={`p-${l.key}`}>{t('common.product')}</Label>
-                        <select
-                          id={`p-${l.key}`}
-                          name={`product-${l.key}`}
-                          className={selectClass}
-                          required
-                          value={l.productId}
-                          onChange={(e) => update(l.key, { productId: e.target.value, price: productsById.get(e.target.value)?.sellingPrice ?? 0 })}
-                        >
-                          {productRows.map((pr) => (
-                            <option key={pr.id} value={pr.id}>
-                              {pr.name}{pr.stock !== undefined && pr.stock !== null ? ` (${pr.stock})` : ''}
-                            </option>
-                          ))}
-                        </select>
+                        <SearchableSelect name={`product-${l.key}`} value={l.productId} onChange={(value) => update(l.key, { productId: String(value), price: productsById.get(String(value))?.sellingPrice ?? 0 })} options={productRows.map((product) => ({ value: product.id, label: product.name, description: `${t('inventory.stock')}: ${productsById.get(product.id)?.stock ?? 0}` }))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />
                       </div>
                       <div className="flex flex-col gap-1.5 sm:col-span-2">
                         <Label htmlFor={`q-${l.key}`}>{t('common.qty')}</Label>
