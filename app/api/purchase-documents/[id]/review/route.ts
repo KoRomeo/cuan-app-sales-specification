@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { and, eq } from "drizzle-orm"
 import { db } from "@/lib/db"
-import { purchaseDocuments, purchases } from "@/lib/db/schema"
+import { journalEntries, purchaseDocuments, purchases, stockMovements } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -37,6 +37,8 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
       const updatedData = { ...current, invoiceNumber: typeof data.invoiceNumber === "string" ? data.invoiceNumber : current.invoiceNumber, date, dueDate }
       const [updated] = await db.transaction(async (tx) => {
         await tx.update(purchases).set({ date, dueDate }).where(and(eq(purchases.id, document.purchaseId!), eq(purchases.businessId, businessId)))
+        await tx.update(stockMovements).set({ date }).where(and(eq(stockMovements.businessId, businessId), eq(stockMovements.reference, `purchase:${document.purchaseId}:receive`)))
+        await tx.update(journalEntries).set({ entryDate: date }).where(and(eq(journalEntries.businessId, businessId), eq(journalEntries.reference, document.purchaseId!)))
         return tx.update(purchaseDocuments).set({ extractedData: updatedData, updatedAt: new Date() })
           .where(and(eq(purchaseDocuments.id, id), eq(purchaseDocuments.businessId, businessId), eq(purchaseDocuments.status, "confirmed"))).returning()
       })
