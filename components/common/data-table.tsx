@@ -276,7 +276,7 @@ export function DataTable<T>({
         </div>
       </div>
 
-      <div className={scrollable ? 'overflow-x-auto' : 'overflow-x-hidden'}>
+      <div className={'overflow-x-auto'}>
         <table aria-label={t('common.dataTable')} aria-busy={loading} className={cn('w-full table-auto text-sm', scrollable ? 'min-w-max' : 'min-w-0')}>
           <thead>
             <tr className="border-b bg-muted/40">
