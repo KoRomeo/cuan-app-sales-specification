@@ -82,7 +82,7 @@ export function PurchaseDocumentsView(){
  {error&&<p role="alert" className="text-sm text-destructive">{error.message}</p>}{!docs&&!error&&<p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
  <div className="overflow-x-auto rounded-lg border bg-card"><table className="w-full min-w-[900px] table-fixed text-sm">
   <thead className="bg-muted/40"><tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-   <th className="w-[31%] px-4 py-3"><button type="button" onClick={()=>toggleSort("fileName")} className="font-medium hover:text-foreground">{label("Document","Dokumen")} {sortBy==="fileName"?(sortDirection==="asc"?"↑":"↓"):"↕"}</button></th>
+   <th className="w-[31%] px-4 py-3"><button type="button" onClick={()=>toggleSort("createdAt")} className="font-medium hover:text-foreground">{label("Document","Dokumen")} {sortBy==="createdAt"?(sortDirection==="asc"?"↑":"↓"):"↕"}</button></th>
    <th className="w-[16%] px-4 py-3"><button type="button" onClick={()=>toggleSort("status")} className="font-medium hover:text-foreground">{label("Status","Status")} {sortBy==="status"?(sortDirection==="asc"?"↑":"↓"):"↕"}</button></th>
    <th className="w-[32%] px-4 py-3">{label("Content summary","Ringkasan isi")}</th>
    <th className="w-[9%] px-4 py-3"><button type="button" onClick={()=>toggleSort("confidence")} className="font-medium hover:text-foreground">{label("Accuracy","Akurasi")} {sortBy==="confidence"?(sortDirection==="asc"?"↑":"↓"):"↕"}</button></th>
