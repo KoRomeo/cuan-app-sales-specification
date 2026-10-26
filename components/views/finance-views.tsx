@@ -333,7 +333,7 @@ export function InventoryReportView() {
 
   const columns: Column<(typeof products)[number]>[] = [
     { key: 'id', header: 'ID', cell: (p) => <IdCell>{p.id}</IdCell> },
-    { key: 'name', header: t('common.product'), cell: (p) => <span className="font-medium">{p.name}</span> },
+    { key: 'name', header: t('common.product'), className: 'w-[32%]', cell: (p) => <span className="block truncate font-medium" title={p.name}>{p.name}</span> },
     {
       key: 'stock',
       header: t('nav.stock'),
