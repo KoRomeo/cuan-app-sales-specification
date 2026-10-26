@@ -228,6 +228,7 @@ transportCost: decimal("transport_cost", {
     precision: 14,
     scale: 2,
 }).notNull().default("0"),
+transportAccount: text("transport_account").notNull().default("Cash"),
 })
 
 // One delivery can contain multiple orders. Legacy deliveries.orderId is retained for backward compatibility.
