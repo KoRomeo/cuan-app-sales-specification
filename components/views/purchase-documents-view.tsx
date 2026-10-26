@@ -26,7 +26,7 @@ async function optimizeInvoiceImage(file:File):Promise<{file:File;storageFileNam
   if(!blob||blob.type!=="image/webp"||blob.size>=file.size)return {file,storageFileName:file.name,optimized:false}
   const baseName=file.name.replace(/\.[^.]+$/,"")||"invoice"
   return {file:new File([blob],baseName+".webp",{type:"image/webp",lastModified:file.lastModified}),storageFileName:baseName+".webp",optimized:true}
- }finally{URL.revokeObjectURL(objectUrl)}
+ }catch{return {file,storageFileName:file.name,optimized:false}}finally{URL.revokeObjectURL(objectUrl)}
 }
 const normalize=(s:string)=>s.toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\([^)]*\)/g," ").replace(/[^a-z0-9]+/g," ").trim()
 function similarity(a:string,b:string){const x=normalize(a),y=normalize(b);if(!x||!y)return 0;if(x===y)return 1;if(x.includes(y)||y.includes(x))return Math.min(x.length,y.length)/Math.max(x.length,y.length)+0.25;const A=new Set(x.split(" ")),B=new Set(y.split(" "));return 2*[...A].filter(v=>B.has(v)).length/(A.size+B.size)}
