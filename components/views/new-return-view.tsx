@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { selectClass } from '@/components/common/form-dialog'
+import { SearchableSelect } from '@/components/common/searchable-select'
 import { appToast as toast } from '@/lib/toast'
 import { TODAY } from '@/lib/data'
 import { formatIDR } from '@/lib/format'
@@ -84,7 +85,21 @@ export function NewReturnView() {
   const order = orders?.find((row) => row.id === orderId)
   const customer = customers?.find((row) => row.id === order?.customerId)
   const productName = (id: string) => products?.find((row) => row.id === id)?.name ?? id
-  const orderedLines = (order?.items ?? []).map((item) => ({ ...item, price: Number(item.price), discount: Number(item.discount ?? 0) }))
+  const orderedLines = [...(order?.items ?? []).reduce((grouped, item) => {
+    const previous = grouped.get(item.productId)
+    const qty = Number(item.qty)
+    const price = Number(item.price)
+    const discount = Number(item.discount ?? 0)
+    if (previous) {
+      const nextQty = previous.qty + qty
+      previous.price = nextQty > 0 ? (previous.price * previous.qty + price * qty) / nextQty : price
+      previous.discount += discount
+      previous.qty = nextQty
+    } else {
+      grouped.set(item.productId, { ...item, qty, price, discount })
+    }
+    return grouped
+  }, new Map<string, { productId: string; qty: number; price: number; discount: number; [key: string]: any }>()).values()]
   const returnedQty = (productId: string) => (previousReturns ?? []).filter((row) => row.orderId === orderId && row.id !== editId).flatMap((row) => row.items ?? []).filter((item) => item.productId === productId).reduce((sum, item) => sum + Number(item.qty), 0)
   const eligibleLines = orderedLines.map((item) => ({ ...item, remaining: Math.max(0, Number(item.qty) - returnedQty(item.productId)) })).filter((item) => item.remaining > 0)
   const linePrice = (line: Line) => {
@@ -145,7 +160,7 @@ export function NewReturnView() {
         <SectionCard title={t('returns.information')}>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5"><Label htmlFor="return-customer">{t('common.customer')}</Label><div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 text-sm">{customer?.name ?? t('returns.selectOrderFirst')}</div></div>
-            <div className="flex flex-col gap-1.5"><Label htmlFor="return-order">{t('returns.linkedOrder')}</Label><select id="return-order" className={selectClass} value={orderId} disabled={!!editId} onChange={(event) => { setOrderId(event.target.value); const next = orders.find((row) => row.id === event.target.value); const first = (next?.items ?? []).find((item) => Number(item.qty) - (previousReturns ?? []).filter((row) => row.orderId === (next?.id ?? '')).flatMap((row) => row.items ?? []).filter((returnedItem) => returnedItem.productId === item.productId).reduce((sum, item) => sum + Number(item.qty), 0) > 0); setLines([{ key: Date.now(), productId: first?.productId ?? '', qty: 1 }]); setRefundAmount('0') }} required><option value="">{t('returns.selectOrder')}</option>{orders.filter((row) => row.status !== 'cancelled').map((row) => <option key={row.id} value={row.id}>{row.id} — {customers.find((c) => c.id === row.customerId)?.name ?? row.customerId}</option>)}</select></div>
+            <div className="flex flex-col gap-1.5"><Label htmlFor="return-order">{t('returns.linkedOrder')}</Label><SearchableSelect value={orderId} disabled={!!editId} onChange={(value) => { const nextOrderId = String(value); setOrderId(nextOrderId); const next = orders.find((row) => row.id === nextOrderId); const totals = new Map<string, number>(); for (const item of next?.items ?? []) totals.set(item.productId, (totals.get(item.productId) ?? 0) + Number(item.qty)); const first = [...totals.entries()].find(([productId, qty]) => qty - (previousReturns ?? []).filter((row) => row.orderId === (next?.id ?? '')).flatMap((row) => row.items ?? []).filter((returnedItem) => returnedItem.productId === productId).reduce((sum, item) => sum + Number(item.qty), 0) > 0); setLines([{ key: Date.now(), productId: first?.[0] ?? '', qty: 1 }]); setRefundAmount('0') }} options={orders.filter((row) => row.status !== 'cancelled').map((row) => ({ value: row.id, label: row.id, description: customers.find((c) => c.id === row.customerId)?.name ?? row.customerId }))} placeholder={t('returns.selectOrder')} searchPlaceholder={t('common.search')} required /></div>
             <div className="flex flex-col gap-1.5"><Label>{t('returns.orderDate')}</Label><div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 font-mono text-sm">{order?.date ?? '—'}</div></div>
           </div>
           <div className="mt-4 border-t pt-4">
@@ -181,7 +196,7 @@ export function NewReturnView() {
             const remaining = eligibleLines.find((item) => item.productId === line.productId)?.remaining ?? 0
             const subtotal = linePrice(line)
             return <li key={line.key} className="rounded-lg border p-3"><div className="grid grid-cols-2 gap-3 sm:grid-cols-12">
-              <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-4"><Label>{t('common.product')}</Label><select className={selectClass} value={line.productId} onChange={(event) => setLines((prev) => prev.map((item) => item.key === line.key ? {...item, productId:event.target.value,qty:1} : item))} required><option value="">Select product</option>{eligibleLines.map((item) => <option key={item.productId} value={item.productId}>{productName(item.productId)} ({t('returns.remaining')} {item.remaining})</option>)}</select></div>
+              <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-4"><Label>{t('common.product')}</Label><SearchableSelect value={line.productId} onChange={(value) => setLines((prev) => prev.map((item) => item.key === line.key ? {...item, productId:String(value),qty:1} : item))} options={eligibleLines.filter((item) => !lines.some((other) => other.key !== line.key && other.productId === item.productId)).map((item) => ({ value: item.productId, label: productName(item.productId), description: `${t('returns.remaining')}: ${item.remaining}` }))} placeholder={t('returns.chooseProductHelp')} searchPlaceholder={t('common.search')} required /></div>
               <div className="flex flex-col gap-1.5 sm:col-span-2"><Label>{t('returns.qtyReturned')}</Label><Input type="number" min={1} max={remaining || 1} value={line.qty} onChange={(event) => setLines((prev) => prev.map((item) => item.key===line.key?{...item,qty:Number(event.target.value)}:item))} required /></div>
               <div className="flex flex-col gap-1.5 sm:col-span-2"><Label>{t('returns.priceRp')}</Label><div className="flex h-10 items-center rounded-md border bg-muted/30 px-3 font-mono text-sm">{sold ? formatIDR(Number(sold.price)) : '—'}</div></div>
               <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-3"><Label>{t('returns.subtotal')}</Label><div className="flex h-10 items-center truncate font-mono text-sm font-semibold text-destructive" title={formatIDR(subtotal)}>−{formatIDR(subtotal)}</div></div>
@@ -198,7 +213,7 @@ export function NewReturnView() {
           <dl className="flex flex-col gap-3 text-sm"><div className="flex justify-between"><dt className="text-muted-foreground">{t('returns.returnTotal')}</dt><dd className="font-mono text-lg font-semibold tabular-nums">{formatIDR(total)}</dd></div></dl>
           {refundCustomer==='yes' && <div className="mt-4 flex flex-col gap-3">
             <div className="flex flex-col gap-1.5"><Label htmlFor="refund-amount">{t('returns.totalRefund')} (Rp)</Label><Input id="refund-amount" type="number" min={1} max={maxRefund} value={refundAmount} onChange={(event)=>setRefundAmount(event.target.value)} required /><p className="text-xs text-muted-foreground">{t('returns.maximumRefund', { amount: formatIDR(maxRefund) })}</p>{maxRefund <= 0 && <p className="text-xs text-destructive">{t('returns.noRefundableBalance')}</p>}</div>
-            {Number(refundAmount) > 0 && <div className="flex flex-col gap-1.5"><Label htmlFor="refund-account">{t('returns.refundAccount')}</Label><select id="refund-account" className={selectClass} value={selectedRefundAccount} onChange={(event)=>setRefundAccount(event.target.value)} required><option value="">{t('returns.selectCashBank')}</option>{activeFinancialAccounts.map((account)=><option key={account.id} value={account.name}>{account.name}</option>)}</select>{activeFinancialAccounts.length===0 && <p className="text-xs text-destructive">{t('returns.createAccountHint')}</p>}</div>}
+            {Number(refundAmount) > 0 && <div className="flex flex-col gap-1.5"><Label htmlFor="refund-account">{t('returns.refundAccount')}</Label><SearchableSelect value={selectedRefundAccount} onChange={(value)=>setRefundAccount(String(value))} options={activeFinancialAccounts.map((account)=>({value:account.name,label:account.name,description:account.type}))} placeholder={t('returns.selectCashBank')} searchPlaceholder={t('common.search')} required />{activeFinancialAccounts.length===0 && <p className="text-xs text-destructive">{t('returns.createAccountHint')}</p>}</div>}
           </div>}
           <div className="mt-4 flex flex-col gap-1.5"><Label htmlFor="return-date">{t('common.date')}</Label><Input id="return-date" type="date" value={returnDate} onChange={(event)=>setReturnDate(event.target.value)} required /></div>
           <div className="mt-5 flex gap-2 border-t pt-4"><Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/returns" />}>{t('common.cancel')}</Button><Button type="submit" className="flex-1" disabled={saving||!orderId||invalidLine||!lines.length||(refundCustomer==='yes'&&(Number(refundAmount)<=0||Number(refundAmount)>maxRefund||!selectedRefundAccount))}>{saving?t('returns.saving'):t('returns.save')}</Button></div>
