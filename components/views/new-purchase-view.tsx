@@ -53,6 +53,7 @@ export function NewPurchaseView() {
     if (!supplierId) { toast.error('Select a supplier.'); return }
     if (!items.length || items.some(item=>!item.productId || !Number.isInteger(Number(item.qty)) || Number(item.qty)<=0 || Number(item.qty)>MAX_PURCHASE_QTY || !Number.isFinite(Number(item.unitCost)) || Number(item.unitCost)<0 || Number(item.unitCost)>MAX_UNIT_PRICE)) { toast.error('Add at least one valid purchase item.'); return }
     if (paidAmount > total) { toast.error('Payment cannot exceed purchase total.'); return }
+     if (paidAmount > 0 && !selectedPaymentAccount) { toast.error(t('returns.createAccountHint')); return }
     setSaving(true)
     try {
       const stamp=crypto.randomUUID()
@@ -121,7 +122,7 @@ export function NewPurchaseView() {
             {paidAmount > 0 && <div className="flex flex-col gap-1.5"><Label htmlFor="purchase-payment-account">{t('returns.refundAccount')}</Label><SearchableSelect id="purchase-payment-account" value={selectedPaymentAccount} onChange={(value)=>setPaymentAccount(String(value))} options={activeFinancialAccounts.map((account)=>({value:account.name,label:account.name,description:account.type==='cash'?'Cash':'Bank'}))} placeholder={t('returns.selectCashBank')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />{activeFinancialAccounts.length===0&&<p className="text-xs text-destructive">{t('returns.createAccountHint')}</p>}</div>}
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">{t('common.outstanding')}</span><span className="font-mono font-semibold tabular-nums text-warning">{formatIDR(Math.max(total-paidAmount,0))}</span></div>
           </div>
-          <div className="mt-5 flex gap-2"><Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/purchases"/>}>{t('common.cancel')}</Button><Button type="submit" className="flex-1" disabled={saving}>{saving?'Saving…':'Save Purchase'}</Button></div>
+          <div className="mt-5 flex gap-2"><Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/purchases"/>}>{t('common.cancel')}</Button><Button type="submit" className="flex-1" disabled={saving || (paidAmount > 0 && !selectedPaymentAccount)}>{saving?'Saving…':'Save Purchase'}</Button></div>
         </SectionCard>
       </div>
     </form>
