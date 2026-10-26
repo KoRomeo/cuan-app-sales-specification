@@ -373,3 +373,23 @@
   background: var(--primary);
   box-shadow: 0 0 0 5px color-mix(in oklch, var(--primary) 12%, transparent);
 }
+
+/* Keep the orbiting dot visibly animated even if the ring's rotation is hard to perceive. */
+.cuan-loading-orbit {
+  transform-origin: center;
+  will-change: transform;
+}
+.cuan-loading-orbit__dot {
+  animation: cuan-loading-dot-pulse 900ms ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+@keyframes cuan-loading-dot-pulse {
+  0%, 100% { transform: scale(0.82); opacity: 0.78; }
+  50% { transform: scale(1.18); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cuan-loading-orbit__dot {
+    animation-duration: 1.8s;
+  }
+}
