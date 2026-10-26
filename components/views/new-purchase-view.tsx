@@ -20,6 +20,7 @@ const fetcher = (url: string) => fetch(url).then(async r => { if (!r.ok) throw n
 type Product = { id: string; name: string; averageCost?: number | string }
 type StockRow = { productId: string; stock: number | string }
 type Supplier = { id: string; name: string }
+type FinancialAccountRow = { id: string; name: string; type: 'cash' | 'bank'; active: boolean }
 type Item = { key: string; productId: string; qty: string; unitCost: string }
 const MAX_PURCHASE_QTY = 999999
 const MAX_UNIT_PRICE = 999999999999
@@ -31,11 +32,13 @@ export function NewPurchaseView() {
   const { data: suppliers, error: supplierError } = useSWR<Supplier[]>(business?.id ? '/api/suppliers?businessId='+encodeURIComponent(business.id) : null, fetcher)
   const { data: products, error: productError } = useSWR<Product[]>(business?.id ? '/api/products?businessId='+encodeURIComponent(business.id) : null, fetcher)
   const { data: stockRows } = useSWR<StockRow[]>(business?.id ? '/api/stock?businessId='+encodeURIComponent(business.id) : null, fetcher)
+  const { data: financialAccounts } = useSWR<FinancialAccountRow[]>(business?.id ? '/api/financial-accounts?businessId='+encodeURIComponent(business.id) : null, fetcher)
   const [supplierId,setSupplierId] = useState('')
   const [date,setDate] = useState(TODAY)
   const [dueDate,setDueDate] = useState('')
   const [notes,setNotes] = useState('')
   const [paid,setPaid] = useState('0')
+  const [paymentAccount,setPaymentAccount] = useState('')
   const [items,setItems] = useState<Item[]>([{key:'1',productId:'',qty:'1',unitCost:''}])
   const [saving,setSaving] = useState(false)
   if (supplierError || productError) return <p role="alert" className="text-sm text-destructive">{supplierError?.message ?? productError?.message}</p>
@@ -43,6 +46,8 @@ export function NewPurchaseView() {
   const currentStock = (productId:string) => Number(stockRows?.find(row=>row.productId===productId)?.stock ?? 0)
   const total = items.reduce((sum,item)=>sum+Math.max(0,Number(item.qty)||0)*Math.max(0,Number(item.unitCost)||0),0)
   const paidAmount = Math.max(0,Number(paid)||0)
+  const activeFinancialAccounts = (financialAccounts ?? []).filter((account) => account.active)
+  const selectedPaymentAccount = paymentAccount || activeFinancialAccounts.find((account) => account.name.toLowerCase() === 'cash')?.name || activeFinancialAccounts[0]?.name || ''
   const updateItem = (key:string,patch:Partial<Item>) => setItems(current=>current.map(item=>item.key===key?{...item,...patch}:item))
   const save = async () => {
     if (!supplierId) { toast.error('Select a supplier.'); return }
@@ -53,7 +58,7 @@ export function NewPurchaseView() {
       const stamp=crypto.randomUUID()
       const response=await fetch('/api/purchases',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({
         businessId:business.id,date,supplierId,dueDate:(total > 0 && paidAmount >= total) ? null : (dueDate||null),notes,paidAmount,
-        paymentId:paidAmount>0?'PAY-'+stamp:undefined,paymentDate:date,paymentAccount:'Cash',
+        paymentId:paidAmount>0?'PAY-'+stamp:undefined,paymentDate:date,paymentAccount:selectedPaymentAccount,
         items:items.map(item=>({id:'PI-'+crypto.randomUUID(),productId:item.productId,qty:Number(item.qty),unitCost:Number(item.unitCost)}))
       })})
       const result=await response.json()
@@ -113,6 +118,7 @@ export function NewPurchaseView() {
           <div className="mt-4 flex flex-col gap-3 border-t pt-4">
             <div className="flex flex-col gap-1.5"><Label htmlFor="paid">Paid</Label><Input id="paid" type="number" min={0} max={Math.max(total,0)} className="font-mono" value={paid} onChange={e=>setPaid(e.target.value)}/></div>
             {total > 0 && paidAmount < total && <div className="flex flex-col gap-1.5"><Label htmlFor="due-date">{t('common.dueDate')}</Label><Input id="due-date" type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)}/></div>}
+            {paidAmount > 0 && <div className="flex flex-col gap-1.5"><Label htmlFor="purchase-payment-account">{t('returns.refundAccount')}</Label><SearchableSelect id="purchase-payment-account" value={selectedPaymentAccount} onChange={(value)=>setPaymentAccount(String(value))} options={activeFinancialAccounts.map((account)=>({value:account.name,label:account.name,description:account.type==='cash'?'Cash':'Bank'}))} placeholder={t('returns.selectCashBank')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />{activeFinancialAccounts.length===0&&<p className="text-xs text-destructive">{t('returns.createAccountHint')}</p>}</div>}
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">{t('common.outstanding')}</span><span className="font-mono font-semibold tabular-nums text-warning">{formatIDR(Math.max(total-paidAmount,0))}</span></div>
           </div>
           <div className="mt-5 flex gap-2"><Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/purchases"/>}>{t('common.cancel')}</Button><Button type="submit" className="flex-1" disabled={saving}>{saving?'Saving…':'Save Purchase'}</Button></div>
