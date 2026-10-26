@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
-import { businessMembers, customers, journalEntries, journalEntryLines, orderItems, orders, payments, products, stockMovements } from "@/lib/db/schema"
+import { businessMembers, customers, financialAccounts, journalEntries, journalEntryLines, orderItems, orders, payments, products, stockMovements } from "@/lib/db/schema"
 import { headers } from "next/headers"
 import { generateEntityId } from "@/lib/db/ids"
 import { writeAudit } from "@/lib/audit"
@@ -29,7 +29,7 @@ function items(value: unknown): value is Item[] {
   })
 }
 function fail(error: unknown, fallback = "Order operation failed") {
-  const map: Record<string, [string, number]> = { CUSTOMER_NOT_FOUND: ["Customer not found for this business", 404], PRODUCT_NOT_FOUND: ["One or more products were not found for this business", 404], PAYMENT_EXCEEDS_TOTAL: ["Payment cannot exceed order total", 400], PAYMENT_ID_EXISTS: ["Payment ID already exists", 409], ORDER_NOT_FOUND: ["Order not found", 404], ORDER_ID_EXISTS: ["Order ID already exists", 409], INVALID_STATUS: ["Invalid order status transition", 409], DELIVERED_IMMUTABLE: ["Delivered orders cannot be edited or cancelled", 409], DELIVERY_ALREADY_PROCESSED: ["Stock deduction for this order was already recorded", 409], NEGATIVE_STOCK: ["Delivery would create negative stock", 409], DELIVERY_REQUIRED: ["Mark an Order as delivered by creating a Delivery", 409], ORDER_ITEMS_IMMUTABLE: ["Order items cannot be edited after stock and accounting have been posted", 409], CANCEL_WITH_PAYMENTS_UNSUPPORTED: ["This Order has payments; cancellation is blocked until payment reversal or customer-credit handling is implemented", 409] }
+  const map: Record<string, [string, number]> = { CUSTOMER_NOT_FOUND: ["Customer not found for this business", 404], PRODUCT_NOT_FOUND: ["One or more products were not found for this business", 404], PAYMENT_EXCEEDS_TOTAL: ["Payment cannot exceed order total", 400], PAYMENT_ID_EXISTS: ["Payment ID already exists", 409], INVALID_FINANCIAL_ACCOUNT: ["Select an active Cash & Bank account for this business", 400], ORDER_NOT_FOUND: ["Order not found", 404], ORDER_ID_EXISTS: ["Order ID already exists", 409], INVALID_STATUS: ["Invalid order status transition", 409], DELIVERED_IMMUTABLE: ["Delivered orders cannot be edited or cancelled", 409], DELIVERY_ALREADY_PROCESSED: ["Stock deduction for this order was already recorded", 409], NEGATIVE_STOCK: ["Delivery would create negative stock", 409], DELIVERY_REQUIRED: ["Mark an Order as delivered by creating a Delivery", 409], ORDER_ITEMS_IMMUTABLE: ["Order items cannot be edited after stock and accounting have been posted", 409], CANCEL_WITH_PAYMENTS_UNSUPPORTED: ["This Order has payments; cancellation is blocked until payment reversal or customer-credit handling is implemented", 409] }
   const known = error instanceof Error ? map[error.message] : undefined
   if (known) return NextResponse.json({ error: known[0] }, { status: known[1] })
   console.error(fallback, error)
@@ -86,6 +86,8 @@ export async function POST(request: NextRequest) {
         { id: `${saleEntryId}-inventory`, journalEntryId: saleEntryId, account: "Inventory", debit: "0", credit: cogs.toFixed(2) },
       ])
       if (paidAmount > 0) {
+        const [account] = await tx.select({ id: financialAccounts.id }).from(financialAccounts).where(and(eq(financialAccounts.businessId, businessId), eq(financialAccounts.name, paymentAccount.trim()), eq(financialAccounts.active, true))).limit(1)
+        if (!account) throw new Error("INVALID_FINANCIAL_ACCOUNT")
         const [existingPayment] = await tx.select({ id: payments.id }).from(payments).where(eq(payments.id, paymentId)).limit(1)
         if (existingPayment) throw new Error("PAYMENT_ID_EXISTS")
         const entryId = `JE-PAY-${paymentId}`
