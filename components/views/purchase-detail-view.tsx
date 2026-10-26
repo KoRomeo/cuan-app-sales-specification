@@ -75,7 +75,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
   const uniqueProducts = new Set(purchase.items.map((item: { productId: string }) => item.productId)).size
   return <>
     <PageHeader
-      breadcrumbs={[{ label: t('nav.purchasing') }, { label: t('nav.purchases'), href: '/purchases' }, { label: data.id }]}
+      breadcrumbs={[{ label: t('nav.purchasing') }, { label: t('nav.purchases'), href: '/purchases' }]}
       title={<span className="font-mono">{data.id}</span>}
       meta={<PaymentStatusBadge status={purchasePaymentStatus(purchase as any)} />}
       actions={<>
