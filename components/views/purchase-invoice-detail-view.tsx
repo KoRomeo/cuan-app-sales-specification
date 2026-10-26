@@ -21,12 +21,12 @@ export function PurchaseInvoiceDetailView({ documentId }: { documentId: string }
   if (error) return <div role="alert" className="text-sm text-destructive">{error.message}</div>
   if (!business || !documents) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
   const doc = documents.find(d => d.id === documentId)
-  if (!doc) return <div className="space-y-3"><p className="text-sm text-muted-foreground">{locale === 'id' ? 'Dokumen faktur tidak ditemukan.' : 'Invoice document not found.'}</p><Button variant="outline" nativeButton={false} render={<Link href="/purchase-invoice" />}>{locale === 'id' ? 'Kembali ke faktur pembelian' : 'Back to purchase invoices'}</Button></div>
+  if (!doc) return <div className="space-y-3"><p className="text-sm text-muted-foreground">{locale === 'id' ? 'Dokumen faktur tidak ditemukan.' : 'Invoice document not found.'}</p><Button variant="outline" nativeButton={false} render={<Link href="/purchase-documents" />}>{locale === 'id' ? 'Kembali ke faktur pembelian' : 'Back to purchase invoices'}</Button></div>
   const invoice = doc.extractedData
   const label = (en: string, id: string) => locale === 'id' ? id : en
   const fileUrl = '/api/purchase-documents/'+encodeURIComponent(doc.id)+'/file?businessId='+encodeURIComponent(business.id)
   return <>
-    <PageHeader breadcrumbs={[{label:t('nav.purchasing')},{label:label('Purchase Invoice','Faktur Pembelian'),href:'/purchase-invoice'},{label:doc.fileName}]} title={label('Invoice details','Detail faktur')} description={doc.fileName} actions={<Button variant="outline" nativeButton={false} render={<Link href="/purchase-invoice" />}><ArrowLeft />{label('Back to invoices','Kembali ke faktur')}</Button>} />
+    <PageHeader breadcrumbs={[{label:t('nav.purchasing')},{label:label('Purchase Invoice','Faktur Pembelian'),href:'/purchase-documents'},{label:doc.fileName}]} title={label('Invoice details','Detail faktur')} description={doc.fileName} actions={<Button variant="outline" nativeButton={false} render={<Link href="/purchase-invoice" />}><ArrowLeft />{label('Back to invoices','Kembali ke faktur')}</Button>} />
     <div className="grid min-w-0 gap-5 xl:grid-cols-2">
       <SectionCard title={label('Stored invoice file','File faktur tersimpan')}>
         <p className="mb-3 text-xs text-muted-foreground">{new Date(doc.createdAt).toLocaleString(locale === 'id' ? 'id-ID' : 'en-US')} · {(doc.fileSize/1048576).toFixed(2)} MB</p>
