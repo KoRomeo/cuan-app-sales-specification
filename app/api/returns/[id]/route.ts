@@ -33,10 +33,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       order: order ?? null,
       customer: customer ?? null,
       items: items.map((item) => {
-        const sold = soldItems.find((line) => line.productId === item.productId)
+        const sold = soldItems.filter((line) => line.productId === item.productId)
         const qty = Number(item.qty)
-        const soldQty = Number(sold?.qty ?? qty)
-        const subtotal = Math.max(0, Number(sold?.price ?? item.price) * qty - Number(sold?.discount ?? 0) * qty / Math.max(1, soldQty))
+        const soldQty = sold.reduce((sum, line) => sum + Number(line.qty), 0) || qty
+        const weightedPrice = sold.length ? sold.reduce((sum, line) => sum + Number(line.price) * Number(line.qty), 0) / soldQty : Number(item.price)
+        const totalDiscount = sold.reduce((sum, line) => sum + Number(line.discount), 0)
+        const subtotal = Math.max(0, weightedPrice * qty - totalDiscount * qty / Math.max(1, soldQty))
         return { ...item, subtotal, productName: productRows.find((product) => product.id === item.productId)?.name ?? item.productId }
       }),
       refundAccount: journal.find((line) => Number(record.refundAmount) > 0 && line.account !== "Sales Returns" && line.account !== "Inventory" && line.account !== "Cost of Goods Sold" && line.account !== "Replacement Cost")?.account ?? null,
