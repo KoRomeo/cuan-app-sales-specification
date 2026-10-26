@@ -96,7 +96,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
               <thead><tr className="border-b bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
-                <th scope="col" className="h-10 px-4 text-left font-medium md:px-5">Product</th>
+                <th scope="col" className="h-10 w-[42%] px-4 text-left font-medium md:px-5">Product</th>
                 <th scope="col" className="h-10 px-4 text-right font-medium">Qty</th>
                 <th scope="col" className="h-10 px-4 text-right font-medium">Purchase price</th>
                 <th scope="col" className="h-10 px-4 text-right font-medium">Subtotal</th>
@@ -105,8 +105,8 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
                 {purchase.items.map((item: { productId: string; qty: number; price: number }, index: number) => {
                   const product = productById.get(item.productId)
                   return <tr key={data.items[index]?.id ?? item.productId}>
-                    <td className="px-4 py-3 md:px-5">
-                      <p className="font-medium">{product?.name ?? item.productId}</p>
+                    <td className="w-[42%] px-4 py-3 md:px-5">
+                      <p className="truncate font-medium" title={product?.name ?? item.productId}>{product?.name ?? item.productId}</p>
                       <p className="font-mono text-[11px] text-muted-foreground">{item.productId}</p>
                       <p className="mt-1 text-xs text-muted-foreground">Current stock: <span className="font-mono tabular-nums">{product ? product.stock.toLocaleString('id-ID') : '—'}</span></p>
                     </td>
