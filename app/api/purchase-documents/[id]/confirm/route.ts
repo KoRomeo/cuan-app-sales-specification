@@ -68,7 +68,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
    const paidAmount=Number(body.paidAmount??0)
    if(!Number.isFinite(paidAmount)||paidAmount<0||paidAmount>total)throw new Error("INVALID_PAID_AMOUNT")
    const paymentDate=body.paymentDate||date
-   if(paidAmount>0&&(!body.paymentId?.trim()||!/^\\d{4}-\\d{2}-\\d{2}$/.test(paymentDate)||Number.isNaN(Date.parse(paymentDate+"T00:00:00Z"))||!body.paymentAccount?.trim()))throw new Error("INVALID_PAYMENT")
+   if(paidAmount>0&&(!body.paymentId?.trim()||Number.isNaN(Date.parse(paymentDate+"T00:00:00Z"))||!body.paymentAccount?.trim()))throw new Error("INVALID_PAYMENT")
    let paymentAccount=""
    if(paidAmount>0){const [account]=await tx.select({name:financialAccounts.name}).from(financialAccounts).where(and(eq(financialAccounts.businessId,businessId),eq(financialAccounts.name,body.paymentAccount!.trim()),eq(financialAccounts.active,true))).limit(1);if(!account)throw new Error("PAYMENT_ACCOUNT_NOT_FOUND");paymentAccount=account.name}
    await tx.insert(purchases).values({id:purchaseId,businessId,date,supplierId,dueDate:paidAmount>=total?null:(dueDate||null),notes:body.notes||("Imported from invoice "+(typeof data.invoiceNumber==="string"?data.invoiceNumber:doc.fileName))})
