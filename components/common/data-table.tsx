@@ -30,6 +30,17 @@ export interface Column<T> {
   sortValue?: (row: T) => string | number | null | undefined
 }
 
+type ActionKind = 'view' | 'edit' | 'delete' | 'cancel' | 'other'
+
+function actionKind(label: string): ActionKind {
+  const value = label.trim().toLocaleLowerCase()
+  if (/^(view|lihat|detail|preview|pratinjau|tinjau)(\\b|$)/.test(value)) return 'view'
+  if (/^(edit|ubah|sunting)(\\b|$)/.test(value)) return 'edit'
+  if (/^(delete|hapus|remove)(\\b|$)/.test(value)) return 'delete'
+  if (/^(cancel|batalkan|batal)(\\b|$)/.test(value)) return 'cancel'
+  return 'other'
+}
+
 type SortKey = number | string
 type SortState = { key: string; dir: 'asc' | 'desc' } | null
 
@@ -394,28 +405,33 @@ export function DataTable<T>({
                               {t('common.edit')}
                             </DropdownMenuItem>
                           )}
-                          {selectable && <DropdownMenuItem onClick={() => setSelectionMode((current) => !current)} className="cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"><Eye className="size-4" />{selectionMode ? 'Hide selection' : 'Select'}</DropdownMenuItem>}
+                          {selectable && <DropdownMenuItem onClick={() => setSelectionMode((current) => !current)} className="cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"><Eye className="size-4" />{selectionMode ? t('common.hideSelection') : t('common.select')}</DropdownMenuItem>}
                           {extra.length > 0 && <DropdownMenuSeparator />}
                           {extra.map((a) => {
                             const Icon = a.icon
                             return (
-                              <DropdownMenuItem
-                                key={a.label}
-                                variant={/cancel|delete|remove/i.test(a.label) ? 'destructive' : 'default'}
-                                className={/cancel|delete|remove/i.test(a.label)
-                                  ? 'cursor-pointer transition-colors hover:bg-pink-100 hover:text-red-700 focus:bg-pink-100 focus:text-red-700 dark:hover:bg-red-950/50 dark:hover:text-red-300 dark:focus:bg-red-950/50'
-                                  : /view|preview|edit/i.test(a.label)
-                                    ? 'cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300 dark:focus:bg-blue-950/40'
-                                    : undefined}
-                                disabled={a.disabled}
-                                onClick={() => {
-                                  if (a.onSelect) a.onSelect()
-                                  else if (a.href) router.push(a.href)
-                                }}
-                              >
-                                {Icon ? <Icon className="size-4" /> : /cancel|delete|remove/i.test(a.label) ? <Trash2 className="size-4" /> : /edit/i.test(a.label) ? <Pencil className="size-4" /> : /view|preview/i.test(a.label) ? <Eye className="size-4" /> : null}
-                                {/cancel/i.test(a.label) ? t('common.delete') : a.label}
-                              </DropdownMenuItem>
+                              {(() => {
+                                const kind = actionKind(a.label)
+                                const destructive = kind === 'delete' || kind === 'cancel'
+                                const label = kind === 'view' ? t('common.view') : kind === 'edit' ? t('common.edit') : kind === 'delete' ? t('common.delete') : kind === 'cancel' ? t('common.cancel') : a.label
+                                return <DropdownMenuItem
+                                  key={a.label}
+                                  variant={destructive ? 'destructive' : 'default'}
+                                  className={destructive
+                                    ? 'cursor-pointer transition-colors hover:bg-pink-100 hover:text-red-700 focus:bg-pink-100 focus:text-red-700 dark:hover:bg-red-950/50 dark:hover:text-red-300 dark:focus:bg-red-950/50'
+                                    : kind !== 'other'
+                                      ? 'cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300 dark:focus:bg-blue-950/40'
+                                      : undefined}
+                                  disabled={a.disabled}
+                                  onClick={() => {
+                                    if (a.onSelect) a.onSelect()
+                                    else if (a.href) router.push(a.href)
+                                  }}
+                                >
+                                  {Icon ? <Icon className="size-4" /> : destructive ? <Trash2 className="size-4" /> : kind === 'edit' ? <Pencil className="size-4" /> : kind === 'view' ? <Eye className="size-4" /> : null}
+                                  {label}
+                                </DropdownMenuItem>
+                              })()}
                             )
                           })}
                           {deletable && !extra.some((action) => action.label === t('common.delete')) && (
