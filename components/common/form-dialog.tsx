@@ -16,7 +16,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Search } from 'lucide-react'
 import { SearchableSelect } from '@/components/common/searchable-select'
 import { cn } from '@/lib/utils'
 
@@ -63,7 +62,6 @@ export function FormDialog({
 }) {
   const { t } = useApp()
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [searchTerms, setSearchTerms] = useState<Record<string, string>>({})
   const [selectValues, setSelectValues] = useState<Record<string, string | string[]>>({})
   const [validated, setValidated] = useState(false)
   const [isChecking, setIsChecking] = useState(false)
@@ -76,7 +74,6 @@ export function FormDialog({
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
       setSelectValues(Object.fromEntries(fields.filter((field) => field.type === 'select' || field.type === 'multiselect').map((field) => [field.name, field.type === 'multiselect' ? (field.defaultValue ? field.defaultValue.split(',').filter(Boolean) : []) : field.defaultValue ?? '']))
-      setSearchTerms({})
     }
     if (!nextOpen) {
       if (timerRef.current !== null) {
@@ -104,6 +101,16 @@ export function FormDialog({
     event.preventDefault()
     if (isChecking) return
     const controls = Array.from(event.currentTarget.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('[name]'))
+    const missingSelect = fields.find((field) => {
+      if ((field.type !== 'select' && field.type !== 'multiselect') || !(field.required ?? true)) return false
+      const selected = selectValues[field.name] ?? (field.type === 'multiselect' ? (field.defaultValue ? field.defaultValue.split(',').filter(Boolean) : []) : field.defaultValue ?? '')
+      return Array.isArray(selected) ? selected.length === 0 : selected.trim() === ''
+    })
+    if (missingSelect) {
+      setErrors({ [missingSelect.name]: t('form.fieldRequired') })
+      toast.error(t('form.validationError'))
+      return
+    }
     const invalid = controls.filter((control) => !control.validity.valid)
     const nextErrors = Object.fromEntries(
       invalid.map((control) => [control.name, control.validity.valueMissing ? t('form.fieldRequired') : t('form.invalidValue')]),
