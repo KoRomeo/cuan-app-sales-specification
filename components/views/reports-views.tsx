@@ -22,6 +22,7 @@ import { PeriodSelect } from '@/components/common/period-select'
 import { SectionCard } from '@/components/common/section-card'
 import { Pill } from '@/components/common/status-badge'
 import { useApp } from '@/components/providers'
+import { SearchableSelect } from '@/components/common/searchable-select'
 import {
   accountBalance,
   balanceSheet,
@@ -531,18 +532,7 @@ export function LedgerView() {
         title={t('reports.ledger')}
         description={t('reports.glDesc')}
         actions={
-          <select
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            aria-label={t('reports.account')}
-            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 dark:bg-input/30 dark:[&>option]:bg-popover"
-          >
-            {chartOfAccounts.map((a) => (
-              <option key={a.code} value={a.code}>
-                {a.code} · {a.name}
-              </option>
-            ))}
-          </select>
+          <div className="w-64"><SearchableSelect id="ledger-chart-account-filter" value={code} onChange={(value) => setCode(String(value))} options={chartOfAccounts.map((account) => ({ value: account.code, label: `${account.code} · ${account.name}` }))} placeholder={t('reports.account')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} /></div>
         }
       />
       <AccountingGate>
