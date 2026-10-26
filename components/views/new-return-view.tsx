@@ -99,7 +99,7 @@ export function NewReturnView() {
       grouped.set(item.productId, { ...item, qty, price, discount })
     }
     return grouped
-  }, new Map<string, { productId: string; qty: number; price: number; discount: number; [key: string]: any }>()).values()]
+  }, new Map<string, { productId: string; qty: number; price: number; discount: number }>()).values()]
   const returnedQty = (productId: string) => (previousReturns ?? []).filter((row) => row.orderId === orderId && row.id !== editId).flatMap((row) => row.items ?? []).filter((item) => item.productId === productId).reduce((sum, item) => sum + Number(item.qty), 0)
   const eligibleLines = orderedLines.map((item) => ({ ...item, remaining: Math.max(0, Number(item.qty) - returnedQty(item.productId)) })).filter((item) => item.remaining > 0)
   const linePrice = (line: Line) => {
