@@ -276,7 +276,7 @@ export function DataTable<T>({
       </div>
 
       <div className={'overflow-x-auto'}>
-        <table aria-label={t('common.dataTable')} aria-busy={loading} className={cn('w-full table-auto text-sm', scrollable ? 'min-w-max' : 'min-w-0')}>
+        <table aria-label={t('common.dataTable')} aria-busy={loading} className={cn('w-max min-w-full table-auto text-sm')}>
           <thead>
             <tr className="border-b bg-muted/40">
               {selectable && selectionMode && <th className="w-10 px-3"><input aria-label={t('common.selectAllRows')} type="checkbox" checked={visibleRows.length > 0 && visibleRows.every((row) => selectedRowIds.includes(getRowId(row)))} onChange={(event) => { const ids = new Set(selectedRowIds); visibleRows.forEach((row) => event.target.checked ? ids.add(getRowId(row)) : ids.delete(getRowId(row))); onSelectedRowIdsChange?.([...ids]) }} /></th>}
