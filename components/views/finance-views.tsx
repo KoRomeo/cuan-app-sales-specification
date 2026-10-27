@@ -3,7 +3,6 @@
 import useSWR from 'swr'
 
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
 import {
   ArrowRight,
   BarChart3,
@@ -493,8 +492,7 @@ interface LedgerRow {
 
 export function LedgerView() {
   const { t } = useApp()
-  const searchParams = useSearchParams()
-  const [accountName, setAccountName] = useState(() => searchParams.get("account") || "")
+  const [accountName, setAccountName] = useState(() => typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("account") || "" : "")
   const { data: business } = useSWR<{ id: string }>("/api/businesses/current", (url: string) => fetch(url).then((r) => r.json()))
   const { data, error } = useSWR<{ rows: LedgerRow[]; accounts: string[] }>(
     business?.id ? `/api/general-ledger?businessId=${encodeURIComponent(business.id)}${accountName ? `&account=${encodeURIComponent(accountName)}` : ""}` : null,
