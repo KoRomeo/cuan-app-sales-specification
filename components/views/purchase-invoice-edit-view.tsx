@@ -50,7 +50,7 @@ export function PurchaseInvoiceEditView({ documentId }: { documentId: string }) 
   }
 
   return <>
-    <PageHeader breadcrumbs={[{ label: t('nav.purchasing') }, { label: label('Purchase Invoice', 'Faktur Pembelian'), href: '/purchase-documents' }, { label: doc.fileName }]} title={label('Edit invoice', 'Edit faktur')} description={doc.fileName} actions={<><Button variant="outline" nativeButton={false} render={<Link href={'/purchase-invoice/' + encodeURIComponent(doc.id)} />}>{label('View details', 'Lihat detail')}</Button><Button variant="outline" nativeButton={false} render={<Link href="/purchase-documents" />}><ArrowLeft />{label('Back to invoices', 'Kembali ke faktur')}</Button></>} />
+    <PageHeader breadcrumbs={[{ label: t('nav.purchasing') }, { label: label('Purchase Invoice', 'Faktur Pembelian'), href: '/purchase-documents' }, { label: doc.fileName }]} title={label('Edit invoice', 'Edit faktur')} description={doc.fileName} actions={<><Button variant="outline" nativeButton={false} render={<Link href={'/purchase-invoice/' + encodeURIComponent(doc.id)} />}>{label('View details', 'Lihat detail')}</Button>{doc.purchaseId && <Button variant="outline" nativeButton={false} render={<Link href={'/purchases/' + encodeURIComponent(doc.purchaseId)} />}>{label('Open recorded purchase', 'Buka pembelian tercatat')}</Button>}<Button variant="outline" nativeButton={false} render={<Link href="/purchase-documents" />}><ArrowLeft />{label('Back to invoices', 'Kembali ke faktur')}</Button></>} />
     <div className="grid min-w-0 gap-5 xl:grid-cols-2">
       <SectionCard title={label('Stored invoice file', 'File faktur tersimpan')}>
         <InvoiceFilePreview documentId={doc.id} businessId={business.id} fileName={doc.fileName} mimeType={doc.mimeType} label={label} />
@@ -81,7 +81,6 @@ export function PurchaseInvoiceEditView({ documentId }: { documentId: string }) 
               <Detail label={label('Recorded purchase', 'Pembelian tercatat')} value={doc.purchaseId ?? '—'} />
               <Detail label={label('Accuracy', 'Akurasi')} value={doc.confidence == null ? '—' : doc.confidence + '%'} />
             </div>
-            {doc.purchaseId && <Button variant="outline" nativeButton={false} render={<Link href={'/purchases/' + encodeURIComponent(doc.purchaseId)} />}>{label('Open recorded purchase', 'Buka pembelian tercatat')}</Button>}
           </div>}
         </SectionCard>
       </div>
