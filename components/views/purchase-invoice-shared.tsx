@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { AlertTriangle, Download, FileText, RefreshCw, X, ZoomIn } from 'lucide-react'
+import { AlertTriangle, Download, FileText, RefreshCw, X, ZoomIn, RotateCw } from 'lucide-react'
 
 export type Line = { productName: string; unit?: string | null; quantity: number; unitCost: number; discount?: number; lineTotal?: number; productId?: string }
 export type InvoiceData = { invoiceNumber?: string | null; date?: string | null; dueDate?: string | null; supplierName?: string | null; supplierCity?: string | null; total?: number | null; items: Line[] }
@@ -45,6 +45,7 @@ export function InvoiceFilePreview({ documentId, businessId, fileName, mimeType,
   const [errorText, setErrorText] = useState('')
   const [attempt, setAttempt] = useState(0)
   const [zoomed, setZoomed] = useState(false)
+  const [rotation, setRotation] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -81,7 +82,7 @@ export function InvoiceFilePreview({ documentId, businessId, fileName, mimeType,
       </div>
     </div>}
     {state === 'ready' && url && (mimeType.startsWith('image/')
-      ? <><button type="button" onClick={() => setZoomed(true)} aria-label={label('Zoom invoice image', 'Perbesar gambar faktur')} className="group relative block w-full cursor-zoom-in rounded-md border bg-muted p-1"><img src={url} alt={fileName} className="max-h-[70vh] w-full rounded-md object-contain" /><span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-md border bg-background/95 px-2.5 py-1.5 text-xs shadow-sm"><ZoomIn className="size-3.5" />{label('Click to zoom', 'Klik untuk memperbesar')}</span></button>{zoomed && <div role="dialog" aria-modal="true" aria-label={label('Invoice image preview', 'Pratinjau gambar faktur')} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4" onClick={() => setZoomed(false)}><button type="button" aria-label={label('Close zoom', 'Tutup perbesaran')} className="absolute right-4 top-4 rounded-full bg-background p-2 text-foreground shadow" onClick={() => setZoomed(false)}><X className="size-5" /></button><img src={url} alt={fileName} className="max-h-[92vh] max-w-[96vw] cursor-zoom-out object-contain" onClick={e => e.stopPropagation()} /></div>}</>
+      ? <><button type="button" onClick={() => setZoomed(true)} aria-label={label('Zoom invoice image', 'Perbesar gambar faktur')} className="group relative block w-full cursor-zoom-in rounded-md border bg-muted p-1"><img src={url} alt={fileName} className="max-h-[70vh] w-full rounded-md object-contain" /><span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-md border bg-background/95 px-2.5 py-1.5 text-xs shadow-sm"><ZoomIn className="size-3.5" />{label('Click to zoom', 'Klik untuk memperbesar')}</span></button>{zoomed && <div role="dialog" aria-modal="true" aria-label={label('Invoice image preview', 'Pratinjau gambar faktur')} className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4" onClick={() => setZoomed(false)}><button type="button" aria-label={label('Close zoom', 'Tutup perbesaran')} className="absolute right-16 top-4 rounded-full bg-background p-2 text-foreground shadow" onClick={() => setRotation(value => (value + 90) % 360)} title="Rotate 90°"><RotateCw className="size-5" /></button><button type="button" aria-label={label("Close zoom", "Tutup perbesaran")} className="absolute right-4 top-4 rounded-full bg-background p-2 text-foreground shadow" onClick={() => setZoomed(false)}><X className="size-5" /></button><img src={url} alt={fileName} style={{ transform: "rotate(" + rotation + "deg)" }} className="max-h-[82vh] max-w-[96vw] cursor-zoom-out object-contain transition-transform duration-200" onClick={e => e.stopPropagation()} /></div>}</>
       : <iframe title={fileName} src={url} className="h-[70vh] min-h-[420px] w-full rounded-md border bg-muted" />)}
     {state === 'ready' && <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><FileText className="size-3.5" />{fileName} · {mimeType}</p>}
   </div>
