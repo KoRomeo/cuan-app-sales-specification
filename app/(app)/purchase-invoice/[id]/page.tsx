@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { PurchaseInvoiceDetailView } from '@/components/views/purchase-invoice-detail-view'
+import { PurchaseInvoiceView } from '@/components/views/purchase-invoice-view'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
@@ -8,5 +8,5 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function PurchaseInvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  return <PurchaseInvoiceDetailView documentId={id} />
+  return <PurchaseInvoiceView documentId={id} />
 }
