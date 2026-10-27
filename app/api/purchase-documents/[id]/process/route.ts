@@ -105,9 +105,9 @@ export async function POST(request: NextRequest, { params }: Context) {
     return NextResponse.json({ id, status: "review", extractedData: parsed, confidence, reviewIssues: issues })
   } catch (error) {
     console.error("Invoice extraction failed", error)
-    const message = error instanceof Error ? error.message : "Invoice extraction failed"
-    await db.update(purchaseDocuments).set({ status: "failed", errorMessage: message.slice(0, 500), updatedAt: new Date() })
+    const internalMessage = error instanceof Error ? error.message : "Unknown invoice extraction error"
+    await db.update(purchaseDocuments).set({ status: "failed", errorMessage: "Invoice extraction failed. Check server logs for details.", updatedAt: new Date() })
       .where(and(eq(purchaseDocuments.id, id), eq(purchaseDocuments.businessId, businessId)))
-    return NextResponse.json({ error: message }, { status: 502 })
+    return NextResponse.json({ error: "Invoice extraction failed. Please verify the AI configuration and try again." }, { status: 502 })
   }
 }
