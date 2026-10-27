@@ -23,7 +23,7 @@ export function PurchaseInvoiceView({ documentId }: { documentId: string }) {
   const invoice = doc.extractedData
 
   return <>
-    <PageHeader breadcrumbs={[{ label: t('nav.purchasing') }, { label: label('Purchase Invoice', 'Faktur Pembelian'), href: '/purchase-documents' }, { label: doc.fileName }]} title={label('Invoice details', 'Detail faktur')} description={doc.fileName} actions={<Button variant="outline" nativeButton={false} render={<Link href="/purchase-documents" />}><ArrowLeft />{label('Back to invoices', 'Kembali ke faktur')}</Button>} />
+    <PageHeader breadcrumbs={[{ label: t('nav.purchasing') }, { label: label('Purchase Invoice', 'Faktur Pembelian'), href: '/purchase-documents' }, { label: doc.fileName }]} title={label('Invoice details', 'Detail faktur')} description={doc.fileName} actions={<>{doc.purchaseId && doc.status === 'confirmed' && <Button nativeButton={false} render={<Link href={'/purchases/' + encodeURIComponent(doc.purchaseId)} />}><FileText />{label('Purchase detail', 'Detail pembelian')}</Button>}<Button variant="outline" nativeButton={false} render={<Link href="/purchase-documents" />}><ArrowLeft />{label('Back to invoices', 'Kembali ke faktur')}</Button></>} />
     <div className="grid min-w-0 gap-5 xl:grid-cols-2">
       <SectionCard title={label('Stored invoice file', 'File faktur tersimpan')}>
         <InvoiceFilePreview documentId={doc.id} businessId={business.id} fileName={doc.fileName} mimeType={doc.mimeType} label={label} />
@@ -48,7 +48,6 @@ export function PurchaseInvoiceView({ documentId }: { documentId: string }) {
                 <td className="py-2 text-right font-medium tabular-nums">{item.lineTotal != null ? formatIDR(Number(item.lineTotal)) : formatIDR(Number(item.quantity) * Number(item.unitCost) - Number(item.discount || 0))}</td>
               </tr>)}</tbody></table></div> : <p className="text-muted-foreground">{label('No items detected.', 'Tidak ada item terdeteksi.')}</p>}
             </div>
-            {doc.purchaseId && doc.status === "confirmed" && <Button nativeButton={false} render={<Link href={'/purchases/' + encodeURIComponent(doc.purchaseId)} />}><FileText />{label('Open recorded purchase', 'Buka pembelian tercatat')}</Button>}
             {doc.status === "purchase_cancelled" && <p className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-500/40 dark:bg-rose-950/40 dark:text-rose-300">{label('The linked purchase was cancelled because it was unpaid and deleted. The invoice record is kept for history.', 'Pembelian terkait dibatalkan karena belum dibayar dan dihapus. Catatan faktur tetap disimpan untuk riwayat.')}</p>}
           </div>}
         </SectionCard>

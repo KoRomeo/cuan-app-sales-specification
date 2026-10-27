@@ -12,6 +12,12 @@ export type FinancialAccount = { id: string; name: string; type: 'cash' | 'bank'
 
 export const fetcher = async (url: string) => { const response = await fetch(url); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Request failed'); return data }
 
+/** crypto.randomUUID() only exists in secure contexts; fall back so confirm never crashes on plain http/LAN. */
+export function safeUuid(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch => { const r = Math.random() * 16 | 0; const v = ch === 'x' ? r : (r & 0x3 | 0x8); return v.toString(16) })
+}
+
 export const normalize = (s: string) => s.toLocaleLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\([^)]*\)/g, " ").replace(/[^a-z0-9]+/g, " ").trim()
 
 export function similarity(a: string, b: string) { const x = normalize(a), y = normalize(b); if (!x || !y) return 0; if (x === y) return 1; if (x.includes(y) || y.includes(x)) return Math.min(x.length, y.length) / Math.max(x.length, y.length) + 0.25; const A = new Set(x.split(" ")), B = new Set(y.split(" ")); return 2 * [...A].filter(v => B.has(v)).length / (A.size + B.size) }

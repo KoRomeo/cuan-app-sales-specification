@@ -102,6 +102,6 @@ export async function POST(request: NextRequest, { params }: Ctx) {
   console.error("Invoice confirmation failed",error)
   // Restore the review state on failure so the user can correct mappings and retry.
   await db.update(purchaseDocuments).set({status:"review",updatedAt:new Date(),errorMessage:"Confirmation failed; review mappings and retry."}).where(and(eq(purchaseDocuments.id,id),eq(purchaseDocuments.businessId,businessId),eq(purchaseDocuments.status,"confirming"))).catch(()=>undefined)
-  return NextResponse.json({error:"Invoice confirmation failed"},{status:500})
+  return NextResponse.json({error:"Invoice confirmation failed",detail:message||String(error)},{status:500})
  }
 }
