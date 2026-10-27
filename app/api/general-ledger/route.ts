@@ -29,9 +29,10 @@ export async function GET(request: Request) {
       const entry = entryById.get(line.journalEntryId)!
       return { key: line.id, date: entry.entryDate, entryId: entry.id, reference: entry.reference, description: entry.description, account: line.account, debit: Number(line.debit), credit: Number(line.credit) }
     }).sort((a,b) => a.date.localeCompare(b.date) || a.entryId.localeCompare(b.entryId))
-    let running = 0
+    const runningByAccount = new Map<string, number>()
     const rows = result.map((row) => {
-      running += row.debit - row.credit
+      const running = (runningByAccount.get(row.account) ?? 0) + row.debit - row.credit
+      runningByAccount.set(row.account, running)
       return { ...row, balance: Number(running.toFixed(2)) }
     })
     const accounts = [...new Set(lines.map((line) => line.account))].sort((a,b) => a.localeCompare(b))
