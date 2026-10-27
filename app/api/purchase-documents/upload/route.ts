@@ -72,7 +72,7 @@ async function finalizeUpload(request: NextRequest) {
     return NextResponse.json({ id: documentId, status: "queued" })
   } catch (error) {
     console.error("Unable to finalize private invoice upload", error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to finalize upload" }, { status: 502 })
+    return NextResponse.json({ error: "Unable to finalize invoice upload. Please try again." }, { status: 502 })
   }
 }
 
@@ -115,6 +115,17 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Private invoice upload failed", error)
     const message = error instanceof Error ? error.message : "Upload failed"
-    return NextResponse.json({ error: message }, { status: 400 })
+    const safeValidationMessages = new Set([
+      "Upload metadata is required",
+      "Invalid document ID",
+      "Unsupported file type",
+      "File exceeds the allowed size",
+      "Upload path is not authorized",
+      "BLOB_READ_WRITE_TOKEN is missing. Add the Blob Read-Write token to the Development environment.",
+    ])
+    return NextResponse.json(
+      { error: safeValidationMessages.has(message) ? message : "Unable to prepare invoice upload. Please check the server configuration and try again." },
+      { status: safeValidationMessages.has(message) ? 400 : 500 },
+    )
   }
 }
