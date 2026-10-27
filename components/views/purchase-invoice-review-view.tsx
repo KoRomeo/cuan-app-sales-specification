@@ -126,11 +126,11 @@ export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }
 
   return <>
     <PageHeader breadcrumbs={[{ label: t('nav.purchasing') }, { label: label('Purchase Invoice', 'Faktur Pembelian'), href: '/purchase-documents' }, { label: doc.fileName }]} title={label('Inspect invoice', 'Periksa faktur')} description={doc.fileName} actions={<Button variant="outline" nativeButton={false} render={<Link href="/purchase-documents" />}><ArrowLeft />{label('Back to invoices', 'Kembali ke faktur')}</Button>} />
-    <div className="grid min-w-0 gap-5 xl:grid-cols-2">
+    <div className="flex min-w-0 flex-col gap-5">
       <SectionCard title={label('Stored invoice file', 'File faktur tersimpan')}>
         <InvoiceFilePreview documentId={doc.id} businessId={business.id} fileName={doc.fileName} mimeType={doc.mimeType} label={label} />
       </SectionCard>
-      <SectionCard title={label('AI extraction', 'Ekstraksi AI')} action={<StatusBadge status={doc.status} label={label} />}>
+      <SectionCard title={label('Edit extracted details', 'Edit detail hasil ekstraksi')} action={<StatusBadge status={doc.status} label={label} />}>
           <div className="space-y-3 text-sm">
             <Detail label={label('File', 'File')} value={doc.fileName} />
             <Detail label={label('Uploaded', 'Diunggah')} value={new Date(doc.createdAt).toLocaleString(locale === 'id' ? 'id-ID' : 'en-US')} />
