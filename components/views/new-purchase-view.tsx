@@ -26,7 +26,7 @@ const MAX_PURCHASE_QTY = 999999
 const MAX_UNIT_PRICE = 999999999999
 
 export function NewPurchaseView() {
-  const { t } = useApp()
+  const { locale, t } = useApp()
   const { mutate: globalMutate } = useSWRConfig()
   const { data: business } = useSWR<{id:string}>('/api/businesses/current', fetcher)
   const { data: suppliers, error: supplierError } = useSWR<Supplier[]>(business?.id ? '/api/suppliers?businessId='+encodeURIComponent(business.id) : null, fetcher)
@@ -119,7 +119,7 @@ export function NewPurchaseView() {
           <div className="mt-4 flex flex-col gap-3 border-t pt-4">
             <div className="flex flex-col gap-1.5"><Label htmlFor="paid">Paid</Label><Input id="paid" type="number" min={0} max={Math.max(total,0)} className="font-mono" value={paid} onChange={e=>setPaid(e.target.value)}/></div>
             {total > 0 && paidAmount < total && <div className="flex flex-col gap-1.5"><Label htmlFor="due-date">{t('common.dueDate')}</Label><Input id="due-date" type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)}/></div>}
-            {paidAmount > 0 && <div className="flex flex-col gap-1.5"><Label htmlFor="purchase-payment-account">{t('returns.refundAccount')}</Label><SearchableSelect id="purchase-payment-account" value={selectedPaymentAccount} onChange={(value)=>setPaymentAccount(String(value))} options={activeFinancialAccounts.map((account)=>({value:account.name,label:account.name,description:account.type==='cash'?'Cash':'Bank'}))} placeholder={t('returns.selectCashBank')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />{activeFinancialAccounts.length===0&&<p className="text-xs text-destructive">{t('returns.createAccountHint')}</p>}</div>}
+            {paidAmount > 0 && <div className="flex flex-col gap-1.5"><Label htmlFor="purchase-payment-account">{(locale === 'id' ? 'Bayar dari kas/bank' : 'Pay from cash/bank')}</Label><SearchableSelect id="purchase-payment-account" value={selectedPaymentAccount} onChange={(value)=>setPaymentAccount(String(value))} options={activeFinancialAccounts.map((account)=>({value:account.name,label:account.name,description:account.type==='cash'?'Cash':'Bank'}))} placeholder={t('returns.selectCashBank')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />{activeFinancialAccounts.length===0&&<p className="text-xs text-destructive">{t('returns.createAccountHint')}</p>}</div>}
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">{t('common.outstanding')}</span><span className="font-mono font-semibold tabular-nums text-warning">{formatIDR(Math.max(total-paidAmount,0))}</span></div>
           </div>
           <div className="mt-5 flex gap-2"><Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/purchases"/>}>{t('common.cancel')}</Button><Button type="submit" className="flex-1" disabled={saving || (paidAmount > 0 && !selectedPaymentAccount)}>{saving?'Saving…':'Save Purchase'}</Button></div>
