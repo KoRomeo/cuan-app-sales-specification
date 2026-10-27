@@ -38,7 +38,7 @@ interface Line {
 }
 
 export function NewOrderView() {
-  const { t } = useApp()
+  const { locale, t } = useApp()
   const router = useRouter()
   const { mutate: globalMutate } = useSWRConfig()
   const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
@@ -223,7 +223,7 @@ export function NewOrderView() {
                 <Input id="due" name="dueDate" type="date" />
               </div>}
               {Number(paid || 0) > 0 && <div className="flex flex-col gap-1.5">
-                <Label htmlFor="sale-payment-account">{t('returns.refundAccount')}</Label>
+                <Label htmlFor="sale-payment-account">{(locale === 'id' ? 'Terima pembayaran ke akun kas/bank' : 'Receive payment into cash/bank account')}</Label>
                 <SearchableSelect id="sale-payment-account" value={selectedPaymentAccount} onChange={(value) => setPaymentAccount(String(value))} options={activeFinancialAccounts.map((account) => ({ value: account.name, label: account.name, description: account.type === 'cash' ? t('fin.cash') : t('fin.bank') }))} placeholder={t('returns.selectCashBank')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />
                 {activeFinancialAccounts.length === 0 && <p className="text-xs text-destructive">{t('returns.createAccountHint')}</p>}
               </div>}
