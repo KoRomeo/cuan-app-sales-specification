@@ -9,7 +9,7 @@ import { SectionCard } from '@/components/common/section-card'
 import { SearchableSelect } from '@/components/common/searchable-select'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/components/providers'
-import { Detail, InvoiceFilePreview, StatusBadge, fetcher, similarity, type FinancialAccount, type InvoiceData, type Product, type PurchaseDocument, type Supplier } from './purchase-invoice-shared'
+import { Detail, InvoiceFilePreview, StatusBadge, fetcher, safeUuid, similarity, type FinancialAccount, type InvoiceData, type Product, type PurchaseDocument, type Supplier } from './purchase-invoice-shared'
 
 export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }) {
   const { locale, t } = useApp()
@@ -97,7 +97,7 @@ export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }
     const choices = productChoice
     const newIndexes = createProducts
     const unresolved = current.items.map((_, i) => i).filter(i => !newIndexes.includes(i) && !choices[i])
-    if (unresolved.length) { setMessage(label('Match each item with an existing product or choose Add as new product.', 'Cocokkan setiap item dengan produk yang ada atau pilih Tambahkan sebagai produk baru.')); return }
+    if (unresolved.length) { setMessage(label('Match every item with a product or add it as a new product. Items not matched yet: ', 'Cocokkan setiap item dengan produk atau tambahkan sebagai produk baru. Item yang belum dicocokkan: ') + unresolved.map(i => '#' + (i + 1)).join(', ')); return }
     const paid = Math.max(0, Number(paidAmount || 0))
     const account = paymentAccount || financialAccounts.find(a => a.active && a.name.toLowerCase() === 'cash')?.name || financialAccounts.find(a => a.active)?.name || ''
     if (paid > Number(current.total ?? current.items.reduce((sum, line) => sum + Number(line.quantity) * Number(line.unitCost), 0))) { setMessage(label('Payment cannot exceed the invoice total.', 'Pembayaran tidak boleh melebihi total faktur.')); return }
@@ -106,29 +106,31 @@ export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }
     try {
       const save = await fetch('/api/purchase-documents/' + encodeURIComponent(doc!.id) + '/review', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ businessId: business.id, extractedData: current }) })
       const saved = await save.json()
-      if (!save.ok) throw new Error(saved.error || label('Review save failed', 'Gagal menyimpan peninjauan'))
-      const response = await fetch('/api/purchase-documents/' + encodeURIComponent(doc!.id) + '/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ businessId: business.id, supplierId: newSupplier ? undefined : supplierId, createSupplier: newSupplier, itemProductIds: choices, createProductIndexes: newIndexes, date: current.date, dueDate: current.dueDate, paidAmount: paid, paymentAccount: account, paymentId: paid > 0 ? 'PAY-AI-' + crypto.randomUUID() : undefined, paymentDate: current.date, notes: 'AI invoice ' + (current.invoiceNumber || doc!.fileName) }) })
+      if (!save.ok) throw new Error((saved.issues || [saved.error]).join('; ') || label('Review save failed', 'Gagal menyimpan peninjauan'))
+      const response = await fetch('/api/purchase-documents/' + encodeURIComponent(doc!.id) + '/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ businessId: business.id, supplierId: newSupplier ? undefined : supplierId, createSupplier: newSupplier, itemProductIds: choices, createProductIndexes: newIndexes, date: current.date, dueDate: current.dueDate, paidAmount: paid, paymentAccount: account, paymentId: paid > 0 ? 'PAY-AI-' + safeUuid() : undefined, paymentDate: current.date, notes: 'AI invoice ' + (current.invoiceNumber || doc!.fileName) }) })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || label('Confirmation failed', 'Konfirmasi gagal'))
+      if (!response.ok) throw new Error([data.detail, data.error].filter(Boolean).join(' — ') || label('Confirmation failed', 'Konfirmasi gagal'))
       await mutateDocuments()
       window.location.href = '/purchase-invoice/' + encodeURIComponent(doc!.id)
     } catch (e) { setMessage(e instanceof Error ? e.message : label('Confirmation failed', 'Konfirmasi gagal')); await mutateDocuments() } finally { setBusy(false) }
   }
 
-  const supplierReady = !!current?.supplierName?.trim() && (createSupplier || !!supplierChoice)
-  const productsReady = current ? current.items.every((_, index) => createProducts.includes(index) || !!productChoice[index]) : false
-  const canConfirm = supplierReady && productsReady
+  const unmatchedItems = current ? current.items.map((_, i) => i).filter(i => !createProducts.includes(i) && !productChoice[i]) : []
+  const confirmBlocker = !current ? '' : !current.supplierName?.trim()
+    ? label('Supplier name is required.', 'Nama supplier wajib diisi.')
+    : !createSupplier && !supplierChoice
+      ? label('Select an existing supplier or choose Add as new supplier.', 'Pilih supplier yang ada atau Tambahkan sebagai supplier baru.')
+      : unmatchedItems.length
+        ? label('Items not matched yet: ', 'Item yang belum dicocokkan: ') + unmatchedItems.map(i => '#' + (i + 1)).join(', ')
+        : ''
 
   return <>
     <PageHeader breadcrumbs={[{ label: t('nav.purchasing') }, { label: label('Purchase Invoice', 'Faktur Pembelian'), href: '/purchase-documents' }, { label: doc.fileName }]} title={label('Inspect invoice', 'Periksa faktur')} description={doc.fileName} actions={<Button variant="outline" nativeButton={false} render={<Link href="/purchase-documents" />}><ArrowLeft />{label('Back to invoices', 'Kembali ke faktur')}</Button>} />
     <div className="grid min-w-0 gap-5 xl:grid-cols-2">
-      <div className="space-y-4">
-        <SectionCard title={label('Stored invoice file', 'File faktur tersimpan')}>
-          <InvoiceFilePreview documentId={doc.id} businessId={business.id} fileName={doc.fileName} mimeType={doc.mimeType} label={label} />
-        </SectionCard>
-      </div>
-      <div className="space-y-4">
-        <SectionCard title={label('AI extraction', 'Ekstraksi AI')} action={<StatusBadge status={doc.status} label={label} />}>
+      <SectionCard title={label('Stored invoice file', 'File faktur tersimpan')}>
+        <InvoiceFilePreview documentId={doc.id} businessId={business.id} fileName={doc.fileName} mimeType={doc.mimeType} label={label} />
+      </SectionCard>
+      <SectionCard title={label('AI extraction', 'Ekstraksi AI')} action={<StatusBadge status={doc.status} label={label} />}>
           <div className="space-y-3 text-sm">
             <Detail label={label('File', 'File')} value={doc.fileName} />
             <Detail label={label('Uploaded', 'Diunggah')} value={new Date(doc.createdAt).toLocaleString(locale === 'id' ? 'id-ID' : 'en-US')} />
@@ -140,10 +142,12 @@ export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }
             </>}
             {doc.status === 'processing' && <p className="text-muted-foreground">{label('AI extraction is in progress. This page updates automatically after it finishes — reload if needed.', 'Ekstraksi AI sedang berjalan. Halaman ini diperbarui otomatis setelah selesai — muat ulang bila perlu.')}</p>}
             {message && <p role="status" className="rounded-md border bg-muted/30 p-3">{message}</p>}
+            {doc.errorMessage && doc.status !== 'queued' && doc.status !== 'failed' && <p className="text-sm text-destructive">{doc.errorMessage}</p>}
             {doc.reviewIssues?.length > 0 && <div><p className="mb-1 font-medium">{label('Review notes', 'Catatan pemeriksaan')}</p><ul className="list-disc space-y-1 pl-5 text-amber-700 dark:text-amber-400">{doc.reviewIssues.map((issue, i) => <li key={i}>{issue}</li>)}</ul></div>}
           </div>
         </SectionCard>
-        {doc.status === 'review' && current && <SectionCard title={label('Review and match', 'Tinjau dan cocokkan')}>
+    </div>
+    {doc.status === 'review' && current && <SectionCard title={label('Review and match', 'Tinjau dan cocokkan')} className="mt-5">
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <label className="space-y-1 text-sm">{label('Invoice number', 'Nomor faktur')}<input className="w-full rounded-md border bg-background px-3 py-2" value={current.invoiceNumber || ''} onChange={e => update({ invoiceNumber: e.target.value })} /></label>
@@ -161,12 +165,10 @@ export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }
             <div className="space-y-2"><div className="flex flex-wrap gap-2">
               <button type="button" disabled={busy} onClick={() => void saveReview()} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:border-muted disabled:bg-muted disabled:text-muted-foreground"><Save className="size-4" />{label('Save review', 'Simpan tinjauan')}</button>
               {!doc.purchaseId && <button type="button" disabled={busy} onClick={() => void deleteDocument()} className="inline-flex items-center gap-2 rounded-md border border-destructive/40 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"><Trash2 className="size-4" />{label('Delete invoice', 'Hapus faktur')}</button>}
-              <button type="button" disabled={busy || !canConfirm} onClick={() => void confirmPurchase()} title={!current.supplierName?.trim() ? label('Supplier name is required.', 'Nama supplier wajib diisi.') : !supplierReady ? label('Choose a supplier option.', 'Pilih opsi supplier.') : !productsReady ? label('Confirm every product match.', 'Konfirmasikan semua pencocokan produk.') : undefined} className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border disabled:border-muted disabled:bg-muted disabled:text-muted-foreground">{busy ? <RefreshCw className="size-4 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="size-4" />}{busy ? label('Working…', 'Memproses…') : label('Confirm and record purchase', 'Konfirmasi dan catat pembelian')}</button>
-            </div>{!current.supplierName?.trim() ? <p className="text-xs text-destructive">{label('Supplier name is required.', 'Nama supplier wajib diisi.')}</p> : !supplierReady ? <p className="text-xs text-destructive">{label('Select an existing supplier or choose Add as new supplier.', 'Pilih supplier yang ada atau Tambahkan sebagai supplier baru.')}</p> : !productsReady ? <p className="text-xs text-muted-foreground">{label('Confirm each product match using Yes, or confirm Add as new product.', 'Konfirmasikan setiap pencocokan produk dengan Ya, atau konfirmasikan Tambahkan sebagai produk baru.')}</p> : null}</div>
+              <button type="button" disabled={busy} onClick={() => void confirmPurchase()} title={confirmBlocker || undefined} className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">{busy ? <RefreshCw className="size-4 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="size-4" />}{busy ? label('Working…', 'Memproses…') : label('Confirm and record purchase', 'Konfirmasi dan catat pembelian')}</button>
+            </div>{confirmBlocker && <p className="text-xs text-amber-700 dark:text-amber-400">{confirmBlocker}</p>}</div>
             <p className="text-xs text-muted-foreground">{label('Confirming creates the purchase, receives stock, updates moving-average cost, posts inventory/payable journal entries and writes audit history. Similarity suggestions never create a product unless you choose it.', 'Konfirmasi akan membuat pembelian, menambah stok, memperbarui biaya rata-rata bergerak, mencatat jurnal persediaan/utang, dan menulis riwayat audit. Saran kemiripan tidak membuat produk baru tanpa pilihanmu.')}</p>
           </div>
-        </SectionCard>}
-      </div>
-    </div>
+      </SectionCard>}
   </>
 }
