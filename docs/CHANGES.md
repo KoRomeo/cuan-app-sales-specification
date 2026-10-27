@@ -1,16 +1,21 @@
-# Docs edit package — 2026-10-21
+# Documentation Changes
 
-These are DRAFT edits. Review each file in your editor or with `git diff`, then copy to your vault or repo `docs/` folder.
+## 2026-10-27 — Security audit status
 
-| File | Action | What changed |
+Updated on branch `v0/finished-backend-frontend` to record the initial security hardening pass and its limits.
+
+| File | Action | Summary |
 |---|---|---|
-| 03_Information_Architecture_and_User_Flows_md.md | Updated | Added "Units (split / combine)" under INVENTORY, after Stock Movements (two places). |
-| 04_ERD_and_Database_Schema_md.md | Updated | Appended "Current implementation addendum" with unit tables and `unit` enum value. Original archive text unchanged. |
-| 08_Current_Project_Status_md.md | Updated | Appended "Update 2026-10-21" section: unit status, blocker (migration not applied), purchase receive bug. |
-| 09_Recovery_Notes.md | Created | New file (referenced by 00_README but missing in the project copy). Snapshot issue, DATABASE_URL override, credential exposure. |
-| 10_Progress_Log_md.md | Updated | Added one dated entry for 2026-10-21 before the template. Older entries unchanged. |
-| 11_Decision_Log_md.md | Updated | Added D-014 (unit operations never create negative stock), status ACCEPTED. |
-| 00_README_START_HERE_md.md | Unchanged | Structure and protocol did not change. Note: it references `07_Technical_Architecture_Current.md`, which is not in the project copy. Create it or fix the reference. |
-| 01, 02, 05, 06, 07 | Unchanged | No verified change. |
+| `08_Current_Project_Status_md.md` | Updated | Added the 2026-10-27 security changes, latest checked Vercel status, outstanding authorization/IDOR/file-access tests, and next-session checklist. |
+| `10_Progress_Log_md.md` | Updated | Added a dated entry for the security hardening commits and explicit unverified items. |
+| `CHANGES.md` | Updated | Replaced the old draft-package note with a record of this documentation update. |
 
-Not verified: migration applied to any database; UI applied to the repo or tested in a browser; production build.
+### Verified scope
+
+- The security-related code commits listed in the status document are on the working branch.
+- The latest checked commit status reported Vercel Success.
+- This does **not** prove that all API routes are secure or that cross-business access tests pass.
+
+## 2026-10-21 — Historical draft package note
+
+A prior documentation-edit package described unit split/combine updates and migration blockers. Treat its status claims as historical until rechecked against the current repository and database.
