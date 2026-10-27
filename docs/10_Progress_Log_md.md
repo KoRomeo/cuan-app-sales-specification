@@ -2,6 +2,20 @@
 
 > Keep this as a short timeline of meaningful work, not a second specification. Append new entries; do not rewrite history to make old work look current.
 
+## 2026-10-27 — Initial security hardening pass
+
+- Goal: reduce unauthenticated access to internal pages, improve API error hygiene, and add baseline response security headers before further pre-deployment testing.
+- Repository/branch: `KoRomeo/cuan-app-sales-specification`, `v0/finished-backend-frontend`.
+- Changes pushed:
+  - `app/(app)/layout.tsx`: server-side Better Auth session check; unauthenticated users are redirected to `/login`. Commit `edd0192`.
+  - `app/api/suppliers/route.ts`: session and business-membership checks, basic input validation, transaction for creation, generic server errors. Commit `ed3a657`.
+  - `app/api/purchase-documents/[id]/process/route.ts`: hide raw AI/provider error details from client responses. Commit `a50c326`.
+  - `next.config.mjs`: baseline security headers and private/no-store cache headers for API routes. Commit `ceb0b14`.
+  - `app/api/purchase-documents/upload/route.ts`: generic unexpected upload/finalization errors. Commit `7520d41`.
+- Verification: GitHub commit status for the latest listed commit was rechecked and Vercel reported Success.
+- Important limitation: this is not a complete audit. All API routes, server actions, cross-business IDOR cases, private Blob access, production headers, and signed-out direct navigation still need systematic tests. Do not claim security is finished.
+- Next: inventory every route/action; verify session and business authorization at the data-access boundary; test cross-business IDs and private invoice files; run type-check/tests/build and record results.
+
 ## 2026-10-22 — Context handoff preparation
 
 - Consolidating AI entry instructions, current status, progress, and decision records to reduce repeated context.
@@ -14,7 +28,7 @@
 - Stack recorded: Next.js 16.3.3, React 19, TypeScript, Drizzle ORM, Neon PostgreSQL, Better Auth.
 - The architecture document explicitly noted that build, tests, live database, and deployment were not run during that documentation update.
 - Return workflow discussion introduced refund and no-refund modes.
-- Reported order-detail API failure: `inArray is not defined`; other reported issues are listed in `08_Current_Project_Status.md`.
+- Reported order-detail API failure: `inArray is not defined`; other reported issues are listed in `08_Current_Project_Status_md.md`.
 - Verification: do not assume any issue or fix is current without re-checking.
 
 ## Earlier milestones — historical, not current verification
