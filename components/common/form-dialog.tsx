@@ -73,7 +73,7 @@ export function FormDialog({
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
-      setSelectValues(Object.fromEntries(fields.filter((field) => field.type === 'select' || field.type === 'multiselect').map((field) => [field.name, field.type === 'multiselect' ? (field.defaultValue ? field.defaultValue.split(',').filter(Boolean) : []) : field.defaultValue ?? '']))
+      setSelectValues(Object.fromEntries(fields.filter((field) => field.type === 'select' || field.type === 'multiselect').map((field) => [field.name, field.type === 'multiselect' ? (field.defaultValue ? field.defaultValue.split(',').filter(Boolean) : []) : field.defaultValue ?? ''])))
     }
     if (!nextOpen) {
       if (timerRef.current !== null) {
