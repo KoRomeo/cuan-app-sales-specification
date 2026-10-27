@@ -1,61 +1,81 @@
 # CuanApp — Current Project Status
 
-> **Status snapshot date:** 2026-10-22  
-> **Confidence:** Partial. The repository was not inspected during this status-file preparation. Treat technical details below as the latest known reports, not as verified live state.
+> **Status snapshot date:** 2026-10-27  
+> **Confidence:** Partial. The latest security-related commits and Vercel status were checked on GitHub; a complete route-by-route security audit and runtime penetration tests have not been completed.
 
 ## Project
 
 - Product: CuanApp; first module: CuanApp Sales.
-- Repository historically used: `KoRomeo/cuan-app-sales-specification`.
-- Preferred branch historically used: `v0/finish-frontend-backend`.
-- Local path historically used: `D:\Downloads\cuan-app-sales-specification`.
-- Stack last inspected on 2026-10-17: Next.js 16.3.3, React 19, TypeScript, Drizzle ORM, Neon PostgreSQL, Better Auth, Vercel-oriented deployment.
-- **First action in a coding session:** verify repo, branch, commit, working tree, and current code. A prior branch spelling `v0/finished-backend-frontend` also appeared in conversation; do not assume it exists.
+- Repository: `KoRomeo/cuan-app-sales-specification`.
+- Active branch for this work: `v0/finished-backend-frontend`.
+- Local path: `D:\Downloads\cuan-app-sales-specification`.
+- Stack last known: Next.js 16.3.3, React 19, TypeScript, Drizzle ORM, Neon PostgreSQL, Better Auth, Vercel deployment.
+- Verify repository, branch, HEAD, and working tree at the start of each local coding session.
 
-## Latest known product work
+## Security work — 2026-10-27
 
-The most recent explicit feature design discussion was the Returns page:
+### Changes pushed to `v0/finished-backend-frontend`
 
-- Two modes: return without refund, and return with monetary refund.
-- No-refund mode must not create a cash refund.
-- Refund mode must record the refund and correctly affect the relevant financial account, order/customer balances, accounting journals, and reports.
-- Inventory effects must follow the agreed return/replacement rules; do not infer the exact stock adjustment for every case without checking the established rule and current implementation.
+| Area | Change | Status |
+|---|---|---|
+| Internal app pages | `app/(app)/layout.tsx` checks the Better Auth session server-side and redirects unauthenticated users to `/login`. Commit `edd0192`. | IMPLEMENTED; route coverage still needs verification |
+| Suppliers API | `app/api/suppliers/route.ts` adds session/business-membership checks, basic input validation, transaction use for creation, and generic server errors. Commit `ed3a657`. | IMPLEMENTED; test authorization and linked-resource boundaries |
+| Invoice processing | Processing errors no longer return raw AI/provider errors to the client. Commit `a50c326`. | IMPLEMENTED |
+| Response headers | `next.config.mjs` adds `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, and private/no-store cache headers for API routes. Commit `ceb0b14`. | IMPLEMENTED; verify behavior in deployed responses |
+| Invoice upload | Unexpected upload/finalization errors are returned as generic messages instead of exposing private Blob internals. Commit `7520d41`. | IMPLEMENTED; deployment status rechecked after this commit |
 
-## Known reported issues — re-test before fixing
+The latest checked Vercel status for commit `7520d4116e097cd12c6ca7b7e86e2698c6c595c5` was **Success**. This confirms a deployment check passed, not that all security controls or business flows have been independently tested.
 
-Last reported in earlier implementation conversations; current status unknown:
+## Security status: not complete yet
 
-- Order detail API returned HTTP 500 for `ORD-202610-0019` due to `ReferenceError: inArray is not defined` in `app/api/orders/[id]/route.ts` after return integration.
-- Order detail UI showed JSON parsing errors / “Unable to load order details.”
-- `purchasePaid is not a function` in `components/views/purchasing-views.tsx`.
-- Expenses page parse error in `finance-views.tsx`.
-- Delivery loading/recording errors.
-- Financial Accounts page loaded with HTTP 200 but still showed a database-query failure.
-- Returns integration and related finance/dashboard updates needed verification.
-- Earlier reports mentioned possible duplicate declarations in Stock Movements and API response-shape issues in Deliveries.
+The work above is a first hardening pass, not a security certification. The following remain open:
 
-These are leads, not a claim that the defects still exist.
+- [ ] Enumerate all pages, API routes, route handlers, server actions, and file-serving endpoints.
+- [ ] Confirm every private page is protected by server-side authentication; test direct URL entry while signed out.
+- [ ] Confirm every business-owned read/write is scoped to the authenticated user's authorized business.
+- [ ] Test IDOR scenarios by changing customer, supplier, product, order, purchase, delivery, return, payment, financial-account, and document IDs.
+- [ ] Confirm linked records in a mutation all belong to the same authorized business.
+- [ ] Test private invoice Blob access and upload/finalization against cross-business IDs and tampered metadata.
+- [ ] Review rate limiting, brute-force protections, CSRF/origin assumptions, validation, and sensitive actions.
+- [ ] Run type-check, tests, and production build; record actual output.
+- [ ] Verify production response headers and signed-out/cross-business behavior in the deployed app.
 
-## Important implementation requirements
+Do not mark security as complete until these checks have evidence.
+
+## Latest known product requirements
 
 - Real persistence; no demo data or mock success states.
-- Validate authenticated session and selected-business membership for business-owned API operations.
-- Validate that linked customers, suppliers, products, orders, and financial accounts belong to the same authorized business.
+- Business-owned operations require an authenticated session and authorized business membership.
+- Linked customers, suppliers, products, orders, and financial accounts must belong to the same authorized business.
 - Multi-record operations should be atomic.
-- Changes must update all affected inventory, payment, debt, accounting, reporting, dashboard, and history records.
+- Changes must update affected inventory, payment, debt, accounting, reporting, dashboard, and history records.
 - English and Indonesian localization must be maintained.
 - Moving-average inventory costing is the agreed costing method.
 - Audit history should be append-only for normal user workflows.
 
+## Earlier reported issues — re-test before fixing
+
+Historical reports; current status unknown unless verified:
+
+- Order detail API returned HTTP 500 for `ORD-202610-0019` due to `ReferenceError: inArray is not defined` in `app/api/orders/[id]/route.ts`.
+- `purchasePaid is not a function` in `components/views/purchasing-views.tsx`.
+- Expenses page parse error in `finance-views.tsx`.
+- Delivery recording/loading errors.
+- Financial Accounts query failure despite HTTP 200.
+- Units feature migration `0009_unit_conversion` had not been applied to the app database in the prior report; verify current database before using the feature.
+- Purchase receipt logic previously had a duplicate stock movement reference between purchase creation and receipt.
+
+These are leads, not a claim that the defects still exist.
+
 ## Next-session checklist
 
-- [ ] Confirm active repository, branch, HEAD commit, and uncommitted changes.
-- [ ] Inspect Returns page/API, order detail API, schema, stock movement logic, payment logic, and accounting posting.
-- [ ] Reproduce the first relevant current bug instead of assuming old reports remain valid.
-- [ ] Trace each affected operation end-to-end.
-- [ ] Add/update tests for both return modes and relevant edge cases.
-- [ ] Run type-check, tests, migration/schema checks, and production build where available.
-- [ ] Update this file with verified outcomes and exact unresolved blockers.
+1. Verify active repo, branch, HEAD, and working tree.
+2. Continue the security audit from API/server-action inventory; do not assume the layout guard secures APIs.
+3. Test direct URL access while signed out.
+4. Test cross-business ID access on reads, updates, deletes, file downloads, and multi-record mutations.
+5. Run checks available in `package.json` and record exact results.
+6. Fix findings and add regression tests where feasible.
+7. Update this document and `10_Progress_Log_md.md` with evidence.
 
 ## Status notation
 
@@ -70,11 +90,10 @@ Use only:
 
 Never use a percentage-complete estimate without defined criteria and evidence.
 
-## Update 2026-10-21 — Unit split/combine
+## Update 2026-10-21 — Unit split/combine (historical snapshot)
 
-- Backend: committed and pushed on `v0/finished-backend-frontend` (`ceb414a`, `307df82`). Routes in `app/api/units/`, logic in `lib/units/`, tables `unit_rules` and `unit_operations`. Status: IMPLEMENTED, unverified against the live app database.
-- Migration `0009_unit_conversion`: verified by applying 0000–0009 in order on an in-memory Postgres (PGlite). NOT yet applied to the app database. Status: BLOCKER for the feature.
-- UI (`/units`, sidebar under Stock Movements): written, `tsc --noEmit` passed; not yet applied to the repo, not browser-tested, production build not verified. Status: IMPLEMENTED, unverified.
-- Known issue: `/api/units` returns 500 (`relation "unit_rules" does not exist`) until migration 0009 is applied.
-- Known issue (not fixed): `POST /api/purchases` writes stock movements with reference `purchase:{id}:receive`; `POST /api/purchases/[id]/receive` checks the same reference and returns 409. Decision needed: stock enters at purchase creation or at receipt.
-- Next: apply migration 0009 to the target database; apply UI; test create/edit/delete rule and split/combine, including the negative-stock block (D-014).
+- Backend: reported committed and pushed on `v0/finished-backend-frontend` (`ceb414a`, `307df82`). Routes in `app/api/units/`, logic in `lib/units/`, tables `unit_rules` and `unit_operations`.
+- Migration `0009_unit_conversion`: previously verified on in-memory PGlite, but not confirmed applied to the app database.
+- UI was reported written and type-checked but not browser-tested at that time.
+- Known issue at that time: `/api/units` returned 500 until migration 0009 was applied.
+- Known purchase receive/stock-movement duplicate reference issue was not confirmed fixed.
