@@ -262,7 +262,7 @@ export async function POST(request: NextRequest) {
           entryDate: paymentDate || date,
           kind: "payment",
           reference: paymentId!,
-          description: `Supplier payment for ${id}`,
+          description: `Supplier payment from ${paymentAccount!.trim()} for ${id}`,
         })
         await tx.insert(journalEntryLines).values([
           { id: `${paymentJournalId}-debit`, journalEntryId: paymentJournalId, account: "Accounts Payable", debit: paidAmount.toFixed(2), credit: "0" },
