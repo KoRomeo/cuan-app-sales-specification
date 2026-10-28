@@ -68,9 +68,9 @@ export function SearchableSelect({
         <span className={cn('min-w-0 truncate', selected.length === 0 && 'text-muted-foreground')}>{selected.length ? selectedLabels.join(', ') : placeholder}</span>
         <span className="flex shrink-0 items-center gap-1">{multiple && selected.length > 0 && <span className="rounded bg-muted px-1.5 text-xs">{selected.length}</span>}<ChevronDown className="size-4 opacity-60" /></span>
       </button>
-      {open && !disabled && <div className="absolute z-50 mt-1 w-full min-w-56 rounded-md border bg-popover p-2 text-popover-foreground shadow-lg">
+      {open && !disabled && <div className="absolute z-50 mt-1 w-[min(24rem,calc(100vw-2rem))] min-w-56 max-w-[calc(100vw-2rem)] rounded-md border bg-popover p-2 text-popover-foreground shadow-lg">
         <div className="relative mb-2"><Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={searchPlaceholder} className="h-9 pl-8 pr-8" /><button type="button" aria-label={clearSearchLabel} onClick={() => setQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"><X className="size-3.5" /></button></div>
-        <div role="listbox" aria-multiselectable={multiple || undefined} className="max-h-60 overflow-y-auto">
+        <div role="listbox" aria-multiselectable={multiple || undefined} className="max-h-72 overflow-y-auto">
           {filtered.length ? filtered.map((option) => {
             const active = selected.includes(option.value)
             return <button key={option.value} type="button" role="option" aria-selected={active} disabled={option.disabled} onClick={() => commit(option)} className={cn('flex w-full items-start gap-2 rounded-sm px-2.5 py-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40', active && 'bg-accent/70')}>
