@@ -3,6 +3,7 @@
 import { useTheme } from 'next-themes'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState, type FormEvent } from 'react'
+import { useSWRConfig } from 'swr'
 import { appToast as toast } from '@/lib/toast'
 import { PageHeader } from '@/components/common/page-header'
 import { SectionCard } from '@/components/common/section-card'
@@ -33,6 +34,7 @@ function Field({ id, label, hint, error, required, children }: { id: string; lab
 
 export function SettingsView() {
   const { t, locale, setLocale, features, setFeature } = useApp()
+  const { mutate } = useSWRConfig()
   const { theme, setTheme } = useTheme()
   const params = useSearchParams()
   const requested = params.get('tab')
@@ -83,6 +85,7 @@ export function SettingsView() {
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.error ?? 'Unable to save business name')
       setBusinessName(result.name ?? name)
+      await mutate('/api/businesses/current', result, false)
       toast.success(locale === 'id' ? 'Nama bisnis berhasil disimpan.' : 'Business name saved.')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to save business name'
