@@ -113,6 +113,7 @@ export async function POST(request: Request) {
       PAYMENT_JOURNAL_EXISTS: ["Payment journal already exists", 409],
       ORDER_NOT_FOUND: ["Order not found for this business", 404],
       PURCHASE_NOT_FOUND: ["Purchase not found for this business", 404],
+      PURCHASE_CANCELLED: ["Cannot record payment for a cancelled purchase", 409],
       ORDER_CANCELLED: ["Cannot accept payment for a cancelled Order", 409],
       PAYMENT_EXCEEDS_BALANCE: ["Payment exceeds the remaining balance", 400],
     }
