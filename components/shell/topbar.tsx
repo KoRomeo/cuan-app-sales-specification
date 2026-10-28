@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { Bell, Building2, Check, ChevronsUpDown, LogIn, Menu, Moon, Search, Settings, Sun, User, UserPlus } from 'lucide-react'
-import { useState } from 'react'
+import useSWR from 'swr'
 import { LocaleSwitcher } from '@/components/common/locale-switcher'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
@@ -20,16 +20,11 @@ import {
 import { isOverdue, orderOutstanding, orders, products, purchaseOutstanding, purchases } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
-const businesses = [
-  { id: 'BUS-0001', name: 'CV Cuan Sejahtera', typeKey: 'onboarding.salesType' },
-  { id: 'BUS-0002', name: 'Toko Grosir Makmur', typeKey: 'onboarding.salesType' },
-] as const
-
 export function Topbar({ onMenu }: { onMenu: () => void }) {
   const { t } = useApp()
   const { resolvedTheme, setTheme } = useTheme()
   const router = useRouter()
-  const [business, setBusiness] = useState<(typeof businesses)[number]>(businesses[0])
+  const { data: business } = useSWR<{ id: string; name: string; type: string }>('/api/businesses/current', (url: string) => fetch(url, { cache: 'no-store' }).then(async (response) => { if (!response.ok) throw new Error('Unable to load business'); return response.json() }))
 
   const negativeCount = products.filter((p) => p.stock < 0).length
   const overdueCount = orders.filter((o) => isOverdue(o.dueDate, orderOutstanding(o))).length
@@ -59,8 +54,8 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
             <Building2 className="size-3.5" />
           </span>
           <span className="hidden flex-col leading-tight sm:flex">
-            <span className="text-sm font-medium">{business.name}</span>
-            <span className="text-[11px] text-muted-foreground">{t(business.typeKey)}</span>
+            <span className="text-sm font-medium">{business?.name ?? t('common.loading')}</span>
+            <span className="text-[11px] text-muted-foreground">{business ? t(business.type === 'bakery' ? 'onboarding.bakeryType' : 'onboarding.salesType') : ''}</span>
           </span>
           <ChevronsUpDown className="size-3.5 text-muted-foreground" />
         </DropdownMenuTrigger>
@@ -70,13 +65,18 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
             <DropdownMenuLabel className="whitespace-normal text-xs font-normal normal-case leading-5 text-muted-foreground">
               {t('top.businessPreview')}
             </DropdownMenuLabel>
-            {businesses.map((b) => (
-              <DropdownMenuItem key={b.id} onClick={() => setBusiness(b)}>
+            {business && (
+              <DropdownMenuItem onClick={() => router.push('/settings?tab=business')}>
                 <Building2 />
-                <span className="flex-1">{b.name}</span>
-                {b.id === business.id && <Check className="text-primary" />}
+                <span className="flex-1">{business.name}</span>
+                <Check className="text-primary" />
               </DropdownMenuItem>
-            ))}
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => router.push('/settings?tab=business')}>
+              <Settings />
+              {t('settings.business')}
+            </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
