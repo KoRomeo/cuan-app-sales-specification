@@ -43,8 +43,10 @@ export function SettingsView() {
   const [businessLoading, setBusinessLoading] = useState(true)
   const [businessSaving, setBusinessSaving] = useState(false)
   const [businessError, setBusinessError] = useState('')
-  const [profileName, setProfileName] = useState('Shane')
-  const [profileEmail, setProfileEmail] = useState('shane@cuanapp.id')
+  const [profileName, setProfileName] = useState('')
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileEmail, setProfileEmail] = useState('')
   const [profileNameError, setProfileNameError] = useState('')
   const [profileEmailError, setProfileEmailError] = useState('')
 
@@ -91,17 +93,48 @@ export function SettingsView() {
     }
   }
 
-  const validateProfile = (event: FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    let active = true
+    fetch('/api/auth/get-session', { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Unable to load account details')
+        return response.json()
+      })
+      .then((session) => {
+        if (!active) return
+        setProfileName(session?.user?.name ?? '')
+        setProfileEmail(session?.user?.email ?? '')
+      })
+      .catch((error) => { if (active) toast.error(error instanceof Error ? error.message : 'Unable to load account details') })
+      .finally(() => { if (active) setProfileLoading(false) })
+    return () => { active = false }
+  }, [])
+
+  const validateProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const nameError = profileName.trim() ? '' : t('settings.nameRequired')
-    const emailError = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileEmail.trim()) ? '' : t('settings.emailInvalid')
+    const name = profileName.trim()
+    const nameError = name ? '' : t('settings.nameRequired')
     setProfileNameError(nameError)
-    setProfileEmailError(emailError)
-    if (nameError || emailError) {
+    setProfileEmailError('')
+    if (nameError) {
       toast.error(t('settings.profileInvalid'))
       return
     }
-    toast.success(t('settings.draftValidated'))
+    setProfileSaving(true)
+    try {
+      const response = await fetch('/api/auth/update-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.message ?? result.error ?? 'Unable to save profile')
+      toast.success(locale === 'id' ? 'Profil berhasil disimpan.' : 'Profile saved.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to save profile')
+    } finally {
+      setProfileSaving(false)
+    }
   }
 
   const tabs: { value: Tab; label: string }[] = [
@@ -189,6 +222,7 @@ export function SettingsView() {
               <Input
                 id="settings-profile-name"
                 value={profileName}
+                disabled={profileLoading || profileSaving}
                 required
                 autoComplete="name"
                 aria-invalid={Boolean(profileNameError)}
@@ -204,6 +238,8 @@ export function SettingsView() {
                 id="settings-profile-email"
                 type="email"
                 value={profileEmail}
+                disabled
+                readOnly
                 required
                 autoComplete="email"
                 aria-invalid={Boolean(profileEmailError)}
@@ -217,7 +253,7 @@ export function SettingsView() {
             <Field id="settings-profile-role" label={t('settings.role')}>
               <Input id="settings-profile-role" value={t('settings.owner')} disabled readOnly />
             </Field>
-            <Button type="submit" className="w-fit">{t('settings.savePreview')}</Button>
+            <Button type="submit" disabled={profileLoading || profileSaving} className="w-fit">{profileSaving ? (locale === 'id' ? 'Menyimpan…' : 'Saving…') : t('settings.savePreview')}</Button>
           </form>
         </SectionCard>
       )}
