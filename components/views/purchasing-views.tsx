@@ -8,7 +8,7 @@ import { FormDialog } from '@/components/common/form-dialog'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
 import { PageHeader } from '@/components/common/page-header'
-import { PaymentStatusBadge } from '@/components/common/status-badge'
+import { PaymentStatusBadge, Pill } from '@/components/common/status-badge'
 import { useApp } from '@/components/providers'
 import { appToast as toast } from '@/lib/toast'
 import {
@@ -25,7 +25,7 @@ const fetcher = (url: string) => fetch(url).then(async (response) => {
   if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load purchases')
   return response.json()
 })
-type PersistedPurchase = { id: string; date: string; supplierId: string; dueDate: string | null; notes: string | null; items: Array<{ productId: string; qty: number; unitCost: string | number }> }
+type PersistedPurchase = { id: string; date: string; supplierId: string; dueDate: string | null; notes: string | null; status?: string; items: Array<{ productId: string; qty: number; unitCost: string | number }> }
 type PersistedPayment = { id: string; date: string; amount: string | number; account: string; purchaseId: string | null }
 type PersistedParty = { id: string; name: string; phone?: string | null; address?: string | null }
 function mapPurchase(row: PersistedPurchase, payments: PersistedPayment[]): Purchase {
@@ -47,6 +47,7 @@ export function PurchasesView() {
   const purchaseRows = persistedPurchases.map((purchase) => mapPurchase(purchase, payments))
   const supplierByIdMap = new Map(persistedSuppliers.map((supplier) => [supplier.id, supplier]))
   const productByIdMap = new Map(persistedProducts.map((product) => [product.id, product]))
+  const activeRows = purchaseRows.filter((purchase) => (purchase as Purchase & { status?: string }).status !== 'cancelled')
   const sorted = [...purchaseRows].sort((a, b) => (a.id < b.id ? 1 : -1))
 
   const columns: Column<Purchase>[] = [
@@ -63,7 +64,7 @@ export function PurchasesView() {
         </span>
       ),
     },
-    { key: 'status', header: t('orders.paymentStatus'), sortValue: (p) => purchasePaymentStatus(p), cell: (p) => <PaymentStatusBadge status={purchasePaymentStatus(p)} /> },
+    { key: 'status', header: t('orders.paymentStatus'), sortValue: (p) => purchasePaymentStatus(p), cell: (p) => (p as Purchase & { status?: string }).status === 'cancelled' ? <Pill tone="neutral">{t('status.cancelled')}</Pill> : <PaymentStatusBadge status={purchasePaymentStatus(p)} /> },
     { key: 'total', header: t('common.total'), align: 'right', cell: (p) => <Money value={purchaseTotal(p)} /> },
     { key: 'paid', header: t('common.paid'), align: 'right', cell: (p) => <Money value={purchasePaid(p)} className="text-muted-foreground" /> },
     { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (p) => <Money value={purchaseOutstanding(p)} className={purchaseOutstanding(p) > 0 ? 'font-medium text-warning' : 'text-muted-foreground'} /> },
@@ -74,9 +75,9 @@ export function PurchasesView() {
       <PageHeader breadcrumbs={[{ label: t('nav.purchasing') }, { label: t('nav.purchases') }]} title={t('purchases.title')} description={t('purchases.desc')} />
       <KpiGrid>
         <KpiCard label={t('purchases.count')} value={purchaseRows.length} icon={ShoppingBag} />
-        <KpiCard label={t('purchases.totalPurchased')} value={formatIDR(purchaseRows.reduce((s, p) => s + purchaseTotal(p), 0))} icon={Package} />
-        <KpiCard label={t('common.paid')} value={formatIDR(purchaseRows.reduce((s, p) => s + purchasePaid(p), 0))} icon={HandCoins} tone="success" />
-        <KpiCard label={t('purchases.outstandingPayables')} value={formatIDR(purchaseRows.reduce((s, p) => s + purchaseOutstanding(p), 0))} icon={HandCoins} tone="warning" href="/payables" />
+        <KpiCard label={t('purchases.totalPurchased')} value={formatIDR(activeRows.reduce((s, p) => s + purchaseTotal(p), 0))} icon={Package} />
+        <KpiCard label={t('common.paid')} value={formatIDR(activeRows.reduce((s, p) => s + purchasePaid(p), 0))} icon={HandCoins} tone="success" />
+        <KpiCard label={t('purchases.outstandingPayables')} value={formatIDR(activeRows.reduce((s, p) => s + purchaseOutstanding(p), 0))} icon={HandCoins} tone="warning" href="/payables" />
       </KpiGrid>
       <DataTable
         rows={sorted}
@@ -86,13 +87,14 @@ export function PurchasesView() {
         rowHref={(p) => `/purchases/${encodeURIComponent(p.id)}`}
         contextActions={(purchase) => [
           { label: t('common.view'), onSelect: () => { window.location.href = `/purchases/${encodeURIComponent(purchase.id)}` } },
-          ...(purchase.payments.length === 0 ? [{ label: t('common.delete'), onSelect: () => setDeleteTarget(purchase) }] : []),
+          ...(purchase.payments.length === 0 && (purchase as Purchase & { status?: string }).status !== 'cancelled' ? [{ label: t('common.cancel'), onSelect: () => setDeleteTarget(purchase) }] : []),
         ]}
         filters={[
           { value: 'all', label: t('common.all'), predicate: () => true },
-          { value: 'unpaid', label: t('pay.unpaid'), predicate: (p) => purchasePaymentStatus(p) === 'unpaid' },
-          { value: 'partial', label: t('pay.partial'), predicate: (p) => purchasePaymentStatus(p) === 'partial' },
-          { value: 'paid', label: t('pay.paid'), predicate: (p) => purchasePaymentStatus(p) === 'paid' },
+          { value: 'cancelled', label: t('status.cancelled'), predicate: (p) => (p as Purchase & { status?: string }).status === 'cancelled' },
+          { value: 'unpaid', label: t('pay.unpaid'), predicate: (p) => (p as Purchase & { status?: string }).status !== 'cancelled' && purchasePaymentStatus(p) === 'unpaid' },
+          { value: 'partial', label: t('pay.partial'), predicate: (p) => (p as Purchase & { status?: string }).status !== 'cancelled' && purchasePaymentStatus(p) === 'partial' },
+          { value: 'paid', label: t('pay.paid'), predicate: (p) => (p as Purchase & { status?: string }).status !== 'cancelled' && purchasePaymentStatus(p) === 'paid' },
         ]}
         addLabel={t('purchases.add')}
         onAdd={() => { window.location.href = '/purchases/new' }}
@@ -100,21 +102,21 @@ export function PurchasesView() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(nextOpen) => { if (!nextOpen) setDeleteTarget(null) }}
-        title={t('common.delete')}
-        description={deleteTarget ? t('purchases.deleteConfirm', { id: deleteTarget.id }) : ''}
-        confirmLabel={t('common.delete')}
+        title={t('common.cancel')}
+        description={deleteTarget ? (t('purchases.cancelConfirm', { id: deleteTarget.id }) === 'purchases.cancelConfirm' ? `Cancel purchase ${deleteTarget.id}? Inventory and accounting entries will be reversed.` : t('purchases.cancelConfirm', { id: deleteTarget.id })) : ''}
+        confirmLabel={t('common.cancel')}
         onConfirm={() => {
           void (async () => {
             if (!business?.id || !deleteTarget) return
             const target = deleteTarget
-            const response = await fetch(`/api/purchases/${encodeURIComponent(target.id)}?businessId=${encodeURIComponent(business.id)}`, { method: 'DELETE' })
+            const response = await fetch(`/api/purchases/${encodeURIComponent(target.id)}?businessId=${encodeURIComponent(business.id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'cancelled' }) })
             const result = await response.json().catch(() => ({}))
-            if (!response.ok) throw new Error(result.error ?? 'Unable to delete purchase')
+            if (!response.ok) throw new Error(result.error ?? 'Unable to cancel purchase')
             setDeleteTarget(null)
             await Promise.all([
               globalMutate((key) => typeof key === 'string' && ['/api/purchases', '/api/products', '/api/inventory', '/api/stock-movements', '/api/dashboard', '/api/general-ledger', '/api/payables'].some((prefix) => key.startsWith(prefix))),
             ])
-            toast.success(t('common.delete'))
+            toast.success(t('status.cancelled'))
           })().catch((error) => toast.error(error instanceof Error ? error.message : 'Unable to delete purchase'))
         }}
       />

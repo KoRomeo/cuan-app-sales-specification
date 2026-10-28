@@ -35,6 +35,58 @@ export async function PATCH(request: Request, { params }: Context) {
     const [member] = await db.select({ role: businessMembers.role }).from(businessMembers).where(and(eq(businessMembers.businessId, businessId), eq(businessMembers.userId, session.user.id))).limit(1)
     if (!member) return NextResponse.json({ error: "You do not have access to this business" }, { status: 403 })
     const body = await request.json()
+    if (body.status === "cancelled") {
+      return await db.transaction(async (tx) => {
+        const [purchase] = await tx.select().from(purchases)
+          .where(and(eq(purchases.id, id), eq(purchases.businessId, businessId))).for("update").limit(1)
+        if (!purchase) return NextResponse.json({ error: "Purchase not found" }, { status: 404 })
+        if (purchase.status === "cancelled") return NextResponse.json({ ...purchase, message: "Purchase is already cancelled" })
+        const [payment] = await tx.select({ id: payments.id }).from(payments)
+          .where(and(eq(payments.businessId, businessId), eq(payments.purchaseId, id))).limit(1)
+        if (payment) return NextResponse.json({ error: "A purchase with payments cannot be cancelled. Resolve or reverse its payments first." }, { status: 409 })
+
+        const items = await tx.select().from(purchaseItems).where(eq(purchaseItems.purchaseId, id))
+        const date = new Date().toISOString().slice(0, 10)
+        const [originalEntry] = await tx.select().from(journalEntries)
+          .where(and(eq(journalEntries.businessId, businessId), eq(journalEntries.reference, id))).limit(1)
+        if (originalEntry) {
+          const originalLines = await tx.select().from(journalEntryLines).where(eq(journalEntryLines.journalEntryId, originalEntry.id))
+          const [reversal] = await tx.insert(journalEntries).values({
+            id: `JE-${crypto.randomUUID()}`, businessId, entryDate: date,
+            kind: "purchase_cancellation", reference: id,
+            description: `Cancellation reversal for purchase ${id}`,
+          }).returning()
+          if (originalLines.length) await tx.insert(journalEntryLines).values(originalLines.map((line) => ({
+            id: `JEL-${crypto.randomUUID()}`, journalEntryId: reversal.id, account: line.account,
+            debit: line.credit, credit: line.debit,
+          })))
+        }
+        for (const item of items) {
+          await tx.insert(stockMovements).values({
+            id: `SM-${crypto.randomUUID()}`, businessId, date, productId: item.productId,
+            type: "reversal", qty: -Math.abs(Number(item.qty)), reference: `purchase:${id}:cancel`,
+          })
+        }
+        const [updated] = await tx.update(purchases).set({ status: "cancelled" })
+          .where(and(eq(purchases.id, id), eq(purchases.businessId, businessId))).returning()
+        await tx.update(purchaseDocuments).set({ status: "purchase_cancelled", updatedAt: new Date(), errorMessage: null })
+          .where(and(eq(purchaseDocuments.businessId, businessId), eq(purchaseDocuments.purchaseId, id)))
+        const productIds = [...new Set(items.map((item) => item.productId))]
+        for (const productId of productIds) {
+          const activePurchases = await tx.select({ qty: purchaseItems.qty, unitCost: purchaseItems.unitCost })
+            .from(purchaseItems).innerJoin(purchases, eq(purchaseItems.purchaseId, purchases.id))
+            .where(and(eq(purchases.businessId, businessId), eq(purchases.status, "active"), eq(purchaseItems.productId, productId)))
+          const totalQty = activePurchases.reduce((sum, row) => sum + Number(row.qty), 0)
+          const totalCost = activePurchases.reduce((sum, row) => sum + Number(row.qty) * Number(row.unitCost), 0)
+          const [product] = await tx.select({ costReference: products.costReference }).from(products)
+            .where(and(eq(products.id, productId), eq(products.businessId, businessId))).limit(1)
+          if (product) await tx.update(products).set({
+            averageCost: String(totalQty > 0 ? totalCost / totalQty : Number(product.costReference)),
+          }).where(and(eq(products.id, productId), eq(products.businessId, businessId)))
+        }
+        return NextResponse.json({ ...updated, message: "Purchase cancelled and inventory reversed" })
+      })
+    }
     const dueDate = body.dueDate === "" || body.dueDate === null ? null : body.dueDate
     if (dueDate !== null && (typeof dueDate !== "string" || !/^\\d{4}-\\d{2}-\\d{2}$/.test(dueDate) || Number.isNaN(Date.parse(dueDate)))) {
       return NextResponse.json({ error: "dueDate must be a valid YYYY-MM-DD date or null" }, { status: 400 })

@@ -2,7 +2,8 @@
 
 import { useTheme } from 'next-themes'
 import { useSearchParams } from 'next/navigation'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { useSWRConfig } from 'swr'
 import { appToast as toast } from '@/lib/toast'
 import { PageHeader } from '@/components/common/page-header'
 import { SectionCard } from '@/components/common/section-card'
@@ -33,42 +34,110 @@ function Field({ id, label, hint, error, required, children }: { id: string; lab
 
 export function SettingsView() {
   const { t, locale, setLocale, features, setFeature } = useApp()
+  const { mutate } = useSWRConfig()
   const { theme, setTheme } = useTheme()
   const params = useSearchParams()
   const requested = params.get('tab')
   const [tab, setTab] = useState<Tab>(
     requested === 'features' || requested === 'profile' || requested === 'preferences' ? requested : 'business',
   )
-  const [businessName, setBusinessName] = useState('CuanApp Sales')
+  const [businessName, setBusinessName] = useState('')
+  const [businessLoading, setBusinessLoading] = useState(true)
+  const [businessSaving, setBusinessSaving] = useState(false)
   const [businessError, setBusinessError] = useState('')
-  const [profileName, setProfileName] = useState('Shane')
-  const [profileEmail, setProfileEmail] = useState('shane@cuanapp.id')
+  const [profileName, setProfileName] = useState('')
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileEmail, setProfileEmail] = useState('')
   const [profileNameError, setProfileNameError] = useState('')
   const [profileEmailError, setProfileEmailError] = useState('')
 
-  const validateBusiness = (event: FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    let active = true
+    fetch('/api/businesses/current', { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Unable to load business details')
+        return response.json()
+      })
+      .then((business) => { if (active) setBusinessName(business.name ?? '') })
+      .catch((error) => { if (active) toast.error(error instanceof Error ? error.message : 'Unable to load business details') })
+      .finally(() => { if (active) setBusinessLoading(false) })
+    return () => { active = false }
+  }, [])
+
+  const validateBusiness = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!businessName.trim()) {
+    const name = businessName.trim()
+    if (!name) {
       const message = t('settings.businessNameRequired')
       setBusinessError(message)
       toast.error(message)
       return
     }
+    setBusinessSaving(true)
     setBusinessError('')
-    toast.success(t('settings.draftValidated'))
+    try {
+      const response = await fetch('/api/businesses/current', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error ?? 'Unable to save business name')
+      setBusinessName(result.name ?? name)
+      await mutate('/api/businesses/current', result, false)
+      toast.success(locale === 'id' ? 'Nama bisnis berhasil disimpan.' : 'Business name saved.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to save business name'
+      setBusinessError(message)
+      toast.error(message)
+    } finally {
+      setBusinessSaving(false)
+    }
   }
 
-  const validateProfile = (event: FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    let active = true
+    fetch('/api/auth/get-session', { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Unable to load account details')
+        return response.json()
+      })
+      .then((session) => {
+        if (!active) return
+        setProfileName(session?.user?.name ?? '')
+        setProfileEmail(session?.user?.email ?? '')
+      })
+      .catch((error) => { if (active) toast.error(error instanceof Error ? error.message : 'Unable to load account details') })
+      .finally(() => { if (active) setProfileLoading(false) })
+    return () => { active = false }
+  }, [])
+
+  const validateProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const nameError = profileName.trim() ? '' : t('settings.nameRequired')
-    const emailError = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileEmail.trim()) ? '' : t('settings.emailInvalid')
+    const name = profileName.trim()
+    const nameError = name ? '' : t('settings.nameRequired')
     setProfileNameError(nameError)
-    setProfileEmailError(emailError)
-    if (nameError || emailError) {
+    setProfileEmailError('')
+    if (nameError) {
       toast.error(t('settings.profileInvalid'))
       return
     }
-    toast.success(t('settings.draftValidated'))
+    setProfileSaving(true)
+    try {
+      const response = await fetch('/api/auth/update-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.message ?? result.error ?? 'Unable to save profile')
+      toast.success(locale === 'id' ? 'Profil berhasil disimpan.' : 'Profile saved.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Unable to save profile')
+    } finally {
+      setProfileSaving(false)
+    }
   }
 
   const tabs: { value: Tab; label: string }[] = [
@@ -106,6 +175,7 @@ export function SettingsView() {
               <Input
                 id="settings-business-name"
                 value={businessName}
+                disabled={businessLoading || businessSaving}
                 required
                 aria-invalid={Boolean(businessError)}
                 aria-describedby={businessError ? 'settings-business-name-error' : undefined}
@@ -124,7 +194,7 @@ export function SettingsView() {
             <Field id="settings-costing" label={t('settings.costing')}>
               <Input id="settings-costing" value={t('settings.costingValue')} disabled readOnly />
             </Field>
-            <Button type="submit" className="w-fit">{t('settings.savePreview')}</Button>
+            <Button type="submit" disabled={businessLoading || businessSaving} className="w-fit">{businessSaving ? (locale === 'id' ? 'Menyimpan…' : 'Saving…') : t('settings.savePreview')}</Button>
           </form>
         </SectionCard>
       )}
@@ -155,6 +225,7 @@ export function SettingsView() {
               <Input
                 id="settings-profile-name"
                 value={profileName}
+                disabled={profileLoading || profileSaving}
                 required
                 autoComplete="name"
                 aria-invalid={Boolean(profileNameError)}
@@ -170,6 +241,8 @@ export function SettingsView() {
                 id="settings-profile-email"
                 type="email"
                 value={profileEmail}
+                disabled
+                readOnly
                 required
                 autoComplete="email"
                 aria-invalid={Boolean(profileEmailError)}
@@ -183,7 +256,7 @@ export function SettingsView() {
             <Field id="settings-profile-role" label={t('settings.role')}>
               <Input id="settings-profile-role" value={t('settings.owner')} disabled readOnly />
             </Field>
-            <Button type="submit" className="w-fit">{t('settings.savePreview')}</Button>
+            <Button type="submit" disabled={profileLoading || profileSaving} className="w-fit">{profileSaving ? (locale === 'id' ? 'Menyimpan…' : 'Saving…') : t('settings.savePreview')}</Button>
           </form>
         </SectionCard>
       )}

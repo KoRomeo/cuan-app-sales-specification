@@ -3,13 +3,13 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
-import { ArrowLeft, History, Trash2, UserRound, Wallet } from 'lucide-react'
+import { ArrowLeft, History, Ban, UserRound, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FormDialog } from '@/components/common/form-dialog'
 import { PageHeader } from '@/components/common/page-header'
 import { DetailRow, SectionCard } from '@/components/common/section-card'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
-import { PaymentStatusBadge } from '@/components/common/status-badge'
+import { PaymentStatusBadge, Pill } from '@/components/common/status-badge'
 import { useApp } from '@/components/providers'
 import { purchaseOutstanding, purchasePaid, purchasePaymentStatus, purchaseTotal, TODAY } from '@/lib/data'
 import { formatDate, formatIDR } from '@/lib/format'
@@ -25,7 +25,7 @@ const fetcher = async (url: string) => {
   return data
 }
 type PurchaseDetail = {
-  id: string; date: string; supplierId: string; dueDate: string | null; notes: string | null
+  id: string; date: string; supplierId: string; dueDate: string | null; notes: string | null; status?: string
   supplier: { id: string; name: string; contact?: string | null; address?: string | null } | null
   items: Array<{ id: string; productId: string; qty: number; unitCost: string | number }>
   products: Array<{ id: string; name: string; stock: string | number; averageCost: string | number }>
@@ -54,10 +54,10 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
     <PageHeader
       breadcrumbs={[{ label: t('nav.purchasing') }, { label: t('nav.purchases'), href: '/purchases' }]}
       title={<span className="font-mono">{data.id}</span>}
-      meta={<PaymentStatusBadge status={purchasePaymentStatus(purchase as any)} />}
+      meta={data.status === 'cancelled' ? <Pill tone="neutral">{t('status.cancelled')}</Pill> : <PaymentStatusBadge status={purchasePaymentStatus(purchase as any)} />}
       actions={<>
         <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/purchases" />}><ArrowLeft /> Back to purchases</Button>
-        <Button variant="outline" size="sm" className="text-destructive hover:bg-pink-100 hover:text-red-700 dark:hover:bg-red-950/40" disabled={data.payments.length > 0} onClick={() => setDeleteOpen(true)}><Trash2 /> Delete purchase</Button>
+        {data.status !== 'cancelled' && <Button variant="outline" size="sm" className="text-destructive hover:bg-pink-100 hover:text-red-700 dark:hover:bg-red-950/40" disabled={data.payments.length > 0} onClick={() => setDeleteOpen(true)}><Ban /> {t('common.cancel')}</Button>}
       </>}
     />
     <div className="grid gap-4 lg:grid-cols-3">
@@ -99,7 +99,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
             </table>
           </div>
         </SectionCard>
-        <SectionCard title="Payments" action={outstanding > 0 ? <Button size="sm" onClick={() => setPayOpen(true)}><Wallet /> {t('orders.addPayment')}</Button> : undefined} bodyClassName="p-0 md:p-0">
+        <SectionCard title="Payments" action={outstanding > 0 && data.status !== 'cancelled' ? <Button size="sm" onClick={() => setPayOpen(true)}><Wallet /> {t('orders.addPayment')}</Button> : undefined} bodyClassName="p-0 md:p-0">
           {purchase.payments.length === 0 ? <p className="p-5 text-sm text-muted-foreground">No payments recorded yet.</p> : <ul className="divide-y">
             {purchase.payments.map((payment: { id: string; date: string; amount: number; account: string }) => <li key={payment.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-5">
               <div><p className="font-mono text-xs font-medium text-primary">{payment.id}</p><p className="text-xs text-muted-foreground">{formatDate(payment.date)} · {payment.account}</p></div>
@@ -142,7 +142,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
         </SectionCard>
       </div>
     </div>
-    <ConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} title="Delete purchase" description={data.payments.length > 0 ? 'This purchase has payment records and cannot be deleted.' : 'Warning: deleting this unpaid purchase will remove its purchase record and receipt movement, recalculate affected products’ stock and average cost, and remove its linked accounting entry. This cannot be undone.'} confirmLabel="Delete purchase" onConfirm={async () => { if (!business?.id || data.payments.length > 0) return; const response = await fetch('/api/purchases/' + encodeURIComponent(data.id) + '?businessId=' + encodeURIComponent(business.id), { method: 'DELETE' }); const result = await response.json(); if (!response.ok) throw new Error(result.error ?? 'Unable to delete purchase'); await Promise.all([globalMutate((key) => typeof key === 'string' && (key.includes('/api/purchases') || key.includes('/api/products') || key.includes('/api/inventory') || key.includes('/api/stock-movements') || key.includes('/api/dashboard') || key.includes('/api/general-ledger') || key.includes('/api/payables'))), globalMutate('/api/purchases?businessId=' + encodeURIComponent(business.id))]); window.location.href = '/purchases'; }} />
+    <ConfirmDialog open={deleteOpen} onOpenChange={setDeleteOpen} title={t('common.cancel')} description={t('purchases.cancelConfirm', { id: data.id })} confirmLabel={t('common.cancel')} onConfirm={async () => { if (!business?.id || data.payments.length > 0 || data.status === 'cancelled') return; const response = await fetch('/api/purchases/' + encodeURIComponent(data.id) + '?businessId=' + encodeURIComponent(business.id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'cancelled' }) }); const result = await response.json(); if (!response.ok) throw new Error(result.error ?? 'Unable to cancel purchase'); await Promise.all([mutate(), globalMutate((key) => typeof key === 'string' && (key.includes('/api/purchases') || key.includes('/api/products') || key.includes('/api/inventory') || key.includes('/api/stock-movements') || key.includes('/api/dashboard') || key.includes('/api/general-ledger') || key.includes('/api/payables'))), globalMutate('/api/purchases?businessId=' + encodeURIComponent(business.id))]); setDeleteOpen(false); toast.success(t('status.cancelled')); window.location.href = '/purchases'; }} />
     <FormDialog open={payOpen} onOpenChange={setPayOpen} title={t('orders.addPayment')} description={'Purchase ' + data.id + ' · Outstanding: ' + formatIDR(outstanding)} persisted onSubmit={async (values) => {
       if (!business?.id) throw new Error('Business access required')
       const response = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: 'PAY-' + crypto.randomUUID(), businessId: business.id, purchaseId: data.id, date: values.date, amount: Number(values.amount), account: values.account }) })
