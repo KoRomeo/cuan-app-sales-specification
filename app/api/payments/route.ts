@@ -73,9 +73,10 @@ export async function POST(request: Request) {
         priorPayments = Number(paid?.amount ?? 0)
         description = `Customer payment received into ${account.trim()} for ${orderId}`
       } else {
-        const [purchase] = await tx.select({ id: purchases.id }).from(purchases)
+        const [purchase] = await tx.select({ id: purchases.id, status: purchases.status }).from(purchases)
           .where(and(eq(purchases.id, purchaseId), eq(purchases.businessId, businessId))).for("update").limit(1)
         if (!purchase) throw new Error("PURCHASE_NOT_FOUND")
+        if (purchase.status === "cancelled") throw new Error("PURCHASE_CANCELLED")
         const lines = await tx.select({ qty: purchaseItems.qty, unitCost: purchaseItems.unitCost })
           .from(purchaseItems).where(eq(purchaseItems.purchaseId, purchaseId))
         total = lines.reduce((sum, line) => sum + Number(line.qty) * Number(line.unitCost), 0)
