@@ -79,7 +79,6 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
       title={<span className="font-mono">{data.id}</span>}
       meta={<PaymentStatusBadge status={purchasePaymentStatus(purchase as any)} />}
       actions={<>
-        <Button variant="outline" size="sm" nativeButton={false} render={<Link href={'/purchases?edit=' + encodeURIComponent(data.id)} />}><Pencil /> {t('common.edit')}</Button>
         <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/purchases" />}><ArrowLeft /> Back to purchases</Button>
         <Button variant="outline" size="sm" className="text-destructive hover:bg-pink-100 hover:text-red-700 dark:hover:bg-red-950/40" disabled={data.payments.length > 0} onClick={() => setDeleteOpen(true)}><Trash2 /> Delete purchase</Button>
       </>}
