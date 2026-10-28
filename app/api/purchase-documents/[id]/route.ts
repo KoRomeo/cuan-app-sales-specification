@@ -40,3 +40,22 @@ export async function DELETE(request: NextRequest, { params }: Context) {
     )
   }
 }
+
+export async function PATCH(request: NextRequest, { params }: Context) {
+  const { id } = await params
+  let body: { businessId?: string; action?: string }
+  try { body = await request.json() } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
+  const businessId = body.businessId ?? request.nextUrl.searchParams.get("businessId") ?? ""
+  const access = await requireBusinessAccess(businessId)
+  if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
+  if (body.action !== "restore_review") return NextResponse.json({ error: "Unsupported action" }, { status: 400 })
+  const [document] = await db.select().from(purchaseDocuments)
+    .where(and(eq(purchaseDocuments.id, id), eq(purchaseDocuments.businessId, businessId))).limit(1)
+  if (!document) return NextResponse.json({ error: "Document not found" }, { status: 404 })
+  if (document.purchaseId || document.status === "confirmed") {
+    return NextResponse.json({ error: "An invoice linked to a recorded purchase cannot be restored to review. Cancel or restore the purchase first." }, { status: 409 })
+  }
+  const [updated] = await db.update(purchaseDocuments).set({ status: "review", errorMessage: null, updatedAt: new Date() })
+    .where(and(eq(purchaseDocuments.id, id), eq(purchaseDocuments.businessId, businessId))).returning()
+  return NextResponse.json({ success: true, id: updated.id, status: updated.status })
+}
