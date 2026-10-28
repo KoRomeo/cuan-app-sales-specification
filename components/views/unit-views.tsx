@@ -130,7 +130,7 @@ export function UnitsView() {
           ],
           defaultValue: editing.status,
         },
-        { name: 'note', label: t('units.note'), defaultValue: editing.note ?? '' },
+        { name: 'note', label: t('units.note'), defaultValue: editing.note ?? '', required: false },
       ]
     : [
         {
@@ -150,7 +150,7 @@ export function UnitsView() {
           required: true,
         },
         { name: 'ratio', label: t('units.ratio'), type: 'number', min: 1, defaultValue: '1', required: true },
-        { name: 'note', label: t('units.note'), defaultValue: '' },
+        { name: 'note', label: t('units.note'), defaultValue: '', required: false },
       ]
 
   return (

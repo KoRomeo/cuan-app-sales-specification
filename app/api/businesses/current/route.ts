@@ -20,4 +20,32 @@ export async function GET() {
   return NextResponse.json(membership)
 }
 
+export async function PATCH(request: Request) {
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+
+  const body = await request.json().catch(() => null)
+  const name = typeof body?.name === "string" ? body.name.trim() : ""
+  if (!name || name.length > 120) {
+    return NextResponse.json({ error: "Business name must be between 1 and 120 characters" }, { status: 400 })
+  }
+
+  const [membership] = await db
+    .select({ id: businesses.id })
+    .from(businessMembers)
+    .innerJoin(businesses, eq(businesses.id, businessMembers.businessId))
+    .where(eq(businessMembers.userId, session.user.id))
+    .limit(1)
+
+  if (!membership) return NextResponse.json({ error: "No business membership found" }, { status: 404 })
+
+  const [updated] = await db
+    .update(businesses)
+    .set({ name })
+    .where(eq(businesses.id, membership.id))
+    .returning({ id: businesses.id, name: businesses.name, type: businesses.type })
+
+  return NextResponse.json(updated)
+}
+
 export const dynamic = "force-dynamic"

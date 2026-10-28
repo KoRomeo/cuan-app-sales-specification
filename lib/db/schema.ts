@@ -252,6 +252,7 @@ date: date("date").notNull(),
 supplierId: text("supplier_id")
     .notNull()
     .references(() => suppliers.id),
+status: text("status").notNull().default("active"),
 dueDate: date("due_date"),
 notes: text("notes"),
 createdAt: timestamp("created_at", { withTimezone: true })
