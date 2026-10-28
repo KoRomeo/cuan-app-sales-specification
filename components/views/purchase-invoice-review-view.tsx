@@ -43,7 +43,17 @@ export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }
         <p className="text-sm text-muted-foreground">{label('This invoice is already confirmed. Open the details page to view it, or the edit page to change its recorded fields.', 'Faktur ini sudah dikonfirmasi. Buka halaman detail untuk melihat, atau halaman edit untuk mengubah data tercatatnya.')}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button nativeButton={false} render={<Link href={'/purchase-invoice/' + encodeURIComponent(doc.id)} />}>{label('View details', 'Lihat detail')}</Button>
-
+          {doc.status === 'purchase_cancelled' && <Button disabled={busy} onClick={async () => {
+            setBusy(true)
+            try {
+              const response = await fetch('/api/purchase-documents/' + encodeURIComponent(doc.id), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ businessId: business.id, action: 'restore_review' }) })
+              const result = await response.json()
+              if (!response.ok) throw new Error(result.error || label('Unable to restore invoice', 'Tidak dapat memulihkan faktur'))
+              await mutateDocuments()
+              window.location.href = '/purchase-invoice/' + encodeURIComponent(doc.id) + '/review'
+            } catch (cause) { setMessage(cause instanceof Error ? cause.message : label('Unable to restore invoice', 'Tidak dapat memulihkan faktur')) }
+            finally { setBusy(false) }
+          }}>{label('Restore to review', 'Pulihkan untuk ditinjau')}</Button>}
         </div>
       </SectionCard>
     </div>
