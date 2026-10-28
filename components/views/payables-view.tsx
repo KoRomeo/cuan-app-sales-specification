@@ -28,7 +28,7 @@ export function PayablesView() {
     const total = p.items.reduce((sum, i) => sum + Number(i.qty) * Number(i.unitCost), 0)
     const paid = payments.filter(pay => pay.purchaseId === p.id).reduce((sum, pay) => sum + Number(pay.amount), 0)
     const outstanding = Math.max(0, total - paid)
-    return { id: p.id, date: p.date, dueDate: p.dueDate || null, supplier: supplierNames.get(p.supplierId) || p.supplierId, total, paid, outstanding, status: outstanding <= 0.005 ? 'paid' : p.dueDate && p.dueDate < new Date().toISOString().slice(0,10) ? 'overdue' : 'open' }
+    return { id: p.id, date: p.date, dueDate: p.dueDate || null, supplier: supplierNames.get(p.supplierId) || p.supplierId, total, paid, outstanding, status: outstanding <= 0.005 ? 'paid' : paid > 0.005 ? 'partial' : p.dueDate && p.dueDate < new Date().toISOString().slice(0,10) ? 'overdue' : 'open' }
   }).filter(r => r.outstanding > 0.005).sort((a,b) => (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31'))
   const columns: Column<PayableRow>[] = [
     { key: 'id', header: t('common.id'), cell: r => <IdCell>{r.id}</IdCell> },
@@ -38,7 +38,7 @@ export function PayablesView() {
     { key: 'total', header: t('common.total'), align: 'right', cell: r => <Money value={r.total} /> },
     { key: 'paid', header: t('common.paid'), align: 'right', cell: r => <Money value={r.paid} /> },
     { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: r => <Money value={r.outstanding} className="font-medium text-warning" /> },
-    { key: 'status', header: t('common.status'), cell: r => <span className={r.status === 'overdue' ? 'rounded-full bg-destructive/10 px-2 py-1 text-xs text-destructive' : 'rounded-full bg-warning/10 px-2 py-1 text-xs text-warning'}>{r.status === 'overdue' ? t('common.overdue') : t('common.open')}</span> },
+    { key: 'status', header: t('common.status'), cell: r => <span className={r.status === 'overdue' ? 'rounded-full bg-destructive/10 px-2 py-1 text-xs text-destructive' : r.status === 'partial' ? 'rounded-full bg-primary/10 px-2 py-1 text-xs text-primary' : 'rounded-full bg-warning/10 px-2 py-1 text-xs text-warning'}>{r.status === 'overdue' ? t('common.overdue') : r.status === 'partial' ? t('common.partial') : t('common.open')}</span> },
   ]
   return <>
     <PageHeader breadcrumbs={[{ label: t('nav.purchasing') }, { label: t('nav.payables') }]} title={t('nav.payables')} description={t('finance.payablesDesc')} />
