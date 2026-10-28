@@ -43,7 +43,7 @@ export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }
         <p className="text-sm text-muted-foreground">{label('This invoice is already confirmed. Open the details page to view it, or the edit page to change its recorded fields.', 'Faktur ini sudah dikonfirmasi. Buka halaman detail untuk melihat, atau halaman edit untuk mengubah data tercatatnya.')}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button nativeButton={false} render={<Link href={'/purchase-invoice/' + encodeURIComponent(doc.id)} />}>{label('View details', 'Lihat detail')}</Button>
-          {doc.status === 'confirmed' && <Button variant="outline" nativeButton={false} render={<Link href={'/purchase-invoice/' + encodeURIComponent(doc.id) + '/edit'} />}>{label('Edit invoice', 'Edit faktur')}</Button>}
+
         </div>
       </SectionCard>
     </div>
