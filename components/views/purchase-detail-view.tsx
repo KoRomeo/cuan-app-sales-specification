@@ -99,7 +99,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
             </table>
           </div>
         </SectionCard>
-        <SectionCard title="Payments" action={outstanding > 0 ? <Button size="sm" onClick={() => setPayOpen(true)}><Wallet /> {t('orders.addPayment')}</Button> : undefined} bodyClassName="p-0 md:p-0">
+        <SectionCard title="Payments" action={outstanding > 0 && data.status !== 'cancelled' ? <Button size="sm" onClick={() => setPayOpen(true)}><Wallet /> {t('orders.addPayment')}</Button> : undefined} bodyClassName="p-0 md:p-0">
           {purchase.payments.length === 0 ? <p className="p-5 text-sm text-muted-foreground">No payments recorded yet.</p> : <ul className="divide-y">
             {purchase.payments.map((payment: { id: string; date: string; amount: number; account: string }) => <li key={payment.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-5">
               <div><p className="font-mono text-xs font-medium text-primary">{payment.id}</p><p className="text-xs text-muted-foreground">{formatDate(payment.date)} · {payment.account}</p></div>
