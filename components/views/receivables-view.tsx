@@ -47,6 +47,6 @@ export function ReceivablesView() {
       <KpiCard label={t('common.overdue')} value={rows.filter(r=>r.status==='overdue').length} icon={ClockAlert} tone="destructive" />
       <KpiCard label={t('common.customer')} value={new Set(rows.map(r=>r.customer)).size} icon={Users} tone="neutral" />
     </KpiGrid>
-    <DataTable rows={rows} columns={columns} getRowId={r=>r.id} searchText={r=>r.id+' '+r.customer} editable={false} deletable={false} />
+    <DataTable rows={rows} columns={columns} getRowId={r=>r.id} searchText={r=>r.id+' '+r.customer} rowHref={r=>`/orders/${encodeURIComponent(r.id)}`} editable={false} deletable={false} />
   </>
 }
