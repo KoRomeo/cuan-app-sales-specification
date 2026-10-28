@@ -9,7 +9,7 @@ import { useApp } from '@/components/providers'
 import { formatDate } from '@/lib/format'
 
 type PurchaseItem = { id: string; productId: string; qty: number | string; unitCost: number | string }
-type Purchase = { id: string; date: string; dueDate?: string | null; supplierId: string; items: PurchaseItem[] }
+type Purchase = { id: string; date: string; dueDate?: string | null; supplierId: string; status?: string; items: PurchaseItem[] }
 type Supplier = { id: string; name: string }
 type Payment = { id: string; purchaseId?: string | null; amount: number | string }
 const fetcher = async (url: string) => { const r = await fetch(url); const body = await r.json(); if (!r.ok) throw new Error(body.error || 'Unable to load payables'); return body }
@@ -24,7 +24,7 @@ export function PayablesView() {
   if (error) return <p role="alert" className="text-sm text-destructive">{error.message}</p>
   if (!business || !purchases || !suppliers || !payments) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
   const supplierNames = new Map(suppliers.map(s => [s.id, s.name]))
-  const rows: PayableRow[] = purchases.map(p => {
+  const rows: PayableRow[] = purchases.filter(p => p.status !== 'cancelled').map(p => {
     const total = p.items.reduce((sum, i) => sum + Number(i.qty) * Number(i.unitCost), 0)
     const paid = payments.filter(pay => pay.purchaseId === p.id).reduce((sum, pay) => sum + Number(pay.amount), 0)
     const outstanding = Math.max(0, total - paid)
