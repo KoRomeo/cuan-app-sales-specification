@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
-import { ArrowLeft, History, Pencil, Trash2, UserRound, Wallet } from 'lucide-react'
+import { ArrowLeft, History, Trash2, UserRound, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FormDialog } from '@/components/common/form-dialog'
 import { PageHeader } from '@/components/common/page-header'
