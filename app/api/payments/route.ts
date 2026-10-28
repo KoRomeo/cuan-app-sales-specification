@@ -71,7 +71,7 @@ export async function POST(request: Request) {
         const [paid] = await tx.select({ amount: sql<string>`coalesce(sum(${payments.amount}), 0)` }).from(payments)
           .where(and(eq(payments.businessId, businessId), eq(payments.orderId, orderId)))
         priorPayments = Number(paid?.amount ?? 0)
-        description = `Customer payment for ${orderId}`
+        description = `Customer payment received into ${account.trim()} for ${orderId}`
       } else {
         const [purchase] = await tx.select({ id: purchases.id }).from(purchases)
           .where(and(eq(purchases.id, purchaseId), eq(purchases.businessId, businessId))).for("update").limit(1)
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
         const [paid] = await tx.select({ amount: sql<string>`coalesce(sum(${payments.amount}), 0)` }).from(payments)
           .where(and(eq(payments.businessId, businessId), eq(payments.purchaseId, purchaseId)))
         priorPayments = Number(paid?.amount ?? 0)
-        description = `Supplier payment for ${purchaseId}`
+        description = `Supplier payment from ${account.trim()} for ${purchaseId}`
       }
       if (amount + priorPayments > total + 0.005) throw new Error("PAYMENT_EXCEEDS_BALANCE")
 
