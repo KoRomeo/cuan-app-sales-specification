@@ -525,23 +525,27 @@ export function LedgerView() {
       })
       .then((payload) => {
         if (cancelled) return
-        const rows: LedgerRow[] = []
-        const running = new Map<string, number>()
-        for (const line of payload.rows ?? []) {
-          const balance = (running.get(line.account) ?? 0) + Number(line.debit) - Number(line.credit)
-          running.set(line.account, balance)
-          rows.push({
-            key: String(line.lineId),
-            date: String(line.date),
-            entryId: String(line.id),
-            reference: String(line.reference),
-            account: String(line.account),
-            description: String(line.description),
-            debit: Number(line.debit),
-            credit: Number(line.credit),
-            balance: Number(balance.toFixed(2)),
-          })
-        }
+        const rows: LedgerRow[] = (payload.rows ?? []).map((line: {
+          lineId: string
+          date: string
+          id: string
+          reference: string
+          account: string
+          description: string
+          debit: number | string
+          credit: number | string
+          balance: number | string
+        }) => ({
+          key: String(line.lineId),
+          date: String(line.date),
+          entryId: String(line.id),
+          reference: String(line.reference),
+          account: String(line.account),
+          description: String(line.description),
+          debit: Number(line.debit),
+          credit: Number(line.credit),
+          balance: Number(line.balance),
+        }))
         setLedger({ accounts: payload.accounts ?? [], rows })
         setCode((current) => current || payload.accounts?.[0]?.name || '')
         setLoading(false)
@@ -562,6 +566,7 @@ export function LedgerView() {
     { key: 'date', header: t('common.date'), cell: (r) => formatDate(r.date) },
     { key: 'entry', header: t('reports.entry'), cell: (r) => <IdCell>{r.entryId}</IdCell> },
     { key: 'ref', header: t('common.reference'), cell: (r) => <span className="font-mono text-xs">{r.reference}</span> },
+    { key: 'account', header: t('reports.account'), cell: (r) => <span className="font-medium">{r.account}</span> },
     { key: 'desc', header: t('common.description'), cell: (r) => r.description },
     { key: 'debit', header: t('reports.debit'), align: 'right', cell: (r) => r.debit ? <Money value={r.debit} /> : <span className="text-muted-foreground">—</span> },
     { key: 'credit', header: t('reports.credit'), align: 'right', cell: (r) => r.credit ? <Money value={r.credit} /> : <span className="text-muted-foreground">—</span> },
@@ -594,7 +599,7 @@ export function LedgerView() {
             {rows.length === 0 ? (
               <div className="rounded-xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">{t('reports.noMovement')}</div>
             ) : (
-              <DataTable rows={rows} columns={columns} getRowId={(r) => r.key} searchText={(r) => `${r.entryId} ${r.reference} ${r.description}`} editable={false} deletable={false} pageSize={15} />
+              <DataTable rows={rows} columns={columns} getRowId={(r) => r.key} searchText={(r) => `${r.entryId} ${r.reference} ${r.account} ${r.description}`} editable={false} deletable={false} pageSize={15} />
             )}
           </>
         )}
