@@ -2,7 +2,7 @@
 
 import { useTheme } from 'next-themes'
 import { useSearchParams } from 'next/navigation'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { appToast as toast } from '@/lib/toast'
 import { PageHeader } from '@/components/common/page-header'
 import { SectionCard } from '@/components/common/section-card'
@@ -39,23 +39,56 @@ export function SettingsView() {
   const [tab, setTab] = useState<Tab>(
     requested === 'features' || requested === 'profile' || requested === 'preferences' ? requested : 'business',
   )
-  const [businessName, setBusinessName] = useState('CuanApp Sales')
+  const [businessName, setBusinessName] = useState('')
+  const [businessLoading, setBusinessLoading] = useState(true)
+  const [businessSaving, setBusinessSaving] = useState(false)
   const [businessError, setBusinessError] = useState('')
   const [profileName, setProfileName] = useState('Shane')
   const [profileEmail, setProfileEmail] = useState('shane@cuanapp.id')
   const [profileNameError, setProfileNameError] = useState('')
   const [profileEmailError, setProfileEmailError] = useState('')
 
-  const validateBusiness = (event: FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    let active = true
+    fetch('/api/businesses/current', { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Unable to load business details')
+        return response.json()
+      })
+      .then((business) => { if (active) setBusinessName(business.name ?? '') })
+      .catch((error) => { if (active) toast.error(error instanceof Error ? error.message : 'Unable to load business details') })
+      .finally(() => { if (active) setBusinessLoading(false) })
+    return () => { active = false }
+  }, [])
+
+  const validateBusiness = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!businessName.trim()) {
+    const name = businessName.trim()
+    if (!name) {
       const message = t('settings.businessNameRequired')
       setBusinessError(message)
       toast.error(message)
       return
     }
+    setBusinessSaving(true)
     setBusinessError('')
-    toast.success(t('settings.draftValidated'))
+    try {
+      const response = await fetch('/api/businesses/current', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error ?? 'Unable to save business name')
+      setBusinessName(result.name ?? name)
+      toast.success(locale === 'id' ? 'Nama bisnis berhasil disimpan.' : 'Business name saved.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to save business name'
+      setBusinessError(message)
+      toast.error(message)
+    } finally {
+      setBusinessSaving(false)
+    }
   }
 
   const validateProfile = (event: FormEvent<HTMLFormElement>) => {
@@ -106,6 +139,7 @@ export function SettingsView() {
               <Input
                 id="settings-business-name"
                 value={businessName}
+                disabled={businessLoading || businessSaving}
                 required
                 aria-invalid={Boolean(businessError)}
                 aria-describedby={businessError ? 'settings-business-name-error' : undefined}
@@ -124,7 +158,7 @@ export function SettingsView() {
             <Field id="settings-costing" label={t('settings.costing')}>
               <Input id="settings-costing" value={t('settings.costingValue')} disabled readOnly />
             </Field>
-            <Button type="submit" className="w-fit">{t('settings.savePreview')}</Button>
+            <Button type="submit" disabled={businessLoading || businessSaving} className="w-fit">{businessSaving ? (locale === 'id' ? 'Menyimpan…' : 'Saving…') : t('settings.savePreview')}</Button>
           </form>
         </SectionCard>
       )}
