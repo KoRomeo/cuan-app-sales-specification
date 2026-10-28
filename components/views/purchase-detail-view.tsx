@@ -37,9 +37,6 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
   const { mutate: globalMutate } = useSWRConfig()
   const [payOpen, setPayOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [dueDateEditing, setDueDateEditing] = useState(false)
-  const [dueDateValue, setDueDateValue] = useState('')
-  const [dueDateSaving, setDueDateSaving] = useState(false)
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: accounts } = useSWR<Array<{ id: string; name: string; active: boolean }>>(business?.id ? '/api/financial-accounts?businessId=' + encodeURIComponent(business.id) : null, fetcher)
   const { data, error, mutate } = useSWR<PurchaseDetail>(business?.id ? '/api/purchases/' + encodeURIComponent(purchaseId) + '?businessId=' + encodeURIComponent(business.id) : null, fetcher)
@@ -51,26 +48,6 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
   const paid = purchasePaid(purchase as any)
   const outstanding = purchaseOutstanding(purchase as any)
   const productById = new Map(data.products.map((product) => [product.id, { ...product, stock: Number(product.stock), averageCost: Number(product.averageCost) }]))
-  const saveDueDate = async () => {
-    setDueDateSaving(true)
-    try {
-      const response = await fetch('/api/purchases/' + encodeURIComponent(data.id) + '?businessId=' + encodeURIComponent(business.id), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dueDate: dueDateValue || null }),
-      })
-      const body = await response.json()
-      if (!response.ok) throw new Error(body.error ?? 'Unable to update due date')
-      await mutate()
-      await globalMutate((key) => typeof key === 'string' && key.includes('/api/payables'))
-      setDueDateEditing(false)
-      toast.success(t('common.saved'))
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Unable to update due date')
-    } finally {
-      setDueDateSaving(false)
-    }
-  }
   const totalQuantity = purchase.items.reduce((sum: number, item: { qty: number }) => sum + item.qty, 0)
   const uniqueProducts = new Set(purchase.items.map((item: { productId: string }) => item.productId)).size
   return <>
@@ -138,14 +115,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
             <DetailRow label={t('common.paid')}><span className="font-mono font-medium tabular-nums text-success">{formatIDR(paid)}</span></DetailRow>
             <DetailRow label={t('common.outstanding')}><span className={`font-mono text-base font-semibold tabular-nums ${outstanding > 0 ? 'text-warning' : 'text-success'}`}>{formatIDR(outstanding)}</span></DetailRow>
             <DetailRow label={t('common.dueDate')}>
-              {dueDateEditing ? <div className="flex flex-wrap items-center gap-2">
-                <input aria-label={t('common.dueDate')} type="date" value={dueDateValue} onChange={(event) => setDueDateValue(event.target.value)} className="h-8 min-w-0 rounded-md border border-input bg-background px-2 text-sm" />
-                <Button size="sm" disabled={dueDateSaving} onClick={saveDueDate}>{dueDateSaving ? t('common.loading') : t('common.save')}</Button>
-                <Button size="sm" variant="ghost" disabled={dueDateSaving} onClick={() => setDueDateEditing(false)}>{t('common.cancel')}</Button>
-              </div> : <div className="flex items-center justify-between gap-2">
-                {data.dueDate ? <span className={data.dueDate < TODAY && outstanding > 0 ? 'text-destructive' : ''}>{formatDate(data.dueDate)}</span> : <span className="text-muted-foreground">{t('common.noDueDate')}</span>}
-                <Button size="sm" variant="ghost" onClick={() => { setDueDateValue(data.dueDate ?? ''); setDueDateEditing(true) }}><Pencil className="size-3.5" /> {t('common.edit')}</Button>
-              </div>}
+              {data.dueDate ? <span className={data.dueDate < TODAY && outstanding > 0 ? 'text-destructive' : ''}>{formatDate(data.dueDate)}</span> : <span className="text-muted-foreground">{t('common.noDueDate')}</span>}
             </DetailRow>
           </dl>
           {total > 0 && <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={Math.round((paid / total) * 100)} aria-valuemin={0} aria-valuemax={100}><div className="h-full rounded-full bg-success" style={{ width: `${Math.min((paid / total) * 100, 100)}%` }} /></div>}
