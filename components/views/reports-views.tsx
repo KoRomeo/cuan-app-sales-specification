@@ -14,7 +14,7 @@ import {
   Waves,
   type LucideIcon,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { type Column, DataTable, IdCell, Money } from '@/components/common/data-table'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
 import { PageHeader } from '@/components/common/page-header'
@@ -478,6 +478,7 @@ export function CashFlowView() {
 
 interface LedgerRow {
   key: string
+  account?: string
   date: string
   entryId: string
   reference: string
@@ -489,39 +490,81 @@ interface LedgerRow {
 
 export function LedgerView() {
   const { t } = useApp()
-  const [code, setCode] = useState('1100')
-  const account = chartOfAccounts.find((a) => a.code === code) ?? chartOfAccounts[0]
-  const debitNormal = account.type === 'asset' || account.type === 'expense'
+  const [businessId, setBusinessId] = useState('')
+  const [ledger, setLedger] = useState<{ accounts: { name: string; balance: number }[]; rows: LedgerRow[] }>({ accounts: [], rows: [] })
+  const [code, setCode] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  const rows = useMemo(() => {
-    let running = 0
-    const out: LedgerRow[] = []
-    for (const e of journalEntries) {
-      e.lines.forEach((l, i) => {
-        if (l.accountCode !== account.code) return
-        running += debitNormal ? l.debit - l.credit : l.credit - l.debit
-        out.push({
-          key: `${e.id}-${i}`,
-          date: e.date,
-          entryId: e.id,
-          reference: e.reference,
-          description: e.description,
-          debit: l.debit,
-          credit: l.credit,
-          balance: running,
-        })
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/businesses/current', { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Unable to load the selected business')
+        return response.json()
       })
-    }
-    return out
-  }, [account.code, debitNormal])
+      .then((business) => {
+        if (!cancelled) setBusinessId(String(business.id))
+      })
+      .catch((cause) => {
+        if (!cancelled) { setError(cause instanceof Error ? cause.message : 'Unable to load ledger'); setLoading(false) }
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (!businessId) return
+    let cancelled = false
+    setLoading(true)
+    setError('')
+    fetch(`/api/reports/general-ledger?businessId=${encodeURIComponent(businessId)}`, { cache: 'no-store' })
+      .then(async (response) => {
+        const payload = await response.json()
+        if (!response.ok) throw new Error(payload.error || 'Unable to load ledger')
+        return payload
+      })
+      .then((payload) => {
+        if (cancelled) return
+        const rows: LedgerRow[] = []
+        const running = new Map<string, number>()
+        for (const line of payload.rows ?? []) {
+          const balance = (running.get(line.account) ?? 0) + Number(line.debit) - Number(line.credit)
+          running.set(line.account, balance)
+          rows.push({
+            key: String(line.lineId),
+            date: String(line.date),
+            entryId: String(line.id),
+            reference: String(line.reference),
+            account: String(line.account),
+            description: String(line.description),
+            debit: Number(line.debit),
+            credit: Number(line.credit),
+            balance: Number(balance.toFixed(2)),
+          })
+        }
+        setLedger({ accounts: payload.accounts ?? [], rows })
+        setCode((current) => current || payload.accounts?.[0]?.name || '')
+        setLoading(false)
+      })
+      .catch((cause) => {
+        if (!cancelled) { setError(cause instanceof Error ? cause.message : 'Unable to load ledger'); setLoading(false) }
+      })
+    return () => { cancelled = true }
+  }, [businessId])
+
+  const account = ledger.accounts.find((item) => item.name === code)
+  const rows = ledger.rows.filter((row) => {
+    const source = row as LedgerRow & { account?: string }
+    return !code || source.account === code
+  })
 
   const columns: Column<LedgerRow>[] = [
     { key: 'date', header: t('common.date'), cell: (r) => formatDate(r.date) },
     { key: 'entry', header: t('reports.entry'), cell: (r) => <IdCell>{r.entryId}</IdCell> },
     { key: 'ref', header: t('common.reference'), cell: (r) => <span className="font-mono text-xs">{r.reference}</span> },
     { key: 'desc', header: t('common.description'), cell: (r) => r.description },
-    { key: 'debit', header: t('reports.debit'), align: 'right', cell: (r) => (r.debit ? <Money value={r.debit} /> : <span className="text-muted-foreground">—</span>) },
-    { key: 'credit', header: t('reports.credit'), align: 'right', cell: (r) => (r.credit ? <Money value={r.credit} /> : <span className="text-muted-foreground">—</span>) },
+    { key: 'debit', header: t('reports.debit'), align: 'right', cell: (r) => r.debit ? <Money value={r.debit} /> : <span className="text-muted-foreground">—</span> },
+    { key: 'credit', header: t('reports.credit'), align: 'right', cell: (r) => r.credit ? <Money value={r.credit} /> : <span className="text-muted-foreground">—</span> },
     { key: 'balance', header: t('reports.balance'), align: 'right', cell: (r) => <Money value={r.balance} className="font-semibold" /> },
   ]
 
@@ -532,35 +575,28 @@ export function LedgerView() {
         title={t('reports.ledger')}
         description={t('reports.glDesc')}
         actions={
-          <div className="w-64"><SearchableSelect id="ledger-chart-account-filter" value={code} onChange={(value) => setCode(String(value))} options={chartOfAccounts.map((account) => ({ value: account.code, label: `${account.code} · ${account.name}` }))} placeholder={t('reports.account')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} /></div>
+          <div className="w-64">
+            <SearchableSelect id="ledger-chart-account-filter" value={code} onChange={(value) => setCode(String(value))} options={ledger.accounts.map((item) => ({ value: item.name, label: item.name }))} placeholder={t('reports.account')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} />
+          </div>
         }
       />
       <AccountingGate>
-        <KpiGrid>
-          <KpiCard label={account.name} value={<Money value={accountBalance(account.code, TODAY)} />} hint={account.code} icon={BookOpen} />
-          <KpiCard
-            label={t('reports.entry')}
-            value={formatNumber(journalEntries.length)}
-            hint={journalEntries.every(isBalanced) ? t('reports.balanced') : t('reports.notBalanced')}
-            icon={Scale}
-            tone="neutral"
-          />
-        </KpiGrid>
-        {rows.length === 0 ? (
-          <div className="rounded-xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">
-            {t('reports.noMovement')}
-          </div>
+        {error ? (
+          <div role="alert" className="rounded-xl border border-destructive/30 bg-card p-6 text-sm text-destructive">{error}</div>
+        ) : loading ? (
+          <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">{t('common.loading')}</div>
         ) : (
-          <DataTable
-            key={account.code}
-            rows={rows}
-            columns={columns}
-            getRowId={(r) => r.key}
-            searchText={(r) => `${r.entryId} ${r.reference} ${r.description}`}
-            editable={false}
-            deletable={false}
-            pageSize={15}
-          />
+          <>
+            <KpiGrid>
+              <KpiCard label={account?.name ?? t('reports.account')} value={<Money value={account?.balance ?? 0} />} hint={t('reports.balance')} icon={BookOpen} />
+              <KpiCard label={t('reports.entry')} value={formatNumber(new Set(rows.map((row) => row.entryId)).size)} hint={t('reports.glDesc')} icon={Scale} tone="neutral" />
+            </KpiGrid>
+            {rows.length === 0 ? (
+              <div className="rounded-xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">{t('reports.noMovement')}</div>
+            ) : (
+              <DataTable rows={rows} columns={columns} getRowId={(r) => r.key} searchText={(r) => `${r.entryId} ${r.reference} ${r.description}`} editable={false} deletable={false} pageSize={15} />
+            )}
+          </>
         )}
       </AccountingGate>
     </>
