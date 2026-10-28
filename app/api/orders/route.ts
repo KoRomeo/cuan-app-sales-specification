@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
         if (existingPayment) throw new Error("PAYMENT_ID_EXISTS")
         const entryId = `JE-PAY-${paymentId}`
         await tx.insert(payments).values({ id: paymentId, businessId, orderId: generatedId, purchaseId: null, date: paymentDate, amount: paidAmount.toFixed(2), account: paymentAccount.trim() })
-        await tx.insert(journalEntries).values({ id: entryId, businessId, entryDate: paymentDate, kind: "payment", reference: paymentId, description: `Customer payment for ${generatedId}` })
+        await tx.insert(journalEntries).values({ id: entryId, businessId, entryDate: paymentDate, kind: "payment", reference: paymentId, description: `Customer payment received into ${paymentAccount.trim()} for ${generatedId}` })
         await tx.insert(journalEntryLines).values([{ id: `${entryId}-debit`, journalEntryId: entryId, account: paymentAccount.trim(), debit: paidAmount.toFixed(2), credit: "0" }, { id: `${entryId}-credit`, journalEntryId: entryId, account: "Accounts Receivable", debit: "0", credit: paidAmount.toFixed(2) }])
       }
       return generatedId
