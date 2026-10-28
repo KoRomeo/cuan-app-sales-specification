@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Download, FileText, RefreshCw, X, ZoomIn, RotateCw } from 'lucide-react'
 
 export type Line = { productName: string; unit?: string | null; quantity: number; unitCost: number; discount?: number; lineTotal?: number; productId?: string }
@@ -46,6 +46,24 @@ export function InvoiceFilePreview({ documentId, businessId, fileName, mimeType,
   const [attempt, setAttempt] = useState(0)
   const [zoomed, setZoomed] = useState(false)
   const [rotation, setRotation] = useState(0)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const dragRef = useRef<{ pointerId: number; x: number; y: number; panX: number; panY: number } | null>(null)
+  const imageViewportRef = useRef<HTMLDivElement>(null)
+  const toggleZoom = () => { setZoomed(value => !value); setPan({ x: 0, y: 0 }); dragRef.current = null }
+  const startPan = (event: React.PointerEvent<HTMLImageElement>) => {
+    if (!zoomed) { setZoomed(true); setPan({ x: 0, y: 0 }); return }
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, panX: pan.x, panY: pan.y }
+  }
+  const movePan = (event: React.PointerEvent<HTMLImageElement>) => {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    setPan({ x: drag.panX + event.clientX - drag.x, y: drag.panY + event.clientY - drag.y })
+  }
+  const endPan = (event: React.PointerEvent<HTMLImageElement>) => {
+    if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -82,7 +100,7 @@ export function InvoiceFilePreview({ documentId, businessId, fileName, mimeType,
       </div>
     </div>}
     {state === 'ready' && url && (mimeType.startsWith('image/')
-      ? <div className="relative space-y-2"><div className="relative overflow-hidden rounded-md border bg-muted p-1"><img src={url} alt={fileName} style={{ transform: "rotate(" + rotation + "deg)" }} className="max-h-[70vh] w-full rounded-md object-contain transition-transform duration-200" />{zoomed && <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/80 p-2" onClick={() => setZoomed(false)}><button type="button" aria-label={label('Close zoom', 'Tutup perbesaran')} className="absolute right-2 top-2 rounded-full bg-background p-1.5 text-foreground shadow" onClick={e => { e.stopPropagation(); setZoomed(false) }}><X className="size-4" /></button><img src={url} alt={fileName} style={{ transform: "rotate(" + rotation + "deg)" }} className="max-h-full max-w-full object-contain transition-transform duration-200" onClick={e => e.stopPropagation()} /></div>}</div><div className="flex flex-wrap items-center justify-end gap-2"><button type="button" onClick={() => setRotation(value => (value + 90) % 360)} aria-label={label('Rotate image 90 degrees', 'Putar gambar 90 derajat')} className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-xs hover:bg-accent"><RotateCw className="size-3.5" />{label('Rotate 90°', 'Putar 90°')}</button><button type="button" onClick={() => setZoomed(value => !value)} aria-label={label('Zoom invoice image', 'Perbesar gambar faktur')} className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-xs hover:bg-accent"><ZoomIn className="size-3.5" />{zoomed ? label('Close zoom', 'Tutup perbesaran') : label('Click to zoom', 'Klik untuk memperbesar')}</button></div></div>
+      ? <div className="relative space-y-2"><div ref={imageViewportRef} className="relative h-[70vh] min-h-[420px] overflow-hidden rounded-md border bg-muted p-1"><img src={url} alt={fileName} draggable={false} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={endPan} onPointerCancel={endPan} style={{ transform: "translate(" + pan.x + "px, " + pan.y + "px) rotate(" + rotation + "deg) scale(" + (zoomed ? 2 : 1) + ")", transformOrigin: "center center" }} className={"h-full w-full rounded-md object-contain select-none transition-transform duration-150 " + (zoomed ? "cursor-grab active:cursor-grabbing" : "cursor-zoom-in")} />{zoomed && <button type="button" aria-label={label('Close zoom', 'Tutup perbesaran')} onClick={toggleZoom} className="absolute right-3 top-3 z-10 rounded-full border bg-background/95 p-1.5 text-foreground shadow"><X className="size-4" /></button>}</div><div className="flex flex-wrap items-center justify-end gap-2"><button type="button" onClick={() => setRotation(value => (value + 90) % 360)} aria-label={label('Rotate image 90 degrees', 'Putar gambar 90 derajat')} className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-xs hover:bg-accent"><RotateCw className="size-3.5" />{label('Rotate 90°', 'Putar 90°')}</button><button type="button" onClick={toggleZoom} aria-label={label('Zoom invoice image', 'Perbesar gambar faktur')} className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1.5 text-xs hover:bg-accent"><ZoomIn className="size-3.5" />{zoomed ? label('Close zoom', 'Tutup perbesaran') : label('Click to zoom', 'Klik untuk memperbesar')}</button></div></div>
       : <iframe title={fileName} src={url} className="h-[70vh] min-h-[420px] w-full rounded-md border bg-muted" />)}
     {state === 'ready' && <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><FileText className="size-3.5" />{fileName} · {mimeType}</p>}
   </div>
