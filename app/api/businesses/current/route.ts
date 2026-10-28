@@ -41,7 +41,7 @@ export async function PATCH(request: Request) {
 
   const [updated] = await db
     .update(businesses)
-    .set({ name, updatedAt: new Date() })
+    .set({ name })
     .where(eq(businesses.id, membership.id))
     .returning({ id: businesses.id, name: businesses.name, type: businesses.type })
 
