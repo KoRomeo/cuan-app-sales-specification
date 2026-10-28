@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { and, asc, eq } from "drizzle-orm"
 import { db } from "@/lib/db"
-import { businessMembers, financialAccounts, journalEntries, journalEntryLines } from "@/lib/db/schema"
+import { financialAccounts, journalEntries, journalEntryLines } from "@/lib/db/schema"
 import { requireBusinessAccess } from "@/lib/api-auth"
 
 export async function GET(request: Request) {
@@ -35,6 +35,10 @@ export async function GET(request: Request) {
     const accountNames = new Set<string>(accounts.map((a) => a.name))
     for (const entry of entries) accountNames.add(entry.account)
     const balances = new Map<string, number>()
+    const openingJournalAccounts = new Set(entries.filter((entry) => entry.kind === "opening").map((entry) => entry.account))
+    for (const account of accounts) {
+      if (!openingJournalAccounts.has(account.name)) balances.set(account.name, Number(account.openingBalance))
+    }
     const rows = entries.map((entry) => {
       const balance = (balances.get(entry.account) ?? 0) + Number(entry.debit) - Number(entry.credit)
       balances.set(entry.account, balance)
