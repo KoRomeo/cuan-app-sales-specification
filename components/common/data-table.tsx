@@ -167,7 +167,7 @@ export function DataTable<T>({
     const date = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value)
     return date ? date[3] + '-' + date[2] + '-' + date[1] : value
   }
-  const isFilterableColumn = (column: Column<T>) => column.filterable ?? /date|tanggal|created|updated|status|payment|paid|balance|amount|total|price|cost|expense|revenue|profit|stock|quantity|qty|due|account|method|type/i.test(column.key + ' ' + column.header)
+  const isFilterableColumn = (column: Column<T>) => column.filterable ?? /(^|[ _-])(date|tanggal|created|updated|status|paymentstatus|payment_status|paidstatus|paid_status|dueDate|due_date|method|type)([ _-]|$)/i.test(column.key + ' ' + column.header)
   const filterableColumns = columns.filter(isFilterableColumn)
   const selectedColumn = filterableColumns.find((column) => column.key === filterColumn)
   const columnOptions = selectedColumn ? [...new Set(rows.map((row) => valueFor(row, selectedColumn)).filter(Boolean))].sort((a,b) => a.localeCompare(b, undefined, { numeric: true })) : []
