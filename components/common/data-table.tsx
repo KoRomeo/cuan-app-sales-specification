@@ -28,6 +28,7 @@ export interface Column<T> {
   className?: string
   sortable?: boolean
   sortValue?: (row: T) => string | number | null | undefined
+  filterable?: boolean
 }
 
 type ActionKind = 'view' | 'edit' | 'delete' | 'cancel' | 'other'
@@ -166,7 +167,9 @@ export function DataTable<T>({
     const date = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value)
     return date ? date[3] + '-' + date[2] + '-' + date[1] : value
   }
-  const selectedColumn = columns.find((column) => column.key === filterColumn)
+  const isFilterableColumn = (column: Column<T>) => column.filterable ?? /date|tanggal|created|updated|status|payment|paid|balance|amount|total|price|cost|expense|revenue|profit|stock|quantity|qty|due|account|method|type/i.test(column.key + ' ' + column.header)
+  const filterableColumns = columns.filter(isFilterableColumn)
+  const selectedColumn = filterableColumns.find((column) => column.key === filterColumn)
   const columnOptions = selectedColumn ? [...new Set(rows.map((row) => valueFor(row, selectedColumn)).filter(Boolean))].sort((a,b) => a.localeCompare(b, undefined, { numeric: true })) : []
   const activeColumnFilterCount = Object.values(columnValues).reduce((sum, values) => sum + values.length, 0) + Object.keys(dateFrom).filter(key => dateFrom[key]).length + Object.keys(dateTo).filter(key => dateTo[key]).length + Object.values(datePreset).filter(value => value !== 'all').length
 
@@ -244,47 +247,17 @@ export function DataTable<T>({
         </div>
 
         <div className="flex items-center gap-2 md:ml-auto">
-          {filters && filters.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="min-w-36 justify-between gap-3" />}>
-                <span className="flex items-center gap-2">
-                  <span>{filters.find((f) => f.value === filter)?.label ?? 'Quick filters'}</span>
-                  <span className="font-mono text-xs text-muted-foreground tabular-nums">{rows.filter((row) => (filters.find((f) => f.value === filter) ?? filters[0]).predicate(row)).length}</span>
-                </span>
-                <ChevronDown className="size-4 opacity-70" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-44">
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Quick filters</DropdownMenuLabel>
-                  {filters.map((f) => {
-                    const count = rows.filter(f.predicate).length
-                    const active = filter === f.value
-                    return (
-                      <DropdownMenuItem
-                        key={f.value}
-                        onClick={() => { setFilter(f.value); setPage(1) }}
-                        className={cn('flex cursor-pointer items-center justify-between gap-4', active && 'bg-accent')}
-                      >
-                        <span>{f.label}</span>
-                        <span className="font-mono text-xs text-muted-foreground tabular-nums">{count}</span>
-                      </DropdownMenuItem>
-                    )
-                  })}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-2" />}>
               <Filter className="size-4" />
-              {activeColumnFilterCount > 0 ? 'Filtered' : 'All'}
+              {activeColumnFilterCount > 0 || filter !== initialFilter ? 'Filtered' : (filters?.find((f) => f.value === filter)?.label ?? 'All')}
               {activeColumnFilterCount > 0 && <span className="rounded bg-primary/10 px-1.5 text-xs text-primary">{activeColumnFilterCount}</span>}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80 max-h-[min(70vh,480px)] overflow-y-auto p-3">
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Column filters</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Filter by</label>
               <select value={filterColumn} onChange={(event) => setFilterColumn(event.target.value)} className="mb-3 h-9 w-full rounded-md border bg-background px-2 text-sm">
-                <option value="">Choose a column…</option>
-                {columns.map(column => <option key={column.key} value={column.key}>{column.header}</option>)}
+                <option value="">Choose a filter…</option>
+                {filterableColumns.map(column => <option key={column.key} value={column.key}>{column.header}</option>)}
               </select>
               {selectedColumn && (isDateColumn(selectedColumn) ? (
                 <div className="space-y-3">
@@ -308,10 +281,9 @@ export function DataTable<T>({
                   </div>
                 </div>
               ) : null)}
-              <div className="mt-3 border-t pt-3"><Button size="sm" variant="outline" className="w-full" onClick={() => { setColumnValues({}); setDatePreset({}); setDateFrom({}); setDateTo({}); setFilter(initialFilter); setQuery(''); setPage(1) }}>Clear all filters</Button></div>
+              <div className="mt-3 border-t pt-3"><Button size="sm" variant="outline" className="w-full" onClick={() => { setColumnValues({}); setDatePreset({}); setDateFrom({}); setDateTo({}); setFilter(initialFilter); setQuery(''); setPage(1) }}>Clear filters</Button></div>
             </DropdownMenuContent>
           </DropdownMenu>
-          {toolbarExtra}
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
               <Columns3 />
@@ -346,6 +318,7 @@ export function DataTable<T>({
               {addLabel}
             </Button>
           )}
+          {toolbarExtra}
         </div>
       </div>
 
