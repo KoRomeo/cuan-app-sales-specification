@@ -129,16 +129,16 @@ export function DocumentPreview({
                 </div>
               </div>
 
-              <section className="mt-3 grid grid-cols-2 gap-4 px-1 py-2 text-xs">
+              <section className="mt-3 grid grid-cols-[0.9fr_1.1fr] gap-3 px-1 py-2 text-[10px]">
                 <div className="min-w-0">
-                  <p className="font-medium">DIKIRIM KEPADA</p>
-                  <p className="mt-1 font-medium">{order.delivery?.recipient || customer?.name || '—'}</p>
-                  <p className="mt-1 whitespace-pre-line">{order.delivery?.address || customer?.address || '—'}</p>
+                  <p>DIKIRIM KEPADA</p>
+                  <p className="mt-1">{order.delivery?.recipient || customer?.name || '—'}</p>
+                  <p className="mt-1">{order.delivery?.address || customer?.address || '—'}</p>
                 </div>
-                <dl className="grid grid-cols-[auto_minmax(0,1fr)] content-start gap-x-2 gap-y-1 text-xs">
-                  <dt className="whitespace-nowrap">No. Surat Jalan</dt><dd className="break-words text-right font-medium">{docNo}</dd>
-                  <dt className="whitespace-nowrap">No. Order</dt><dd className="break-words text-right font-medium">{order.id}</dd>
-                  <dt className="whitespace-nowrap">Nama sopir</dt><dd className="break-words text-right font-medium">{order.delivery?.driverName || '—'}</dd>
+                <dl className="grid grid-cols-[max-content_minmax(0,1fr)] content-start gap-x-2 gap-y-2 text-[9px]">
+                  <dt className="whitespace-nowrap">No. Surat Jalan</dt><dd className="whitespace-nowrap text-right">{docNo}</dd>
+                  <dt className="whitespace-nowrap">No. Order</dt><dd className="whitespace-nowrap text-right">{order.id}</dd>
+                  <dt className="whitespace-nowrap">Nama sopir</dt><dd className="whitespace-nowrap text-right">{order.delivery?.driverName || '—'}</dd>
                 </dl>
               </section>
 
@@ -167,18 +167,18 @@ export function DocumentPreview({
                 </tbody>
               </table>
 
-              <section className="mt-2 grid grid-cols-2 gap-5 px-4 py-3 text-xs">
+              <section className="mt-2 grid grid-cols-[0.75fr_1.25fr] gap-3 px-2 py-3 text-[9px]">
                 <div><p>CATATAN</p><p className="mt-1">{order.notes || 'Barang diterima dalam kondisi baik.'}</p></div>
-                <dl className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
-                  <dt>Total jenis barang</dt><dd className="text-right tabular-nums">{order.items.length}</dd>
-                  <dt>Total kuantitas</dt><dd className="text-right tabular-nums">{order.items.reduce((sum, item) => sum + Number(item.qty), 0)}</dd>
-                  <dt className="whitespace-nowrap">Total pembayaran barang</dt><dd className="text-right tabular-nums">{formatIDR(total)}</dd>
+                <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-2 gap-y-2">
+                  <dt className="whitespace-nowrap">Jenis barang</dt><dd className="whitespace-nowrap text-right tabular-nums">{order.items.length}</dd>
+                  <dt className="whitespace-nowrap">Kuantitas</dt><dd className="whitespace-nowrap text-right tabular-nums">{order.items.reduce((sum, item) => sum + Number(item.qty), 0)}</dd>
+                  <dt className="whitespace-nowrap">Pembayaran barang</dt><dd className="whitespace-nowrap text-right tabular-nums">{formatIDR(total)}</dd>
                 </dl>
               </section>
 
               <section className="mt-8 grid grid-cols-2 gap-4 text-center text-[9px]">
-                <div><p>Dikirim oleh</p><div className="mt-12 border-b border-black" /></div>
-                <div><p>Diterima oleh</p><div className="mt-12 border-b border-black" /></div>
+                <div>Dikirim oleh</div>
+                <div>Diterima oleh</div>
               </section>
             </article>
           )}
