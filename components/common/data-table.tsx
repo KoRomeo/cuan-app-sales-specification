@@ -307,7 +307,7 @@ export function DataTable<T>({
                     {columnOptions.length===0 && <p className="px-2 py-4 text-xs text-muted-foreground">No values available</p>}
                   </div>
                 </div>
-              ) : null}
+              ) : null)}
               <div className="mt-3 border-t pt-3"><Button size="sm" variant="outline" className="w-full" onClick={() => { setColumnValues({}); setDatePreset({}); setDateFrom({}); setDateTo({}); setFilter(initialFilter); setQuery(''); setPage(1) }}>Clear all filters</Button></div>
             </DropdownMenuContent>
           </DropdownMenu>
