@@ -124,24 +124,22 @@ export function DocumentPreview({
                   <h1 className="text-[18px] font-black leading-none tracking-tight">{t('deliveries.document').toUpperCase()}</h1>
                   <span className="text-xs">Page 1 of 1</span>
                 </div>
-                <div className="mt-2 flex justify-end gap-8 text-xs">
-                  <span>Jumlah Koli: {order.items.reduce((sum, item) => sum + Number(item.qty), 0)}</span>
-                  <span>Tanggal: <strong>{formatDate(order.delivery?.date ?? order.date)}</strong></span>
+                <div className="mt-2 flex justify-end text-xs">
+                  <span>Tanggal: {formatDate(order.delivery?.date ?? order.date)}</span>
                 </div>
               </div>
 
-              <section className="mt-3 grid grid-cols-2 gap-4 bg-[#ededed] px-5 py-4 text-xs">
-                <div className="self-center">
-                  <p>DIKIRIM KEPADA</p>
-                  <p className="mt-1 text-sm font-bold">{order.delivery?.recipient ?? customer?.name ?? '—'}</p>
-                  <p className="mt-1">{order.delivery?.address ?? customer?.address ?? '—'}</p>
+              <section className="mt-3 grid grid-cols-2 gap-4 px-1 py-2 text-xs">
+                <div className="min-w-0">
+                  <p className="font-medium">DIKIRIM KEPADA</p>
+                  <p className="mt-1 font-medium">{order.delivery?.recipient || customer?.name || '—'}</p>
+                  <p className="mt-1 whitespace-pre-line">{order.delivery?.address || customer?.address || '—'}</p>
                 </div>
-                <div className="text-right">
-                  <p>No. Surat Jalan: <strong>{docNo}</strong></p>
-                  <p className="mt-1">No. Order: <strong>{order.id}</strong></p>
-                  <p className="mt-1">Metode: <strong>{order.delivery?.method ?? '—'}</strong></p>
-                  <p className="mt-1">Nama sopir: <strong>{order.delivery?.driverName || '—'}</strong></p>
-                </div>
+                <dl className="grid grid-cols-[auto_minmax(0,1fr)] content-start gap-x-2 gap-y-1 text-xs">
+                  <dt className="whitespace-nowrap">No. Surat Jalan</dt><dd className="break-words text-right font-medium">{docNo}</dd>
+                  <dt className="whitespace-nowrap">No. Order</dt><dd className="break-words text-right font-medium">{order.id}</dd>
+                  <dt className="whitespace-nowrap">Nama sopir</dt><dd className="break-words text-right font-medium">{order.delivery?.driverName || '—'}</dd>
+                </dl>
               </section>
 
               <table className="invoice-print-table mt-3 w-full table-fixed border-collapse text-[8px]">
@@ -169,16 +167,19 @@ export function DocumentPreview({
                 </tbody>
               </table>
 
-              <section className="mt-2 grid grid-cols-2 gap-5 bg-[#ededed] px-4 py-3 text-xs">
-                <div><p className="font-bold">CATATAN</p><p className="mt-1">{order.notes || 'Barang diterima dalam kondisi baik.'}</p></div>
-                <div className="space-y-1 text-right"><p><strong>Total jenis barang:</strong> {order.items.length}</p><p><strong>Total kuantitas:</strong> {order.items.reduce((sum, item) => sum + Number(item.qty), 0)}</p><p><strong>Biaya transportasi:</strong> {formatIDR(Number(order.delivery?.transportCost ?? 0))}</p></div>
+              <section className="mt-2 grid grid-cols-2 gap-5 px-4 py-3 text-xs">
+                <div><p>CATATAN</p><p className="mt-1">{order.notes || 'Barang diterima dalam kondisi baik.'}</p></div>
+                <dl className="grid grid-cols-[1fr_auto] gap-x-2 gap-y-1">
+                  <dt>Total jenis barang</dt><dd className="text-right tabular-nums">{order.items.length}</dd>
+                  <dt>Total kuantitas</dt><dd className="text-right tabular-nums">{order.items.reduce((sum, item) => sum + Number(item.qty), 0)}</dd>
+                  <dt className="whitespace-nowrap">Total pembayaran barang</dt><dd className="text-right tabular-nums">{formatIDR(total)}</dd>
+                </dl>
               </section>
 
-              <section className="mt-5 grid grid-cols-2 gap-4 text-center text-[8px]">
-                <div><p>Dikirim oleh</p><p className="text-[10px]">(Nama / tanda tangan)</p><div className="mt-5 border-b border-black" /><p className="mt-1">{order.delivery?.driverName || 'Nama sopir:'}</p></div>
-                <div><p>Diterima oleh</p><p className="text-[10px]">(Nama / tanda tangan)</p><div className="mt-7 border-b border-black" /><p className="mt-2">{order.delivery?.recipient ?? customer?.name ?? 'Nama jelas:'}</p></div>
+              <section className="mt-8 grid grid-cols-2 gap-4 text-center text-[9px]">
+                <div><p>Dikirim oleh</p><div className="mt-12 border-b border-black" /></div>
+                <div><p>Diterima oleh</p><div className="mt-12 border-b border-black" /></div>
               </section>
-              <p className="mt-3 border-t border-dashed border-gray-400 pt-1 text-center text-[7px] text-gray-600">Mohon periksa jumlah dan kondisi barang sebelum menandatangani surat jalan.</p>
             </article>
           )}
         </div>
