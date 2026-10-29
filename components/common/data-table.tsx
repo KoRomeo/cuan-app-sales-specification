@@ -248,14 +248,14 @@ export function DataTable<T>({
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="min-w-36 justify-between gap-3" />}>
                 <span className="flex items-center gap-2">
-                  <span>{filters.find((f) => f.value === filter)?.label ?? t('common.filter')}</span>
+                  <span>{filters.find((f) => f.value === filter)?.label ?? 'Quick filters'}</span>
                   <span className="font-mono text-xs text-muted-foreground tabular-nums">{rows.filter((row) => (filters.find((f) => f.value === filter) ?? filters[0]).predicate(row)).length}</span>
                 </span>
                 <ChevronDown className="size-4 opacity-70" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-44">
                 <DropdownMenuGroup>
-                  <DropdownMenuLabel>{t('common.filter')}</DropdownMenuLabel>
+                  <DropdownMenuLabel>Quick filters</DropdownMenuLabel>
                   {filters.map((f) => {
                     const count = rows.filter(f.predicate).length
                     const active = filter === f.value
@@ -277,20 +277,20 @@ export function DataTable<T>({
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-2" />}>
               <Filter className="size-4" />
-              {t('common.filter')}
+              {activeColumnFilterCount > 0 ? 'Filtered' : 'All'}
               {activeColumnFilterCount > 0 && <span className="rounded bg-primary/10 px-1.5 text-xs text-primary">{activeColumnFilterCount}</span>}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80 max-h-[min(70vh,480px)] overflow-y-auto p-3">
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t('common.filter')} · Column</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Column filters</label>
               <select value={filterColumn} onChange={(event) => setFilterColumn(event.target.value)} className="mb-3 h-9 w-full rounded-md border bg-background px-2 text-sm">
-                <option value="">Select column…</option>
+                <option value="">Choose a column…</option>
                 {columns.map(column => <option key={column.key} value={column.key}>{column.header}</option>)}
               </select>
               {selectedColumn && (isDateColumn(selectedColumn) ? (
                 <div className="space-y-3">
                   <div><label className="mb-1 block text-xs font-medium text-muted-foreground">Quick date range</label>
                     <select value={datePreset[selectedColumn.key] ?? 'all'} onChange={event => { setDatePreset(prev => ({...prev,[selectedColumn.key]:event.target.value})); setPage(1) }} className="h-9 w-full rounded-md border bg-background px-2 text-sm">
-                      <option value="all">Any date</option><option value="week">This week</option><option value="month">This month</option>
+                      <option value="all">Any date</option><option value="week">This week (Mon–Sun)</option><option value="month">This month</option>
                     </select>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
