@@ -89,10 +89,20 @@ export function DashboardView() {
   const [dateFilter, setDateFilter] = useState<DashboardDateFilterValue>(() => { const now = new Date(); return { year: now.getFullYear(), month: now.getMonth()+1, week: null, day: null } })
   const today = todayISO()
   const range = dateRange(dateFilter)
-  const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
+  const { data: business, error: businessError } = useSWR<{ id: string }>('/api/businesses/current', fetcher, {
+    refreshInterval: 30_000,
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+  })
   const { data, error } = useSWR<DashboardData>(
     business?.id ? `/api/dashboard?businessId=${encodeURIComponent(business.id)}` : null,
     fetcher,
+    {
+      refreshInterval: 30_000,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      keepPreviousData: true,
+    },
   )
 
   if (businessError || error) {
