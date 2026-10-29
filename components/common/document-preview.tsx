@@ -181,7 +181,7 @@ export function DocumentPreview({
                 <div><p>Diterima oleh</p><div className="mt-12 border-b border-black" /></div>
               </section>
             </article>
-          )}}
+          )}
         </div>
       </DialogContent>
     </Dialog>
