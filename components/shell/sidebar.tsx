@@ -30,9 +30,13 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
         )}
       >
         <div className={cn("flex h-16 items-center px-4", collapsed ? "justify-center lg:px-2" : "justify-between px-5")}>
-          <Link href="/dashboard" onClick={onClose} aria-label="CuanApp Sales home">
+          <Link href="/dashboard" onClick={onClose} aria-label="CuanApp Sales home" className={cn(collapsed && "lg:hidden")}>
             <Logo />
           </Link>
+          {collapsed && <Link href="/dashboard" onClick={onClose} aria-label="CuanApp Sales home" className="hidden size-9 items-center justify-center rounded-lg bg-gradient-to-br from-sidebar-primary to-[oklch(0.45_0.2_268)] shadow-[0_0_0_1px_oklch(1_0_0/0.12)_inset] lg:flex"><svg viewBox="0 0 24 24" className="size-4.5 text-white" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M4 16l5-5 4 4 7-8" /><path d="M15 7h5v5" /></svg></Link>}
+          <button type="button" onClick={onToggleCollapsed} className="hidden size-8 shrink-0 items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground lg:flex" aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} title={collapsed ? "Expand navigation" : "Collapse navigation"}>
+            {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+          </button>
           <button
             type="button"
             onClick={onClose}
@@ -60,6 +64,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
                       <li key={item.href}>
                         <Link
                           href={item.href}
+                          title={collapsed ? t(item.label) : undefined}
                           onClick={onClose}
                           aria-current={active ? 'page' : undefined}
                           className={cn(
