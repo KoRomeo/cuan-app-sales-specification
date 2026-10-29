@@ -206,7 +206,7 @@ export function DataTable<T>({
       .map((row) => ({ row, key: keyOf(row) }))
       .sort((a, b) => compareKeys(a.key, b.key, sort.dir))
       .map((entry) => entry.row)
-  }, [rows, query, filter, filters, searchText, sort, columns])
+  }, [rows, query, filter, filters, searchText, sort, columns, columnValues, datePreset, dateFrom, dateTo])
 
   function toggleSort(key: string) {
     setSort((prev) => {
