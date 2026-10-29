@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, Columns3, Eye, MoreHorizontal, Pencil, Plus, Search, Trash2, type LucideIcon } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, Columns3, Filter, Eye, MoreHorizontal, Pencil, Plus, Search, Trash2, type LucideIcon } from 'lucide-react'
 import { Children, isValidElement, useMemo, useState, type ReactNode } from 'react'
 import { appToast as toast } from '@/lib/toast'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
@@ -153,12 +153,49 @@ export function DataTable<T>({
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [sort, setSort] = useState<SortState>(null)
   const [selectionMode, setSelectionMode] = useState(false)
+  const [filterColumn, setFilterColumn] = useState('')
+  const [columnValues, setColumnValues] = useState<Record<string, string[]>>({})
+  const [datePreset, setDatePreset] = useState<Record<string, string>>({})
+  const [dateFrom, setDateFrom] = useState<Record<string, string>>({})
+  const [dateTo, setDateTo] = useState<Record<string, string>>({})
+  const isDateColumn = (column: Column<T>) => /date|tanggal|created|updated/i.test(column.key + ' ' + column.header)
+  const valueFor = (row: T, column: Column<T>) => {
+    const raw = column.sortValue ? column.sortValue(row) : nodeText(column.cell(row))
+    if (raw === null || raw === undefined) return ''
+    const value = String(raw).trim()
+    const date = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value)
+    return date ? date[3] + '-' + date[2] + '-' + date[1] : value
+  }
+  const selectedColumn = columns.find((column) => column.key === filterColumn)
+  const columnOptions = selectedColumn ? [...new Set(rows.map((row) => valueFor(row, selectedColumn)).filter(Boolean))].sort((a,b) => a.localeCompare(b, undefined, { numeric: true })) : []
+  const activeColumnFilterCount = Object.values(columnValues).reduce((sum, values) => sum + values.length, 0) + Object.keys(dateFrom).filter(key => dateFrom[key]).length + Object.keys(dateTo).filter(key => dateTo[key]).length + Object.values(datePreset).filter(value => value !== 'all').length
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     const activeFilter = filters?.find((f) => f.value === filter)
     const matched = rows.filter((r) => {
       if (activeFilter && !activeFilter.predicate(r)) return false
+      for (const column of columns) {
+        const selected = columnValues[column.key] ?? []
+        if (selected.length && !selected.includes(valueFor(r, column))) return false
+        if (isDateColumn(column)) {
+          const value = valueFor(r, column)
+          const preset = datePreset[column.key]
+          if (preset && preset !== 'all' && value) {
+            const today = new Date(); today.setHours(0,0,0,0)
+            const start = new Date(today)
+            if (preset === 'week') { const day = (today.getDay() + 6) % 7; start.setDate(today.getDate() - day) }
+            if (preset === 'month') start.setDate(1)
+            const end = new Date(today)
+            if (preset === 'week') end.setDate(start.getDate() + 6)
+            if (preset === 'month') end.setMonth(end.getMonth() + 1, 0)
+            const d = new Date(value + 'T00:00:00')
+            if (d < start || d > end) return false
+          }
+          if (dateFrom[column.key] && value < dateFrom[column.key]) return false
+          if (dateTo[column.key] && value > dateTo[column.key]) return false
+        }
+      }
       if (q && !searchText(r).toLowerCase().includes(q)) return false
       return true
     })
@@ -169,7 +206,7 @@ export function DataTable<T>({
       .map((row) => ({ row, key: keyOf(row) }))
       .sort((a, b) => compareKeys(a.key, b.key, sort.dir))
       .map((entry) => entry.row)
-  }, [rows, query, filter, filters, searchText, sort, columns])
+  }, [rows, query, filter, filters, searchText, sort, columns, columnValues, datePreset, dateFrom, dateTo])
 
   function toggleSort(key: string) {
     setSort((prev) => {
@@ -237,6 +274,43 @@ export function DataTable<T>({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-2" />}>
+              <Filter className="size-4" />
+              {t('common.filter')}
+              {activeColumnFilterCount > 0 && <span className="rounded bg-primary/10 px-1.5 text-xs text-primary">{activeColumnFilterCount}</span>}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 max-h-[min(70vh,480px)] overflow-y-auto p-3">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">{t('common.filter')} · Column</label>
+              <select value={filterColumn} onChange={(event) => setFilterColumn(event.target.value)} className="mb-3 h-9 w-full rounded-md border bg-background px-2 text-sm">
+                <option value="">Select column…</option>
+                {columns.map(column => <option key={column.key} value={column.key}>{column.header}</option>)}
+              </select>
+              {selectedColumn && (isDateColumn(selectedColumn) ? (
+                <div className="space-y-3">
+                  <div><label className="mb-1 block text-xs font-medium text-muted-foreground">Quick date range</label>
+                    <select value={datePreset[selectedColumn.key] ?? 'all'} onChange={event => { setDatePreset(prev => ({...prev,[selectedColumn.key]:event.target.value})); setPage(1) }} className="h-9 w-full rounded-md border bg-background px-2 text-sm">
+                      <option value="all">Any date</option><option value="week">This week</option><option value="month">This month</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="text-xs text-muted-foreground">Start date<input type="date" value={dateFrom[selectedColumn.key] ?? ''} onChange={event => { setDateFrom(prev=>({...prev,[selectedColumn.key]:event.target.value})); setDatePreset(prev=>({...prev,[selectedColumn.key]:'all'})); setPage(1) }} className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" /></label>
+                    <label className="text-xs text-muted-foreground">End date<input type="date" value={dateTo[selectedColumn.key] ?? ''} onChange={event => { setDateTo(prev=>({...prev,[selectedColumn.key]:event.target.value})); setDatePreset(prev=>({...prev,[selectedColumn.key]:'all'})); setPage(1) }} className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground" /></label>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => { setDatePreset(prev=>({...prev,[selectedColumn.key]:'all'})); setDateFrom(prev=>({...prev,[selectedColumn.key]:''})); setDateTo(prev=>({...prev,[selectedColumn.key]:''})); setPage(1) }}>Clear date filter</Button>
+                </div>
+              ) : selectedColumn ? (
+                <div>
+                  <div className="mb-2 flex items-center justify-between"><label className="text-xs font-medium text-muted-foreground">Select one or more values</label><button type="button" className="text-xs text-primary" onClick={() => { setColumnValues(prev=>({...prev,[selectedColumn.key]:[]})); setPage(1) }}>Clear</button></div>
+                  <div className="max-h-56 space-y-1 overflow-y-auto">
+                    {columnOptions.map(value => <label key={value} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"><input type="checkbox" checked={(columnValues[selectedColumn.key] ?? []).includes(value)} onChange={event => { setColumnValues(prev=>({...prev,[selectedColumn.key]:event.target.checked ? [...(prev[selectedColumn.key] ?? []),value] : (prev[selectedColumn.key] ?? []).filter(item=>item!==value)})); setPage(1) }} /><span className="truncate">{value}</span><span className="ml-auto text-xs text-muted-foreground">{rows.filter(row=>valueFor(row,selectedColumn)===value).length}</span></label>)}
+                    {columnOptions.length===0 && <p className="px-2 py-4 text-xs text-muted-foreground">No values available</p>}
+                  </div>
+                </div>
+              ) : null}
+              <div className="mt-3 border-t pt-3"><Button size="sm" variant="outline" className="w-full" onClick={() => { setColumnValues({}); setDatePreset({}); setDateFrom({}); setDateTo({}); setFilter(initialFilter); setQuery(''); setPage(1) }}>Clear all filters</Button></div>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {toolbarExtra}
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
