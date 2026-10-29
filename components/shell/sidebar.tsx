@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { usePathname } from 'next/navigation'
 import {
   BarChart3, Boxes, Building2, ChevronDown, FileText, History, LayoutDashboard,
@@ -27,12 +28,19 @@ const categoryIcons: Record<string, LucideIcon> = {
 
 export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open: boolean; onClose: () => void; collapsed: boolean; onToggleCollapsed: () => void }) {
   const pathname = usePathname()
+  const router = useRouter()
   const { t, features } = useApp()
   const [expandedSections, setExpandedSections] = useState<string[]>(() => {
     const active = navigation.find((section) => section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)))
     return active ? [active.label] : ['nav.overview']
   })
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+
+  useEffect(() => {
+    const active = navigation.find((section) => section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)))
+    if (active) setExpandedSections((current) => current.includes(active.label) ? current : [...current, active.label])
+    setActiveCategory(null)
+  }, [pathname])
 
   const visibleSections = navigation.map((section) => ({
     ...section,
@@ -80,7 +88,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
                   onClick={() => {
                     if (collapsed) {
                       if (dashboardOnly) {
-                        window.location.href = '/dashboard'
+                        router.push('/dashboard')
                         return
                       }
                       setActiveCategory((current) => current === section.label ? null : section.label)
