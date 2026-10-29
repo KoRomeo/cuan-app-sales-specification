@@ -15,6 +15,7 @@ import {
   customerById,
   customers,
   isOverdue,
+  lineSubtotal,
   type Order,
   orderById,
   orderOutstanding,
