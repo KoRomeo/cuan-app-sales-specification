@@ -494,16 +494,11 @@ export function ReturnsView() {
     business?.id ? `/api/orders?businessId=${encodeURIComponent(business.id)}` : null,
     customersFetcher,
   )
-  const { data: productRows } = useSWR<ReturnProductOption[]>(
-    business?.id ? `/api/products?businessId=${encodeURIComponent(business.id)}` : null,
-    customersFetcher,
-  )
   const { data: customerRows } = useSWR<PersistedCustomer[]>(
     business?.id ? `/api/customers?businessId=${encodeURIComponent(business.id)}` : null,
     customersFetcher,
   )
   const returns = rows ?? []
-  const productName = (id: string) => productRows?.find((p) => p.id === id)?.name ?? id
   const customerName = (orderId: string) => {
     const order = orderRows?.find((o) => o.id === orderId)
     return customerRows?.find((c) => c.id === order?.customerId)?.name ?? '—'
@@ -513,7 +508,6 @@ export function ReturnsView() {
     { key: 'date', header: t('common.date'), cell: (r) => <span className="font-mono text-xs text-muted-foreground">{formatDate(r.date)}</span> },
     { key: 'order', header: t('returns.order'), cell: (r) => <span className="font-mono text-xs">{r.orderId}</span> },
     { key: 'customer', header: t('common.customer'), cell: (r) => customerName(r.orderId) },
-    { key: 'product', header: t('common.product'), className: 'w-[28%]', cell: (r) => <span className="block truncate font-medium" title={r.items.map((item) => productName(item.productId)).join(', ')}>{r.items.map((item) => productName(item.productId)).join(', ')}</span> },
     { key: 'qty', header: t('common.qty'), align: 'right', cell: (r) => <span className="font-mono tabular-nums">{r.items.reduce((sum, item) => sum + Number(item.qty), 0)}</span> },
     { key: 'value', header: t('returns.returnTotal'), align: 'right', cell: (r) => <Money value={Number(r.total)} className="text-destructive" /> },
     { key: 'reason', header: t('common.notes'), cell: (r) => <span className="text-muted-foreground">{r.notes || '—'}</span> },
@@ -559,7 +553,7 @@ export function ReturnsView() {
           rows={returns}
           columns={columns}
           getRowId={(r) => r.id}
-          searchText={(r) => `${r.id} ${r.orderId} ${r.items.map((item) => productName(item.productId)).join(' ')} ${r.notes ?? ''}`}
+          searchText={(r) => `${r.id} ${r.orderId} ${customerName(r.orderId)} ${r.notes ?? ''}`}
           filters={[
             { value: 'all', label: t('common.all'), predicate: () => true },
             { value: 'out', label: t('returns.noRefund'), predicate: (r) => Number(r.refundAmount) === 0 },
