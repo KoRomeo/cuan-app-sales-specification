@@ -15,6 +15,7 @@ import {
   customerById,
   customers,
   isOverdue,
+  lineSubtotal,
   type Order,
   orderById,
   orderOutstanding,
@@ -353,7 +354,7 @@ export function InvoicesView() {
         </KpiGrid>
         <DataTable rows={invoices} columns={columns} getRowId={(o) => o.id}
           selectable selectedRowIds={selectedInvoiceIds} onSelectedRowIdsChange={setSelectedInvoiceIds}
-          toolbarExtra={<button type="button" disabled={selectedInvoiceIds.length !== 1} onClick={() => { const selected = invoices.find((o) => o.id === selectedInvoiceIds[0]); if (selected) setPreview(selected) }} className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm transition-colors hover:bg-blue-50 hover:text-blue-700 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-blue-950/40"><Printer className="size-4" />Print invoice</button>} searchText={(o) => `${o.id} ${customerMap.get(o.customerId)?.name ?? ''}`}
+          toolbarExtra={<button type="button" disabled={selectedInvoiceIds.length === 0} onClick={() => window.print()} className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm transition-colors hover:bg-blue-50 hover:text-blue-700 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-blue-950/40"><Printer className="size-4" />Print selected ({selectedInvoiceIds.length})</button>} searchText={(o) => `${o.id} ${customerMap.get(o.customerId)?.name ?? ''}`}
           filters={[
             { value: 'all', label: t('common.all'), predicate: () => true },
             { value: 'unpaid', label: t('pay.unpaid'), predicate: (o) => orderPaymentStatus(o) === 'unpaid' },
@@ -363,6 +364,27 @@ export function InvoicesView() {
           rowHref={(o) => `/orders/${o.id}`} editable={false} deletable={false}
           contextActions={(o) => [{ label: t('common.preview'), icon: Printer, onSelect: () => setPreview(o) }]} />
       </>}
+      {selectedInvoiceIds.length > 0 && (
+        <div className="batch-invoice-print" aria-hidden="true">
+          <style>{`@page { size: A4 portrait; margin: 0; } @media print { body * { visibility: hidden !important; } .batch-invoice-print, .batch-invoice-print * { visibility: visible !important; } .batch-invoice-print { display: block !important; position: absolute; inset: 0; width: 210mm; } .batch-invoice-sheet { display: grid !important; width: 210mm; height: 297mm; grid-template-columns: 105mm 105mm; grid-template-rows: 148.5mm 148.5mm; overflow: hidden; break-after: page; page-break-after: always; } .batch-invoice-card { width: 105mm; height: 148.5mm; box-sizing: border-box; padding: 7mm; overflow: hidden; break-inside: avoid; page-break-inside: avoid; } }`}</style>
+          {Array.from({ length: Math.ceil(selectedInvoiceIds.length / 4) }, (_, sheetIndex) => (
+            <div key={sheetIndex} className="batch-invoice-sheet hidden print:grid">
+              {invoices.filter((invoice) => selectedInvoiceIds.slice(sheetIndex * 4, sheetIndex * 4 + 4).includes(invoice.id)).map((invoice) => (
+            <article key={invoice.id} className="batch-invoice-card hidden print:block bg-white text-black text-[9px] leading-tight">
+              <div className="border-t-2 border-black pt-2 flex items-start justify-between"><h2 className="text-xl font-black">INVOICE</h2><span className="whitespace-nowrap">Page 1 of 1</span></div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div><p>Yth. Kepada</p><p className="mt-1 font-medium">{customerMap.get(invoice.customerId)?.name ?? invoice.customerId}</p><p className="mt-1">{customerMap.get(invoice.customerId)?.address ?? ''}</p></div>
+                <dl className="grid grid-cols-[max-content_1fr] gap-x-2 gap-y-2"><dt>No. Invoice:</dt><dd className="whitespace-nowrap">{invoice.id}</dd><dt>Tanggal:</dt><dd className="whitespace-nowrap">{formatDate(invoice.date)}</dd><dt>Jatuh Tempo:</dt><dd className="whitespace-nowrap">{invoice.dueDate ? formatDate(invoice.dueDate) : '-'}</dd></dl>
+              </div>
+              <table className="mt-4 w-full table-fixed border-collapse text-[8px]"><colgroup><col className="w-[10%]"/><col className="w-[50%]"/><col className="w-[20%]"/><col className="w-[20%]"/></colgroup><thead><tr className="border-y-2 border-black"><th className="py-1">QTY</th><th className="py-1 text-left">DESKRIPSI</th><th className="py-1 text-right">HARGA</th><th className="py-1 text-right">JUMLAH</th></tr></thead><tbody>{Array.from({length:Math.max(12,invoice.items.length)},(_,i)=>{const item=invoice.items[i];return <tr key={`${item?.productId ?? 'blank'}-${i}`} className="h-[5mm] border-b border-black"><td className="text-right pr-1">{item?.qty ?? ''}</td><td className="px-1">{item ? productMap.get(item.productId)?.name ?? item.productId : ''}</td><td className="text-right">{item ? formatIDR(item.price) : ''}</td><td className="text-right">{item ? formatIDR(lineSubtotal(item)) : ''}</td></tr>})}</tbody></table>
+              <div className="mt-3 grid grid-cols-2 gap-3"><div><p className="font-bold">TOTAL TAGIHAN</p><p className="mt-2 text-base font-bold">{formatIDR(orderTotal(invoice))}</p></div><dl className="space-y-2 text-[8px]"><div className="flex justify-between gap-2"><dt>HARGA</dt><dd>{formatIDR(invoice.items.reduce((sum,item)=>sum+Number(item.qty)*Number(item.price),0))}</dd></div><div className="flex justify-between gap-2"><dt>DISKON</dt><dd>{formatIDR(invoice.items.reduce((sum,item)=>sum+Number(item.discount ?? 0),0))}</dd></div><div className="flex justify-between gap-2"><dt>TOTAL</dt><dd>{formatIDR(orderTotal(invoice))}</dd></div></dl></div>
+              <div className="mt-10 grid grid-cols-2 text-center"><span>Tanda Terima</span><span>Hormat Kami</span></div><div className="mt-6 text-[8px]"><p>Metode Pembayaran:</p><p>Cash atau Transfer Bank BCA | No. Rekening: 123-456-789</p></div>
+            </article>
+          ))}
+            </div>
+          ))}
+        </div>
+      )}
       {preview && <DocumentPreview order={preview} kind="invoice" open onOpenChange={(v) => !v && setPreview(null)} customerOverride={customerMap.get(preview.customerId)} productNames={Object.fromEntries([...productMap.entries()].map(([id, product]) => [id, product.name]))} />}
     </>
   )
@@ -449,7 +471,8 @@ export function DeliveriesView() {
           ]}
           rowHref={(d) => `/orders/${d.orders[0]?.id ?? ''}`}
           contextActions={(d) => [{ label: 'Delivery Note', icon: Printer, onSelect: () => { const orderId = d.orders[0]?.id; if (orderId) window.location.href = `/orders/${encodeURIComponent(orderId)}` } }]}
-          addLabel={t('deliveries.title')}
+          toolbarExtra={<button type="button" disabled={selectedDeliveryIds.length !== 1} onClick={() => { const selected = delivered.find((delivery) => delivery.id === selectedDeliveryIds[0]); const orderId = selected?.orders[0]?.id; if (orderId) window.location.href = `/orders/${encodeURIComponent(orderId)}` }} className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm transition-colors hover:bg-blue-50 hover:text-blue-700 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-blue-950/40"><Printer className="size-4" />Print Delivery Note</button>}
+           addLabel={t('deliveries.title')}
           onAdd={() => setOpen(true)}
         />
       )}
