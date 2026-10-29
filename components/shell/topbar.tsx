@@ -62,9 +62,6 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
         <DropdownMenuContent className="w-64">
           <DropdownMenuGroup>
             <DropdownMenuLabel>{t('top.switchBusiness')}</DropdownMenuLabel>
-            <DropdownMenuLabel className="whitespace-normal text-xs font-normal normal-case leading-5 text-muted-foreground">
-              {t('top.businessPreview')}
-            </DropdownMenuLabel>
             {business && (
               <DropdownMenuItem onClick={() => router.push('/settings?tab=business')}>
                 <Building2 />

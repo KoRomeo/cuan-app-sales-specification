@@ -471,8 +471,8 @@ export function DeliveriesView() {
           ]}
           rowHref={(d) => `/orders/${d.orders[0]?.id ?? ''}`}
           contextActions={(d) => [{ label: 'Delivery Note', icon: Printer, onSelect: () => { const orderId = d.orders[0]?.id; if (orderId) window.location.href = `/orders/${encodeURIComponent(orderId)}` } }]}
-          toolbarExtra={<button type="button" disabled={selectedDeliveryIds.length !== 1} onClick={() => { const selected = delivered.find((delivery) => delivery.id === selectedDeliveryIds[0]); const orderId = selected?.orders[0]?.id; if (orderId) window.location.href = `/orders/${encodeURIComponent(orderId)}` }} className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm transition-colors hover:bg-blue-50 hover:text-blue-700 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-blue-950/40"><Printer className="size-4" />Print Delivery Note</button>}
-           addLabel={t('deliveries.title')}
+          toolbarExtra={<button type="button" disabled={selectedDeliveryIds.length !== 1} onClick={() => { const selected = delivered.find((delivery) => delivery.id === selectedDeliveryIds[0]); const orderId = selected?.orders[0]?.id; if (orderId) window.location.href = `/orders/${encodeURIComponent(orderId)}` }} className="inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors hover:bg-blue-50 hover:text-blue-700 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-blue-950/40"><Printer className="size-3.5" />Print Delivery Note</button>}
+           addLabel={locale === 'id' ? 'Pengiriman Baru' : 'New Delivery'}
           onAdd={() => setOpen(true)}
         />
       )}
