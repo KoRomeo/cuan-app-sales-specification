@@ -163,7 +163,7 @@ export function DataTable<T>({
     const raw = column.sortValue ? column.sortValue(row) : nodeText(column.cell(row))
     if (raw === null || raw === undefined) return ''
     const value = String(raw).trim()
-    const date = /^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/.exec(value)
+    const date = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value)
     return date ? date[3] + '-' + date[2] + '-' + date[1] : value
   }
   const selectedColumn = columns.find((column) => column.key === filterColumn)
