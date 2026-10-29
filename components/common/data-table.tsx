@@ -321,13 +321,13 @@ export function DataTable<T>({
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
+          {toolbarExtra}
           {addLabel && (
-            <Button type="button" size="sm" disabled={!onAdd} onClick={onAdd}>
+            <Button type="button" size="sm" className="h-8 gap-1.5 px-2.5 text-xs sm:px-3" disabled={!onAdd} onClick={onAdd}>
               <Plus />
               {addLabel}
             </Button>
           )}
-          {toolbarExtra}
         </div>
       </div>
 
