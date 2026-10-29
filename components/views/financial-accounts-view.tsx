@@ -129,7 +129,7 @@ export function FinancialAccountsView() {
 
   return (
     <>
-      <PageHeader breadcrumbs={[{ label: t('nav.finance') }, { label: t('reports.cash') }]} title="Cash & Bank" description={t('finance.accountsDesc')} actions={<div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => { setTransactionMode('transfer'); setFormError('') }}><ArrowLeftRight className="mr-2 h-4 w-4" />Transfer funds</Button><Button variant="outline" onClick={() => { setTransactionMode('money_in'); setFormError('') }}><CirclePlus className="mr-2 h-4 w-4" />Add funds</Button><Button onClick={() => setShowForm((value) => !value)}><Plus className="mr-2 h-4 w-4" />Add account</Button></div>} />
+      <PageHeader breadcrumbs={[{ label: t('nav.finance') }, { label: t('reports.cash') }]} title="Cash & Bank" description={t('finance.accountsDesc')} />
       <KpiGrid>
         <KpiCard label={t('fin.totalBalance')} value={formatIDR(total)} icon={Landmark} />
         <KpiCard label={t('fin.cash')} value={formatIDR(cash)} icon={Banknote} tone="warning" />
@@ -162,7 +162,7 @@ export function FinancialAccountsView() {
         {formError && <p role="alert" className="mt-3 text-sm text-destructive">{formError}</p>}
         <div className="mt-4 flex justify-end gap-2"><Button variant="outline" onClick={() => { setTransactionMode(null); setFormError('') }}>Cancel</Button><Button disabled={transactionSaving || !transactionDate || !Number.isFinite(Number(transactionAmount)) || Number(transactionAmount) <= 0 || (transactionMode === 'money_in' ? !transactionAccount : !fromAccount || !toAccount || fromAccount === toAccount)} onClick={saveTransaction}>{transactionSaving ? 'Saving…' : 'Save transaction'}</Button></div>
       </section>}
-      <DataTable rows={accounts} columns={columns} getRowId={(account) => account.id} searchText={(account) => account.id + ' ' + account.name + ' ' + account.type + ' ' + (account.active ? 'active' : 'inactive')} editable={false} deletable={false} />
+      <DataTable rows={accounts} columns={columns} getRowId={(account) => account.id} searchText={(account) => account.id + ' ' + account.name + ' ' + account.type + ' ' + (account.active ? 'active' : 'inactive')} editable={false} deletable={false} toolbarExtra={<div className="flex flex-wrap items-center justify-end gap-2"><Button size="sm" variant="outline" onClick={() => { setTransactionMode('transfer'); setFormError('') }}><ArrowLeftRight className="mr-2 h-4 w-4" />Transfer funds</Button><Button size="sm" variant="outline" onClick={() => { setTransactionMode('money_in'); setFormError('') }}><CirclePlus className="mr-2 h-4 w-4" />Add funds</Button><Button size="sm" onClick={() => setShowForm((value) => !value)}><Plus className="mr-2 h-4 w-4" />Add account</Button></div>} />
       <section className="mt-6 rounded-lg border border-border bg-card p-4">
         <div className="mb-4 flex items-center gap-2"><History className="h-5 w-5 text-muted-foreground" /><h3 className="font-semibold">Cash & Bank history</h3></div>
         <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left text-muted-foreground"><th className="px-3 py-2">Date</th><th className="px-3 py-2">Transaction</th><th className="px-3 py-2">Description / reference</th><th className="px-3 py-2">Account movement</th><th className="px-3 py-2 text-right">Amount</th></tr></thead><tbody>
