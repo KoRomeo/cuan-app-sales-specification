@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, Columns3, Filter, Eye, MoreHorizontal, Pencil, Plus, Search, Trash2, type LucideIcon } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, Columns3, Filter, CheckSquare, Eye, MoreHorizontal, Pencil, Plus, Search, Trash2, type LucideIcon } from 'lucide-react'
 import { Children, isValidElement, useMemo, useState, type ReactNode } from 'react'
 import { appToast as toast } from '@/lib/toast'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
@@ -411,8 +411,17 @@ export function DataTable<T>({
               return (
                 <tr
                   key={getRowId(row)}
-                  onClick={href ? () => router.push(href) : undefined}
-                  className={cn('border-b transition-colors last:border-0 hover:bg-muted/40', href && 'cursor-pointer')}
+                  onClick={() => {
+                    if (selectable && selectionMode) {
+                      const id = getRowId(row)
+                      const ids = new Set(selectedRowIds)
+                      ids.has(id) ? ids.delete(id) : ids.add(id)
+                      onSelectedRowIdsChange?.([...ids])
+                      return
+                    }
+                    if (href) router.push(href)
+                  }}
+                  className={cn('border-b transition-colors last:border-0 hover:bg-muted/40', (href || (selectable && selectionMode)) && 'cursor-pointer', selectable && selectionMode && selectedRowIds.includes(getRowId(row)) && 'bg-primary/5')}
                 >
                   {selectable && selectionMode && <td className="w-10 px-3"><input aria-label={t('common.selectRow', { id: getRowId(row) })} type="checkbox" checked={selectedRowIds.includes(getRowId(row))} onClick={(event) => event.stopPropagation()} onChange={(event) => { const ids = new Set(selectedRowIds); event.target.checked ? ids.add(getRowId(row)) : ids.delete(getRowId(row)); onSelectedRowIdsChange?.([...ids]) }} /></td>}
                   {visibleColumns.map((c, index) => {
@@ -460,7 +469,7 @@ export function DataTable<T>({
                               {t('common.edit')}
                             </DropdownMenuItem>
                           )}
-                          {selectable && <DropdownMenuItem onClick={() => setSelectionMode((current) => !current)} className="cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"><Eye className="size-4" />{selectionMode ? t('common.hideSelection') : t('common.select')}</DropdownMenuItem>}
+                          {selectable && <DropdownMenuItem onClick={() => setSelectionMode((current) => !current)} className="cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"><CheckSquare className="size-4" />{selectionMode ? t('common.hideSelection') : t('common.select')}</DropdownMenuItem>}
                           {extra.length > 0 && (href || editable || selectable) && <DropdownMenuSeparator />}
                           {extra.map((a) => {
                             const kind = actionKind(a.label)
