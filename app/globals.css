@@ -588,3 +588,47 @@ body > * {
 .dark .app-card {
   box-shadow: 0 26px 68px -24px rgb(0 0 0 / 62%), 0 12px 32px -14px rgb(22 64 145 / 42%) !important;
 }
+
+/* FINAL GLOBAL CARD SYSTEM
+   Every shared Card floats above the page: no grey outline, only a broad ambient shadow. */
+:root {
+  --app-card-shadow:
+    0 26px 64px -18px rgb(25 48 91 / 24%),
+    0 12px 30px -10px rgb(25 48 91 / 15%),
+    0 3px 10px rgb(25 48 91 / 7%);
+  --app-card-shadow-hover:
+    0 34px 78px -16px rgb(25 48 91 / 29%),
+    0 16px 38px -10px rgb(25 48 91 / 18%),
+    0 5px 14px rgb(25 48 91 / 9%);
+}
+
+.dark {
+  --app-card-shadow:
+    0 30px 72px -18px rgb(0 0 0 / 58%),
+    0 14px 34px -10px rgb(0 0 0 / 38%),
+    0 0 26px -12px rgb(50 104 210 / 18%);
+  --app-card-shadow-hover:
+    0 38px 88px -16px rgb(0 0 0 / 66%),
+    0 18px 42px -10px rgb(0 0 0 / 44%),
+    0 0 32px -10px rgb(57 116 230 / 24%);
+}
+
+:where([data-slot="card"], .app-card) {
+  border: 0 !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  background: var(--card) !important;
+  background-image: none !important;
+  box-shadow: var(--app-card-shadow) !important;
+  transition: box-shadow 180ms ease, transform 180ms ease;
+}
+
+:where([data-slot="card"], .app-card):hover {
+  box-shadow: var(--app-card-shadow-hover) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where([data-slot="card"], .app-card) {
+    transition: none;
+  }
+}
