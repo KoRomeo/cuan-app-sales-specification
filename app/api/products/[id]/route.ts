@@ -38,7 +38,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       if (typeof body.name !== "string" || !body.name.trim()) return NextResponse.json({ error: "name must be a non-empty string" }, { status: 400 })
       updates.name = body.name.trim()
     }
-    for (const field of ["sellingPrice", "costReference", "averageCost"] as const) {
+    for (const field of ["sellingPrice", "costReference"] as const) {
       if (body[field] !== undefined) {
         if (typeof body[field] !== "number" || !Number.isFinite(body[field]) || body[field] < 0) return NextResponse.json({ error: `${field} must be a non-negative number` }, { status: 400 })
         updates[field] = String(body[field])
