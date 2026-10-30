@@ -23,7 +23,10 @@ type PurchaseInputItem = {
   productId: string
   qty: number
   unitCost: number
+  discount?: number
+  discountType?: 'amount' | 'percent'
 }
+function purchaseLineDiscount(item: PurchaseInputItem) { const gross=Number(item.qty)*Number(item.unitCost), value=Number(item.discount??0); return item.discountType==='percent'?gross*value/100:value }
 
 async function access(businessId: string) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -127,7 +130,10 @@ export async function POST(request: NextRequest) {
       !Number.isSafeInteger(Number(item.qty)) ||
       Number(item.qty) <= 0 ||
       !Number.isFinite(Number(item.unitCost)) ||
-      Number(item.unitCost) < 0
+      Number(item.unitCost) < 0 ||
+      !Number.isFinite(Number(item.discount ?? 0)) || Number(item.discount ?? 0) < 0 ||
+      ![undefined, 'amount', 'percent'].includes(item.discountType) ||
+      (item.discountType === 'percent' ? Number(item.discount) > 100 : Number(item.discount ?? 0) > Number(item.qty)*Number(item.unitCost))
     )) {
       return NextResponse.json({ error: "Each item needs a valid ID, product, quantity, and cost" }, { status: 400 })
     }
@@ -167,7 +173,7 @@ export async function POST(request: NextRequest) {
       }).from(products).where(and(eq(products.businessId, businessId), inArray(products.id, productIds)))
       if (foundProducts.length !== productIds.length) throw new Error("PRODUCT_NOT_FOUND")
 
-      const total = items.reduce((sum, item) => sum + Number(item.qty) * Number(item.unitCost), 0)
+      const total = items.reduce((sum, item) => sum + Number(item.qty)*Number(item.unitCost)-purchaseLineDiscount(item), 0)
       if (paidAmount > total) throw new Error("PAYMENT_EXCEEDS_TOTAL")
 
       await tx.insert(purchases).values({
@@ -183,7 +189,7 @@ export async function POST(request: NextRequest) {
         purchaseId: id,
         productId: item.productId,
         qty: Number(item.qty),
-        unitCost: String(item.unitCost),
+        unitCost: String(item.unitCost), discount: String(item.discount ?? 0), discountType: item.discountType ?? "amount",
       })))
 
       const existingMovements = await tx.select({
@@ -203,7 +209,7 @@ export async function POST(request: NextRequest) {
       for (const item of items) {
         const current = quantities.get(item.productId) ?? { qty: 0, totalCost: 0 }
         current.qty += Number(item.qty)
-        current.totalCost += Number(item.qty) * Number(item.unitCost)
+        current.totalCost += Number(item.qty)*Number(item.unitCost)-purchaseLineDiscount(item)
         quantities.set(item.productId, current)
       }
 
