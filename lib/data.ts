@@ -41,6 +41,7 @@ export interface OrderItem {
   qty: number
   price: number
   discount: number
+  discountType?: 'amount' | 'percent'
   unitCost: number
 }
 
@@ -512,8 +513,13 @@ export const supplierById = (id: string) => suppliers.find((s) => s.id === id)
 export const orderById = (id: string) => orders.find((o) => o.id === id)
 export const purchaseById = (id: string) => purchases.find((p) => p.id === id)
 
-export const lineSubtotal = (it: { qty: number; price: number; discount?: number }) =>
-  it.qty * it.price - (it.discount ?? 0)
+export const discountAmount = (base: number, discount: number, type: 'amount' | 'percent' = 'amount') =>
+  type === 'percent' ? base * Math.min(Math.max(discount, 0), 100) / 100 : Math.min(Math.max(discount, 0), base)
+
+export const lineSubtotal = (it: { qty: number; price: number; discount?: number; discountType?: 'amount' | 'percent' }) => {
+  const gross = it.qty * it.price
+  return Math.max(0, gross - discountAmount(gross, it.discount ?? 0, it.discountType ?? 'amount'))
+}
 
 export const orderTotal = (o: Order) => o.items.reduce((s, it) => s + lineSubtotal(it), 0)
 export const orderCogs = (o: Order) => o.items.reduce((s, it) => s + it.qty * it.unitCost, 0)
