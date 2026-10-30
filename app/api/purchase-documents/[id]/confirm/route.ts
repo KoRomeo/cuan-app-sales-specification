@@ -7,7 +7,7 @@ import { requireBusinessAccess } from "@/lib/api-auth"
 import { purchaseDocuments, purchases, purchaseItems, suppliers, products, stockMovements, journalEntries, journalEntryLines, payments, financialAccounts } from "@/lib/db/schema"
 
 type Ctx = { params: Promise<{ id: string }> }
-type InvoiceItem = { productName?: string; unit?: string | null; quantity?: number; unitCost?: number; lineTotal?: number }
+type InvoiceItem = { productName?: string; unit?: string | null; quantity?: number; unitCost?: number; lineTotal?: number; discount?: number; discountType?: 'amount' | 'percent' }
 export async function POST(request: NextRequest, { params }: Ctx) {
  const { id } = await params
  let businessId = ""
@@ -45,11 +45,12 @@ export async function POST(request: NextRequest, { params }: Ctx) {
    if(!supplier)throw new Error("SUPPLIER_NOT_FOUND")
    const createIndexes=new Set(body.createProductIndexes??[])
    const chosen=body.itemProductIds??{}
-   const resolved: Array<{id:string;qty:number;unitCost:number}>=[]
+   const resolved: Array<{id:string;qty:number;unitCost:number;discount:number;discountType:'amount'|'percent';netTotal:number}>=[]
    for(let i=0;i<lines.length;i++){
     const line=lines[i]
     const qty=Number(line.quantity), unitCost=Number(line.unitCost)
-    if(!line.productName?.trim()||!Number.isSafeInteger(qty)||qty<=0||!Number.isFinite(unitCost)||unitCost<0)throw new Error("INVALID_ITEM")
+    const discount=Number(line.discount??0), discountType=line.discountType??"amount", gross=qty*unitCost
+    if(!line.productName?.trim()||!Number.isSafeInteger(qty)||qty<=0||!Number.isFinite(unitCost)||unitCost<0||!Number.isFinite(discount)||discount<0||(discountType!=="amount"&&discountType!=="percent")||(discountType==="percent"?discount>100:discount>gross))throw new Error("INVALID_ITEM")
     let productId=chosen[String(i)]
     if(createIndexes.has(i)){
       const name=line.unit?.trim()?line.productName.trim()+"_(" + line.unit.trim()+")":line.productName.trim()
@@ -61,10 +62,11 @@ export async function POST(request: NextRequest, { params }: Ctx) {
      if(!productId)throw new Error("PRODUCT_MATCH_REQUIRED")
      const [product]=await tx.select({id:products.id}).from(products).where(and(eq(products.id,productId),eq(products.businessId,businessId))).limit(1)
      if(!product)throw new Error("PRODUCT_NOT_FOUND")
-     resolved.push({id:productId,qty,unitCost})
+     const discountAmount=discountType==="percent"?gross*discount/100:discount
+    resolved.push({id:productId,qty,unitCost,discount,discountType,netTotal:gross-discountAmount})
    }
    const purchaseId=await generateEntityId(tx,purchases,businessId,"PUR",date)
-   const total=resolved.reduce((sum,line)=>sum+line.qty*line.unitCost,0)
+   const total=resolved.reduce((sum,line)=>sum+line.netTotal,0)
    const paidAmount=Number(body.paidAmount??0)
    if(!Number.isFinite(paidAmount)||paidAmount<0||paidAmount>total)throw new Error("INVALID_PAID_AMOUNT")
    const paymentDate=body.paymentDate||date
@@ -72,13 +74,13 @@ export async function POST(request: NextRequest, { params }: Ctx) {
    let paymentAccount=""
    if(paidAmount>0){const [account]=await tx.select({name:financialAccounts.name}).from(financialAccounts).where(and(eq(financialAccounts.businessId,businessId),eq(financialAccounts.name,body.paymentAccount!.trim()),eq(financialAccounts.active,true))).limit(1);if(!account)throw new Error("PAYMENT_ACCOUNT_NOT_FOUND");paymentAccount=account.name}
    await tx.insert(purchases).values({id:purchaseId,businessId,date,supplierId,dueDate:paidAmount>=total?null:(dueDate||null),notes:body.notes||("Imported from invoice "+(typeof data.invoiceNumber==="string"?data.invoiceNumber:doc.fileName))})
-   await tx.insert(purchaseItems).values(resolved.map((line,i)=>({id:"PI-"+purchaseId+"-"+(i+1),purchaseId,productId:line.id,qty:line.qty,unitCost:line.unitCost.toFixed(2)})))
+   await tx.insert(purchaseItems).values(resolved.map((line,i)=>({id:"PI-"+purchaseId+"-"+(i+1),purchaseId,productId:line.id,qty:line.qty,unitCost:line.unitCost.toFixed(2),discount:line.discount.toFixed(2),discountType:line.discountType})))
    const productIds=[...new Set(resolved.map(x=>x.id))]
    const oldProducts=await tx.select({id:products.id,averageCost:products.averageCost}).from(products).where(and(eq(products.businessId,businessId),inArray(products.id,productIds)))
    const movements=await tx.select({productId:stockMovements.productId,qty:stockMovements.qty}).from(stockMovements).where(and(eq(stockMovements.businessId,businessId),inArray(stockMovements.productId,productIds)))
    const stock=new Map<string,number>();for(const m of movements)stock.set(m.productId,(stock.get(m.productId)||0)+m.qty)
    const totals=new Map<string,{qty:number;cost:number}>()
-   resolved.forEach(x=>{const v=totals.get(x.id)||{qty:0,cost:0};v.qty+=x.qty;v.cost+=x.qty*x.unitCost;totals.set(x.id,v)})
+   resolved.forEach(x=>{const v=totals.get(x.id)||{qty:0,cost:0};v.qty+=x.qty;v.cost+=x.netTotal;totals.set(x.id,v)})
    await tx.insert(stockMovements).values(resolved.map((x,i)=>({id:"MOV-PUR-"+purchaseId+"-"+(i+1),businessId,date,productId:x.id,type:"purchase" as const,qty:x.qty,reference:"purchase:"+purchaseId+":receive"})))
    for(const [pid,received] of totals){const p=oldProducts.find(x=>x.id===pid)!;const before=stock.get(pid)||0;const avg=before>0?((before*Number(p.averageCost)+received.cost)/(before+received.qty)):(received.cost/received.qty);await tx.update(products).set({averageCost:avg.toFixed(2)}).where(and(eq(products.id,pid),eq(products.businessId,businessId)))}
    const je="JE-PUR-"+purchaseId
