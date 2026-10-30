@@ -9,6 +9,7 @@ import { SectionCard } from '@/components/common/section-card'
 import { SearchableSelect } from '@/components/common/searchable-select'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/components/providers'
+import { formatIDR } from '@/lib/format'
 import { Detail, InvoiceFilePreview, StatusBadge, fetcher, safeUuid, similarity, type FinancialAccount, type InvoiceData, type Product, type PurchaseDocument, type Supplier } from './purchase-invoice-shared'
 
 export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }) {
