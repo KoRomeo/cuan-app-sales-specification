@@ -438,27 +438,28 @@ table:not(.invoice-print-table) td a {
 }
 
 
-/* Soft ambient canvas inspired by the supplied reference: white surface with restrained navy-blue corners. */
+/* Reference-matched light surface: quiet navy glow only at top-right and bottom-left. */
 .app-shell-surface {
   min-height: 100dvh;
-  background-color: var(--card);
+  background-color: #ffffff;
   background-image:
-    radial-gradient(ellipse 42rem 34rem at 0% 0%, rgb(36 69 132 / 5.5%), transparent 72%),
-    radial-gradient(ellipse 48rem 38rem at 100% 100%, rgb(28 55 112 / 6.5%), transparent 72%);
+    radial-gradient(ellipse 46rem 38rem at 100% 0%, rgb(35 69 132 / 7.5%), transparent 72%),
+    radial-gradient(ellipse 50rem 42rem at 0% 100%, rgb(28 55 112 / 7%), transparent 74%);
   background-attachment: fixed;
 }
 
-/* Wider, softer ambient shadows create gentle separation without hard card outlines. */
+/* Soft, broad ambient elevation; cards have no visible grey outline. */
 :root:not(.dark) [data-slot="card"] {
   border-color: transparent !important;
+  outline: 0 !important;
   box-shadow:
-    0 16px 42px -18px rgb(20 39 78 / 16%),
-    0 5px 16px -8px rgb(20 39 78 / 8%),
-    0 1px 3px rgb(20 39 78 / 3%);
+    0 22px 58px -16px rgb(27 48 87 / 20%),
+    0 10px 28px -12px rgb(27 48 87 / 13%),
+    0 3px 9px -5px rgb(27 48 87 / 8%);
 }
 :root:not(.dark) [data-slot="card"]:hover {
   box-shadow:
-    0 19px 48px -18px rgb(20 39 78 / 18%),
-    0 6px 18px -8px rgb(20 39 78 / 9%),
-    0 1px 3px rgb(20 39 78 / 4%);
+    0 25px 64px -15px rgb(27 48 87 / 22%),
+    0 12px 32px -11px rgb(27 48 87 / 15%),
+    0 4px 11px -5px rgb(27 48 87 / 9%);
 }
