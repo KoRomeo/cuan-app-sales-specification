@@ -55,7 +55,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
     <>
       <div aria-hidden="true" onClick={onClose} className={cn('fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity lg:hidden', open ? 'opacity-100' : 'pointer-events-none opacity-0')} />
       <aside className={cn(
-        'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform] duration-200 lg:translate-x-0',
+        'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[2px_0_12px_-10px_rgba(15,23,42,0.24)] transition-[width,transform] duration-200 lg:translate-x-0',
         collapsed ? 'w-64 lg:w-[4.5rem]' : 'w-64',
         open ? 'translate-x-0' : '-translate-x-full',
       )}>
@@ -87,8 +87,8 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
                   aria-expanded={collapsed ? activeCategory === section.label : (singlePageSection ? undefined : isExpanded)}
                   onClick={() => {
                     if (collapsed) {
-                      if (dashboardOnly) {
-                        router.push('/dashboard')
+                      if (singlePageSection) {
+                        router.push(section.items[0].href)
                         return
                       }
                       setActiveCategory((current) => current === section.label ? null : section.label)
@@ -108,7 +108,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
                   {!collapsed && !singlePageSection && <ChevronDown className={cn('size-3.5 text-sidebar-muted transition-transform', isExpanded && 'rotate-180')} />}
                 </button>
 
-                {!collapsed && isExpanded && (
+                {!collapsed && !singlePageSection && isExpanded && (
                   <div className="relative ml-[1.15rem] mt-1.5 border-l border-sidebar-border/90 pl-3">
                     <span aria-hidden="true" className="pointer-events-none absolute -left-px top-0 h-2.5 w-px bg-sidebar" />
                     <ul className="flex flex-col gap-0.5">
