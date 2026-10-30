@@ -148,11 +148,10 @@ export function ProductsView() {
                 name: values.name,
                 sellingPrice: Number(values.price),
                 costReference: Number(values.cost),
-                ...(editing ? {} : {
-                  averageCost: Number(values.cost),
+                ...(!editing ? {
                   openingStock: Number(values.opening || 0),
                   date: todayISODate(),
-                }),
+                } : {}),
                 minimumStock: Number(values.min || 0),
               }),
             },
