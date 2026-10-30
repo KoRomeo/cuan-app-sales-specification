@@ -34,12 +34,12 @@ const fetcher = async (url: string) => {
   if (result === null) throw new Error('The server returned an invalid response. Please try again.')
   return result
 }
-type PersistedOrder = { id: string; date: string; customerId: string; status: Order['status']; dueDate: string | null; notes: string | null; items: Array<{ productId: string; qty: number; price: string | number; discount?: string | number; unitCost: string | number }> }
+type PersistedOrder = { id: string; date: string; customerId: string; status: Order['status']; dueDate: string | null; notes: string | null; items: Array<{ productId: string; qty: number; price: string | number; discount?: string | number; discountType?: 'amount' | 'percent'; unitCost: string | number }> }
 type PersistedPayment = { id: string; date: string; amount: string | number; account: string; orderId: string | null }
 type OrderReturnRow = { orderId: string; items: Array<{ productId: string; qty: number }> }
 type PersistedParty = { id: string; name: string; phone?: string | null; address?: string | null }
 function mapOrder(row: PersistedOrder, payments: PersistedPayment[]): Order {
-  return { ...row, notes: row.notes ?? '', items: row.items.map((item) => ({ ...item, price: Number(item.price), discount: Number(item.discount ?? 0), unitCost: Number(item.unitCost) })), payments: payments.filter((payment) => payment.orderId === row.id).map((payment) => ({ id: payment.id, date: payment.date, amount: Number(payment.amount), account: payment.account })), delivery: null }
+  return { ...row, notes: row.notes ?? '', items: row.items.map((item) => ({ ...item, price: Number(item.price), discount: Number(item.discount ?? 0), discountType: item.discountType ?? 'amount', unitCost: Number(item.unitCost) })), payments: payments.filter((payment) => payment.orderId === row.id).map((payment) => ({ id: payment.id, date: payment.date, amount: Number(payment.amount), account: payment.account })), delivery: null }
 }
 
 const hasNegativeImpact = (o: Order, productStock: Map<string, number>) =>
