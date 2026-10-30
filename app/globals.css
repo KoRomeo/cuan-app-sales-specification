@@ -531,9 +531,9 @@ body::before {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 72vw 58vh at 100% 0%, rgb(34 91 205 / 34%), transparent 70%),
+    radial-gradient(ellipse 54vw 42vh at 100% 0%, rgb(34 91 205 / 27%), transparent 70%),
     radial-gradient(ellipse 66vw 62vh at 0% 100%, rgb(35 82 190 / 30%), transparent 72%),
-    radial-gradient(ellipse 42vw 36vh at 83% 8%, rgb(83 139 239 / 22%), transparent 74%),
+    radial-gradient(ellipse 31vw 25vh at 88% 5%, rgb(83 139 239 / 16%), transparent 74%),
     conic-gradient(from 218deg at 96% 0%, transparent 0deg, rgb(59 115 220 / 15%) 38deg, transparent 104deg),
     var(--background);
   filter: blur(2px);
@@ -558,9 +558,9 @@ body > * {
 /* Dark mode gets a more visible, asymmetrical blue bloom with a soft falloff. */
 .dark body::before {
   background:
-    radial-gradient(ellipse 78vw 64vh at 100% 0%, rgb(39 105 232 / 43%), transparent 69%),
+    radial-gradient(ellipse 58vw 46vh at 100% 0%, rgb(39 105 232 / 34%), transparent 69%),
     radial-gradient(ellipse 72vw 68vh at 0% 100%, rgb(35 82 196 / 38%), transparent 71%),
-    radial-gradient(ellipse 46vw 40vh at 82% 8%, rgb(91 147 246 / 27%), transparent 74%),
+    radial-gradient(ellipse 34vw 28vh at 88% 5%, rgb(91 147 246 / 19%), transparent 74%),
     conic-gradient(from 220deg at 98% 0%, transparent 0deg, rgb(63 126 238 / 19%) 42deg, transparent 112deg),
     var(--background);
 }
