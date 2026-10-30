@@ -19,7 +19,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
   const [[customer], itemRows, paymentRows, [delivery], replacementRows] = await Promise.all([
     db.select({ id: customers.id, name: customers.name, phone: customers.phone, address: customers.address }).from(customers).where(and(eq(customers.id, order.customerId), eq(customers.businessId, order.businessId))).limit(1),
-    db.select({ id: orderItems.id, productId: orderItems.productId, qty: orderItems.qty, price: orderItems.price, discount: orderItems.discount, unitCost: orderItems.unitCost }).from(orderItems).where(eq(orderItems.orderId, id)),
+    db.select({ id: orderItems.id, productId: orderItems.productId, qty: orderItems.qty, price: orderItems.price, discount: orderItems.discount, discountType: orderItems.discountType, unitCost: orderItems.unitCost }).from(orderItems).where(eq(orderItems.orderId, id)),
     db.select({ id: payments.id, date: payments.date, amount: payments.amount, account: payments.account }).from(payments).where(and(eq(payments.orderId, id), eq(payments.businessId, order.businessId))),
     db.select({ id: deliveries.id, date: deliveries.date, method: deliveries.method, recipient: deliveries.recipient, driverName: deliveries.driverName, address: deliveries.address, transportCost: deliveries.transportCost }).from(deliveries).where(eq(deliveries.orderId, id)).limit(1),
     db.select({ id: replacements.id, date: replacements.date, productId: replacements.productId, qty: replacements.qty, reason: replacements.reason, delivered: replacements.delivered }).from(replacements).where(and(eq(replacements.orderId, id), eq(replacements.businessId, order.businessId))),
