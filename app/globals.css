@@ -53,7 +53,7 @@
 :root {
   color-scheme: light;
   --radius: 0.375rem;
-  --background: oklch(0.982 0.004 255);
+  --background: oklch(1 0 0);
   --foreground: oklch(0.22 0.04 262);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.22 0.04 262);
@@ -435,4 +435,30 @@ table:not(.invoice-print-table) td a {
 }
 :root:not(.dark) [data-slot="card"]:hover {
   box-shadow: 0 3px 10px -5px rgb(15 23 42 / 18%), 0 1px 3px rgb(15 23 42 / 5%);
+}
+
+
+/* Soft ambient canvas inspired by the supplied reference: white surface with restrained navy-blue corners. */
+.app-shell-surface {
+  min-height: 100dvh;
+  background-color: var(--card);
+  background-image:
+    radial-gradient(ellipse 42rem 34rem at 0% 0%, rgb(36 69 132 / 5.5%), transparent 72%),
+    radial-gradient(ellipse 48rem 38rem at 100% 100%, rgb(28 55 112 / 6.5%), transparent 72%);
+  background-attachment: fixed;
+}
+
+/* Wider, softer ambient shadows create gentle separation without hard card outlines. */
+:root:not(.dark) [data-slot="card"] {
+  border-color: transparent !important;
+  box-shadow:
+    0 16px 42px -18px rgb(20 39 78 / 16%),
+    0 5px 16px -8px rgb(20 39 78 / 8%),
+    0 1px 3px rgb(20 39 78 / 3%);
+}
+:root:not(.dark) [data-slot="card"]:hover {
+  box-shadow:
+    0 19px 48px -18px rgb(20 39 78 / 18%),
+    0 6px 18px -8px rgb(20 39 78 / 9%),
+    0 1px 3px rgb(20 39 78 / 4%);
 }
