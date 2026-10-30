@@ -22,6 +22,10 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
       if (typeof item.productName !== "string" || !item.productName.trim()) issues.push(`Item ${i + 1}: product name is required`)
       if (!Number.isSafeInteger(Number(item.quantity)) || Number(item.quantity) <= 0) issues.push(`Item ${i + 1}: quantity must be a positive whole number`)
       if (!Number.isFinite(Number(item.unitCost)) || Number(item.unitCost) < 0) issues.push(`Item ${i + 1}: unit cost must be non-negative`)
+      const discount = Number(item.discount ?? 0)
+      const discountType = item.discountType ?? "amount"
+      const gross = Number(item.quantity) * Number(item.unitCost)
+      if (!Number.isFinite(discount) || discount < 0 || (discountType !== "amount" && discountType !== "percent") || (discountType === "percent" ? discount > 100 : discount > gross)) issues.push(`Item ${i + 1}: discount must be a valid percentage or amount not exceeding the line subtotal`)
     }
     if (issues.length) return NextResponse.json({ error: "Review validation failed", issues }, { status: 400 })
     const [document] = await db.select().from(purchaseDocuments)
