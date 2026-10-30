@@ -205,6 +205,7 @@ discount: decimal("discount", {
     precision: 14,
     scale: 2,
 }).notNull().default("0"),
+discountType: text("discount_type").notNull().default("amount"),
 unitCost: decimal("unit_cost", {
     precision: 14,
     scale: 2,
@@ -277,6 +278,8 @@ unitCost: decimal("unit_cost", {
     precision: 14,
     scale: 2,
 }).notNull(),
+discount: decimal("discount", { precision: 14, scale: 2 }).notNull().default("0"),
+discountType: text("discount_type").notNull().default("amount"),
 })
 
 // ============================================================
