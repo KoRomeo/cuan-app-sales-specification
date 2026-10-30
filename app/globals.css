@@ -449,12 +449,22 @@ table:not(.invoice-print-table) td a {
     0 6px 18px -7px rgb(22 43 82 / 11%) !important;
 }
 
-/* Stronger, diffused navy-blue corner atmosphere: top-right and bottom-left only. */
+/* Light theme: white canvas with restrained navy corner atmosphere. */
 .app-shell-surface {
   min-height: 100dvh;
-  background-color: #fff;
+  background-color: var(--background);
   background-image:
     radial-gradient(ellipse 58rem 46rem at 100% 0%, rgb(35 75 150 / 15%), transparent 73%),
     radial-gradient(ellipse 62rem 50rem at 0% 100%, rgb(30 65 135 / 14%), transparent 75%);
+  background-attachment: fixed;
+}
+
+/* Dark theme must never inherit the light canvas or its pale gradients. */
+.dark .app-shell-surface,
+.app-shell-surface.dark {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(ellipse 58rem 46rem at 100% 0%, rgb(38 78 155 / 13%), transparent 73%),
+    radial-gradient(ellipse 62rem 50rem at 0% 100%, rgb(30 65 140 / 11%), transparent 75%);
   background-attachment: fixed;
 }
