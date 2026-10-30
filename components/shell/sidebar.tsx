@@ -79,7 +79,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
             const singlePageSection = section.items.length === 1
             return (
               <div key={section.label} className={cn('relative', collapsed ? 'mb-1.5' : section.label === 'nav.settings' ? 'mt-3 border-t border-sidebar-border/60 pt-3' : 'mb-2')}>
-                {/* Compact mode: one icon per category, with a floating submenu. */}
+                {/* Compact mode: multi-page categories use a floating submenu; single-page categories navigate directly. */}
                 <button
                   type="button"
                   title={collapsed ? t(section.label) : undefined}
