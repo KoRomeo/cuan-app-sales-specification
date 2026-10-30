@@ -476,10 +476,8 @@ table:not(.invoice-print-table) td a {
   background-size: 180px 180px;
   mix-blend-mode: soft-light;
 }
-.app-shell-surface > * {
-  position: relative;
-  z-index: 1;
-}
+/* Do not assign positioning to app-shell children here.
+   Sidebar renders as a direct child and must retain position: fixed on desktop. */
 
 /* Night mode: deeper blue glow, organic light falloff, and restrained grain. */
 .dark .app-shell-surface,
