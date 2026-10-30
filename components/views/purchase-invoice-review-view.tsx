@@ -111,7 +111,7 @@ export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }
     if (unresolved.length) { setMessage(label('Match every item with a product or add it as a new product. Items not matched yet: ', 'Cocokkan setiap item dengan produk atau tambahkan sebagai produk baru. Item yang belum dicocokkan: ') + unresolved.map(i => '#' + (i + 1)).join(', ')); return }
     const paid = Math.max(0, Number(paidAmount || 0))
     const account = paymentAccount || financialAccounts.find(a => a.active && a.name.toLowerCase() === 'cash')?.name || financialAccounts.find(a => a.active)?.name || ''
-    if (paid > Number(current.total ?? current.items.reduce((sum, line) => { const gross=Number(line.quantity)*Number(line.unitCost), discount=line.discountType==='percent'?gross*Number(line.discount??0)/100:Number(line.discount??0); return sum+Math.max(0,gross-discount) }, 0))) { setMessage(label('Payment cannot exceed the invoice total.', 'Pembayaran tidak boleh melebihi total faktur.')); return }
+    if (paid > current.items.reduce((sum, line) => { const gross=Number(line.quantity)*Number(line.unitCost), discount=line.discountType==='percent'?gross*Number(line.discount??0)/100:Number(line.discount??0); return sum+Math.max(0,gross-discount) }, 0)) { setMessage(label('Payment cannot exceed the invoice total.', 'Pembayaran tidak boleh melebihi total faktur.')); return }
     if (paid > 0 && !account) { setMessage(label('Choose an active cash or bank account for this payment.', 'Pilih akun kas atau bank yang aktif untuk pembayaran ini.')); return }
     setBusy(true); setMessage('')
     try {
