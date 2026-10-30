@@ -428,43 +428,87 @@ table:not(.invoice-print-table) td a {
 }
 
 
-/* Light-mode depth system: visible, wide ambient shadows with zero card outlines. */
+/* Light-mode depth system: soft, wide ambient shadows and a subtle gradient edge. */
 :root:not(.dark) [data-slot="card"],
 :root:not(.dark) .app-card {
-  border: 0 !important;
+  border: 1px solid transparent !important;
   border-color: transparent !important;
+  background:
+    linear-gradient(var(--card), var(--card)) padding-box,
+    linear-gradient(135deg, rgb(74 125 225 / 58%), rgb(255 255 255 / 92%) 42%, rgb(54 99 190 / 46%) 100%) border-box !important;
   outline: none !important;
-  --tw-ring-shadow: 0 0 #0000 !important;
-  --tw-ring-offset-shadow: 0 0 #0000 !important;
   box-shadow:
-    0 30px 76px -20px rgb(22 43 82 / 24%),
-    0 16px 38px -18px rgb(22 43 82 / 17%),
-    0 5px 16px -8px rgb(22 43 82 / 10%) !important;
+    0 28px 76px -20px rgb(22 43 82 / 27%),
+    0 14px 36px -14px rgb(22 43 82 / 18%),
+    0 4px 14px -6px rgb(22 43 82 / 11%) !important;
 }
 :root:not(.dark) [data-slot="card"]:hover,
 :root:not(.dark) .app-card:hover {
   box-shadow:
-    0 34px 84px -18px rgb(22 43 82 / 26%),
-    0 18px 42px -16px rgb(22 43 82 / 19%),
-    0 6px 18px -7px rgb(22 43 82 / 11%) !important;
+    0 34px 88px -18px rgb(22 43 82 / 30%),
+    0 18px 42px -14px rgb(22 43 82 / 20%),
+    0 6px 18px -6px rgb(22 43 82 / 12%) !important;
 }
 
-/* Light theme: white canvas with restrained navy corner atmosphere. */
+/* White canvas: richer, asymmetrical blue atmosphere with fine organic grain. */
 .app-shell-surface {
+  position: relative;
+  isolation: isolate;
   min-height: 100dvh;
   background-color: var(--background);
   background-image:
-    radial-gradient(ellipse 58rem 46rem at 100% 0%, rgb(35 75 150 / 15%), transparent 73%),
-    radial-gradient(ellipse 62rem 50rem at 0% 100%, rgb(30 65 135 / 14%), transparent 75%);
+    radial-gradient(ellipse 48rem 34rem at 100% 0%, rgb(35 83 180 / 24%), transparent 72%),
+    radial-gradient(ellipse 54rem 42rem at 0% 100%, rgb(30 70 160 / 21%), transparent 74%),
+    radial-gradient(ellipse 30rem 24rem at 82% 9%, rgb(80 125 215 / 12%), transparent 75%),
+    conic-gradient(from 218deg at 92% 4%, transparent 0deg, rgb(58 105 190 / 8%) 48deg, transparent 112deg);
   background-attachment: fixed;
 }
 
-/* Dark theme must never inherit the light canvas or its pale gradients. */
+/* Fine monochrome noise keeps the gradients tactile, not flat or plasticky. */
+.app-shell-surface::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.19;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  mix-blend-mode: soft-light;
+}
+.app-shell-surface > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Night mode: deeper blue glow, organic light falloff, and restrained grain. */
 .dark .app-shell-surface,
 .app-shell-surface.dark {
+  position: relative;
+  isolation: isolate;
   background-color: var(--background);
   background-image:
-    radial-gradient(ellipse 58rem 46rem at 100% 0%, rgb(38 78 155 / 13%), transparent 73%),
-    radial-gradient(ellipse 62rem 50rem at 0% 100%, rgb(30 65 140 / 11%), transparent 75%);
+    radial-gradient(ellipse 52rem 38rem at 100% 0%, rgb(40 91 190 / 31%), transparent 72%),
+    radial-gradient(ellipse 58rem 46rem at 0% 100%, rgb(32 76 170 / 27%), transparent 74%),
+    radial-gradient(ellipse 34rem 28rem at 78% 8%, rgb(68 112 205 / 17%), transparent 76%),
+    conic-gradient(from 220deg at 92% 4%, transparent 0deg, rgb(58 105 205 / 12%) 52deg, transparent 116deg);
   background-attachment: fixed;
+}
+.dark .app-shell-surface::before,
+.app-shell-surface.dark::before {
+  opacity: 0.23;
+  mix-blend-mode: soft-light;
+}
+
+/* Gradient edge treatment for cards in Night Mode too; never a flat grey outline. */
+.dark [data-slot="card"],
+.dark .app-card {
+  border: 1px solid transparent !important;
+  border-color: transparent !important;
+  background:
+    linear-gradient(var(--card), var(--card)) padding-box,
+    linear-gradient(135deg, rgb(91 143 245 / 42%), rgb(91 143 245 / 5%) 48%, rgb(58 105 205 / 34%)) border-box !important;
+  box-shadow:
+    0 24px 64px -22px rgb(0 0 0 / 46%),
+    0 10px 28px -12px rgb(15 35 80 / 32%) !important;
 }
