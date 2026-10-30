@@ -42,7 +42,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
     setActiveCategory(null)
   }, [pathname])
 
-  const visibleSections = navigation.map((section) => ({
+  const visibleSections = navigation.filter((section) => section.label !== 'nav.settings').map((section) => ({
     ...section,
     items: section.items.filter((item) => !item.feature || features[item.feature]),
   })).filter((section) => section.items.length > 0)
@@ -55,8 +55,8 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
     <>
       <div aria-hidden="true" onClick={onClose} className={cn('fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity lg:hidden', open ? 'opacity-100' : 'pointer-events-none opacity-0')} />
       <aside className={cn(
-        'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[2px_0_12px_-10px_rgba(15,23,42,0.24)] transition-[width,transform] duration-200 lg:translate-x-0',
-        collapsed ? 'w-64 lg:w-[4.5rem]' : 'w-64',
+        'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[10px_0_36px_-18px_rgba(15,23,42,0.32)] transition-[width,transform] duration-200 lg:translate-x-0',
+        collapsed ? 'w-60 lg:w-[4.25rem]' : 'w-60',
         open ? 'translate-x-0' : '-translate-x-full',
       )}>
         <div className={cn('flex h-16 shrink-0 items-center border-b border-sidebar-border/70 px-3', collapsed ? 'justify-center lg:px-2' : 'justify-between px-5')}>
@@ -71,14 +71,14 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
           </button>
         </div>
 
-        <nav aria-label="Main" className={cn('app-nav-scroll flex-1 overflow-y-auto overflow-x-hidden py-3', collapsed ? 'px-2' : 'px-3')}>
+        <nav aria-label="Main" className={cn('app-nav-scroll flex-1 overflow-y-auto overflow-x-hidden py-4', collapsed ? 'px-2' : 'px-3')}>
           {visibleSections.map((section) => {
             const isExpanded = expandedSections.includes(section.label)
             const hasActiveItem = section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
             const Icon = categoryIcons[section.label] ?? Building2
             const singlePageSection = section.items.length === 1
             return (
-              <div key={section.label} className={cn('relative', collapsed ? 'mb-1.5' : section.label === 'nav.settings' ? 'mt-3 border-t border-sidebar-border/60 pt-3' : 'mb-2')}>
+              <div key={section.label} className={cn('relative', collapsed ? 'mb-1.5' : 'mb-2')}>
                 {/* Compact mode: multi-page categories use a floating submenu; single-page categories navigate directly. */}
                 <button
                   type="button"
@@ -143,6 +143,13 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
           })}
         </nav>
 
+        <div className={cn('shrink-0 border-t border-sidebar-border/70 p-3', collapsed ? 'flex justify-center' : '')}>
+          <button type="button" onClick={() => { router.push('/settings'); onClose() }} title={t('nav.settings')} aria-label={t('nav.settings')} className={cn('group flex h-10 items-center rounded-lg text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-foreground', collapsed ? 'w-10 justify-center' : 'w-full gap-3 px-3')}>
+            <Settings className="size-[17px] shrink-0 text-sidebar-muted group-hover:text-sidebar-foreground" />
+            {!collapsed && <span className="text-[12px] font-medium">{t('nav.settings')}</span>}
+          </button>
+        </div>
+
         {!collapsed && (
           <div className="shrink-0 border-t border-sidebar-border p-3">
             <div className="rounded-lg border border-sidebar-border/70 bg-sidebar-accent/45 px-3 py-2.5">
@@ -157,7 +164,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
       {collapsed && activeCategory && (
         <>
           <button type="button" aria-label="Close category menu" className="fixed inset-0 z-[55] hidden bg-transparent lg:block" onClick={() => setActiveCategory(null)} />
-          <section className="fixed left-[4.75rem] top-[4.5rem] z-[60] hidden w-60 overflow-hidden rounded-xl border border-sidebar-border bg-popover p-2.5 text-popover-foreground shadow-[0_8px_24px_-12px_rgba(15,23,42,0.28),0_2px_6px_-3px_rgba(15,23,42,0.12)] lg:block" aria-label={t(activeCategory)}>
+          <section className="fixed left-[4.5rem] top-[4.5rem] z-[60] hidden w-60 overflow-hidden rounded-xl border border-sidebar-border bg-popover p-2.5 text-popover-foreground shadow-[0_14px_38px_-12px_rgba(15,23,42,0.22),0_4px_12px_-4px_rgba(15,23,42,0.08)] lg:block" aria-label={t(activeCategory)}>
             <div className="flex items-center gap-2 border-b border-border/70 px-2 pb-2.5 pt-1">
               {(() => { const Icon = categoryIcons[activeCategory] ?? Building2; return <Icon className="size-4 text-primary" /> })()}
               <p className="text-[13px] font-medium tracking-normal">{t(activeCategory as Parameters<typeof t>[0])}</p>
