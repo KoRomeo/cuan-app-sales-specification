@@ -35,6 +35,7 @@ interface Line {
   qty: number
   price: number
   discount: number
+  discountType: 'amount' | 'percent'
 }
 
 export function NewOrderView() {
@@ -56,13 +57,14 @@ export function NewOrderView() {
   const [lineToRemove, setLineToRemove] = useState<number | null>(null)
 
   useEffect(() => {
-    if (lines.length === 0 && productRows?.[0]) setLines([{ key: 1, productId: productRows[0].id, qty: 1, price: Number(productRows[0].sellingPrice), discount: 0 }])
+    if (lines.length === 0 && productRows?.[0]) setLines([{ key: 1, productId: productRows[0].id, qty: 1, price: Number(productRows[0].sellingPrice), discount: 0, discountType: 'amount' }])
   }, [lines.length, productRows])
 
   const update = (key: number, patch: Partial<Line>) =>
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)))
 
-  const total = lines.reduce((s, l) => s + l.qty * l.price - l.discount, 0)
+  const lineDiscount = (line: Line) => line.discountType === 'percent' ? line.qty * line.price * line.discount / 100 : line.discount
+  const total = lines.reduce((s, l) => s + l.qty * l.price - lineDiscount(l), 0)
   const stockAfterOrder = (productId: string) => {
     const product = productsById.get(productId)
     const quantity = lines.filter((line) => line.productId === productId).reduce((sum, line) => sum + line.qty, 0)
@@ -85,7 +87,7 @@ export function NewOrderView() {
           event.preventDefault()
           if (isSaving) return
           if (Number(paid || 0) > 0 && !selectedPaymentAccount) { toast.error(t('returns.createAccountHint')); return }
-          if (lines.some((line) => !Number.isInteger(line.qty) || line.qty < 1 || line.qty > MAX_ORDER_QTY || !Number.isFinite(line.price) || line.price < 0)) {
+          if (lines.some((line) => !Number.isInteger(line.qty) || line.qty < 1 || line.qty > MAX_ORDER_QTY || !Number.isFinite(line.price) || line.price < 0 || !Number.isFinite(line.discount) || line.discount < 0 || (line.discountType === 'percent' ? line.discount > 100 : line.discount > line.qty * line.price))) {
             toast.error('Quantity must be between 1 and 999,999 and price must be valid.')
             return
           }
@@ -95,7 +97,7 @@ export function NewOrderView() {
             const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
             const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
               id: `ORD-${Date.now()}`, businessId: business.id, date: form.get('orderDate'), customerId: form.get('customerId'), status: 'requested', dueDate: form.get('dueDate') || null, notes: form.get('notes') || null, paidAmount: Number(paid || 0), paymentAccount: selectedPaymentAccount, paymentDate: form.get('orderDate'), paymentId: Number(paid || 0) > 0 ? `PAY-ORD-${Date.now()}` : undefined,
-              items: lines.map((line) => ({ id: `OI-${Date.now()}-${line.key}`, productId: line.productId, qty: line.qty, price: line.price, discount: line.discount, unitCost: productsById.get(line.productId)?.averageCost ?? 0 })),
+              items: lines.map((line) => ({ id: `OI-${Date.now()}-${line.key}`, productId: line.productId, qty: line.qty, price: line.price, discount: line.discount, discountType: line.discountType, unitCost: productsById.get(line.productId)?.averageCost ?? 0 })),
             }) })
             const result = await response.json()
             if (!response.ok) throw new Error(result.error ?? 'Unable to save order')
@@ -137,7 +139,7 @@ export function NewOrderView() {
                 return (
                   <li key={l.key} className="rounded-lg border p-3">
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-12">
-                      <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-4">
+                      <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-3">
                         <Label htmlFor={`p-${l.key}`}>{t('common.product')}</Label>
                         <SearchableSelect id={`p-${l.key}`} name={`product-${l.key}`} value={l.productId} onChange={(value) => update(l.key, { productId: String(value), price: productsById.get(String(value))?.sellingPrice ?? 0 })} options={productRows.map((product) => ({ value: product.id, label: product.name, description: `${t('inventory.stock')}: ${productsById.get(product.id)?.stock ?? 0}` }))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />
                       </div>
@@ -150,11 +152,10 @@ export function NewOrderView() {
                         <Input id={`pr-${l.key}`} name={`price-${l.key}`} type="number" min={0} required className="font-mono" value={l.price} onChange={(e) => update(l.key, { price: Number(e.target.value) })} />
                       </div>
                       <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2">
-                        <Label>Subtotal</Label>
-                        <div className="flex h-10 min-w-0 items-center">
-                          <span title={formatIDR(l.qty * l.price - l.discount)} className="truncate font-mono text-sm font-semibold tabular-nums">{formatIDR(l.qty * l.price - l.discount)}</span>
-                        </div>
+                        <Label>{t('orders.discount')}</Label>
+                        <div className="flex gap-1"><select aria-label="Discount type" className="h-10 w-[76px] rounded-md border bg-background px-2 text-sm" value={l.discountType} onChange={(e) => update(l.key, { discountType: e.target.value as 'amount' | 'percent', discount: 0 })}><option value="amount">Rp</option><option value="percent">%</option></select><Input aria-label="Discount value" type="number" min={0} max={l.discountType === 'percent' ? 100 : l.qty * l.price} step="any" value={l.discount} onChange={(e) => update(l.key, { discount: Number(e.target.value) })} /></div>
                       </div>
+                      <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-3"><Label>{t('orders.subtotal')}</Label><div className="flex h-10 min-w-0 items-center"><span title={formatIDR(l.qty * l.price - lineDiscount(l))} className="truncate font-mono text-sm font-semibold tabular-nums">{formatIDR(l.qty * l.price - lineDiscount(l))}</span></div></div>
                       <div className="flex flex-col gap-1.5 sm:col-span-1">
                         <Label className="invisible">Remove</Label>
                         <div className="flex h-10 items-center justify-center">
@@ -184,7 +185,7 @@ export function NewOrderView() {
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => setLines((prev) => [...prev, { key: Date.now(), productId: productRows[0]?.id ?? '', qty: 1, price: Number(productRows[0]?.sellingPrice ?? 0), discount: 0 }])}
+                onClick={() => setLines((prev) => [...prev, { key: Date.now(), productId: productRows[0]?.id ?? '', qty: 1, price: Number(productRows[0]?.sellingPrice ?? 0), discount: 0, discountType: 'amount' }])}
               >
                 <Plus />
                 {t('common.add')}
