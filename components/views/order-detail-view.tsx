@@ -14,6 +14,7 @@ import { OrderStatusBadge, PaymentStatusBadge, Pill } from '@/components/common/
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
 import {
+  discountAmount,
   lineSubtotal,
   type Order,
   orderCogs,
@@ -40,7 +41,7 @@ const fetcher = async (url: string) => {
 type DetailResponse = {
   id: string; date: string; customerId: string; status: Order['status']; dueDate: string | null; notes: string | null
   customer: { id: string; name: string; phone: string | null; address: string | null } | null
-  items: Array<{ id: string; productId: string; qty: number; price: string | number; discount: string | number; unitCost: string | number }>
+  items: Array<{ id: string; productId: string; qty: number; price: string | number; discount: string | number; discountType?: 'amount' | 'percent'; unitCost: string | number }>
   products: Array<{ id: string; name: string; averageCost: string | number; stock: string | number }>
   payments: Array<{ id: string; date: string; amount: string | number; account: string }>
   delivery: Order['delivery']; replacements: Array<{ id: string; orderId?: string; date: string; productId: string; qty: number; reason: string; delivered: boolean; cost?: string | number }>
@@ -62,7 +63,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
   if (error) return <div role="alert" className="flex flex-col gap-3"><p className="text-sm text-destructive">{error.message}</p><Button variant="outline" size="sm" onClick={() => mutate()}>{t('common.retry')}</Button></div>
   if (!data) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
   const productById = new Map(data.products.map((product) => [product.id, { ...product, averageCost: Number(product.averageCost), stock: Number(product.stock) }]))
-  const order: Order = { ...data, notes: data.notes ?? '', items: data.items.map((item) => ({ ...item, price: Number(item.price), discount: Number(item.discount), unitCost: Number(item.unitCost) })), payments: data.payments.map((payment) => ({ ...payment, amount: Number(payment.amount) })), delivery: data.delivery }
+  const order: Order = { ...data, notes: data.notes ?? '', items: data.items.map((item) => ({ ...item, price: Number(item.price), discount: Number(item.discount), discountType: item.discountType ?? 'amount', unitCost: Number(item.unitCost) })), payments: data.payments.map((payment) => ({ ...payment, amount: Number(payment.amount) })), delivery: data.delivery }
   const customer = data.customer
   const replacements = data.replacements
   const linkedReturns = data.returns ?? []
@@ -187,7 +188,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
                         </td>
                         <td className="px-4 py-3 text-right font-mono tabular-nums">{it.qty}</td>
                         <td className="px-4 py-3 text-right font-mono tabular-nums">{formatIDR(it.price)}</td>
-                        <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-foreground">{it.discount ? formatIDR(it.discount) : '—'}</td>
+                        <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-foreground">{it.discount ? (it.discountType === 'percent' ? `${it.discount}% · ${formatIDR(discountAmount(it.qty * it.price, it.discount, 'percent'))}` : formatIDR(it.discount)) : '—'}</td>
                         <td className="px-4 py-3 text-right font-mono font-medium tabular-nums md:px-5">{formatIDR(lineSubtotal(it))}</td>
                       </tr>
                     )
