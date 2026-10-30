@@ -89,11 +89,17 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
                     if (collapsed) {
                       if (singlePageSection) {
                         router.push(section.items[0].href)
+                        onClose()
                         return
                       }
                       setActiveCategory((current) => current === section.label ? null : section.label)
                     } else {
-                      toggleSection(section.label)
+                      if (singlePageSection) {
+                        router.push(section.items[0].href)
+                        onClose()
+                      } else {
+                        toggleSection(section.label)
+                      }
                     }
                   }}
                   className={cn(
