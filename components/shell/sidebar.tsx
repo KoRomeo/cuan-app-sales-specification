@@ -55,7 +55,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
     <>
       <div aria-hidden="true" onClick={onClose} className={cn('fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity lg:hidden', open ? 'opacity-100' : 'pointer-events-none opacity-0')} />
       <aside className={cn(
-        'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width,transform] duration-200 lg:translate-x-0',
+        'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[2px_0_12px_-10px_rgba(15,23,42,0.24)] transition-[width,transform] duration-200 lg:translate-x-0',
         collapsed ? 'w-64 lg:w-[4.5rem]' : 'w-64',
         open ? 'translate-x-0' : '-translate-x-full',
       )}>
@@ -76,39 +76,45 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
             const isExpanded = expandedSections.includes(section.label)
             const hasActiveItem = section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
             const Icon = categoryIcons[section.label] ?? Building2
-            const dashboardOnly = section.items.length === 1 && section.items[0].href === '/dashboard'
+            const singlePageSection = section.items.length === 1
             return (
-              <div key={section.label} className={cn('relative', collapsed ? 'mb-1.5' : 'mb-2')}>
-                {/* Compact mode: one icon per category, with a floating submenu. */}
+              <div key={section.label} className={cn('relative', collapsed ? 'mb-1.5' : section.label === 'nav.settings' ? 'mt-3 border-t border-sidebar-border/60 pt-3' : 'mb-2')}>
+                {/* Compact mode: multi-page categories use a floating submenu; single-page categories navigate directly. */}
                 <button
                   type="button"
                   title={collapsed ? t(section.label) : undefined}
                   aria-label={t(section.label)}
-                  aria-expanded={collapsed ? activeCategory === section.label : isExpanded}
+                  aria-expanded={collapsed ? activeCategory === section.label : (singlePageSection ? undefined : isExpanded)}
                   onClick={() => {
                     if (collapsed) {
-                      if (dashboardOnly) {
-                        router.push('/dashboard')
+                      if (singlePageSection) {
+                        router.push(section.items[0].href)
+                        onClose()
                         return
                       }
                       setActiveCategory((current) => current === section.label ? null : section.label)
                     } else {
-                      toggleSection(section.label)
+                      if (singlePageSection) {
+                        router.push(section.items[0].href)
+                        onClose()
+                      } else {
+                        toggleSection(section.label)
+                      }
                     }
                   }}
                   className={cn(
                     'group relative flex w-full items-center rounded-lg text-sm transition-all duration-150',
-                    collapsed ? 'h-10 justify-center px-0' : 'gap-3 px-3 py-2.5',
+                    collapsed ? 'h-10 justify-center px-0' : 'gap-3 px-3 py-2',
                     (hasActiveItem || activeCategory === section.label) ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/65 hover:text-sidebar-foreground',
                   )}
                 >
                   {(hasActiveItem || activeCategory === section.label) && <span aria-hidden="true" className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-sidebar-primary" />}
                   <Icon className={cn('size-[17px] shrink-0', hasActiveItem || activeCategory === section.label ? 'text-sidebar-primary' : 'text-sidebar-muted group-hover:text-sidebar-foreground')} />
-                  <span className={cn('min-w-0 flex-1 truncate text-left text-[12px] font-semibold uppercase tracking-[0.09em]', collapsed && 'lg:hidden')}>{t(section.label)}</span>
-                  {!collapsed && <ChevronDown className={cn('size-3.5 text-sidebar-muted transition-transform', isExpanded && 'rotate-180')} />}
+                  <span className={cn('min-w-0 flex-1 truncate text-left text-[12px] font-medium tracking-normal', collapsed && 'lg:hidden')}>{t(section.label)}</span>
+                  {!collapsed && !singlePageSection && <ChevronDown className={cn('size-3.5 text-sidebar-muted transition-transform', isExpanded && 'rotate-180')} />}
                 </button>
 
-                {!collapsed && isExpanded && (
+                {!collapsed && !singlePageSection && isExpanded && (
                   <div className="relative ml-[1.15rem] mt-1.5 border-l border-sidebar-border/90 pl-3">
                     <span aria-hidden="true" className="pointer-events-none absolute -left-px top-0 h-2.5 w-px bg-sidebar" />
                     <ul className="flex flex-col gap-0.5">
@@ -151,10 +157,10 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
       {collapsed && activeCategory && (
         <>
           <button type="button" aria-label="Close category menu" className="fixed inset-0 z-[55] hidden bg-transparent lg:block" onClick={() => setActiveCategory(null)} />
-          <section className="fixed left-[4.75rem] top-[4.5rem] z-[60] hidden w-60 overflow-hidden rounded-xl border border-sidebar-border bg-popover p-2.5 text-popover-foreground shadow-[0_16px_48px_-16px_rgba(0,0,0,0.45)] lg:block" aria-label={t(activeCategory)}>
+          <section className="fixed left-[4.75rem] top-[4.5rem] z-[60] hidden w-60 overflow-hidden rounded-xl border border-sidebar-border bg-popover p-2.5 text-popover-foreground shadow-[0_8px_24px_-12px_rgba(15,23,42,0.28),0_2px_6px_-3px_rgba(15,23,42,0.12)] lg:block" aria-label={t(activeCategory)}>
             <div className="flex items-center gap-2 border-b border-border/70 px-2 pb-2.5 pt-1">
               {(() => { const Icon = categoryIcons[activeCategory] ?? Building2; return <Icon className="size-4 text-primary" /> })()}
-              <p className="text-xs font-semibold uppercase tracking-[0.1em]">{t(activeCategory as Parameters<typeof t>[0])}</p>
+              <p className="text-[13px] font-medium tracking-normal">{t(activeCategory as Parameters<typeof t>[0])}</p>
             </div>
             <ul className="mt-1.5 flex flex-col gap-0.5">
               {(visibleSections.find((section) => section.label === activeCategory)?.items ?? []).map((item) => {

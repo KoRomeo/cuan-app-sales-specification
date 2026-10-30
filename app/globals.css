@@ -426,3 +426,13 @@ table:not(.invoice-print-table) td a {
   white-space: nowrap !important;
   word-break: normal !important;
 }
+
+
+/* Subtle elevation for light-mode cards: replace hard outlines with soft shadows. */
+:root:not(.dark) [data-slot="card"] {
+  border-color: transparent !important;
+  box-shadow: 0 2px 8px -5px rgb(15 23 42 / 16%), 0 1px 2px rgb(15 23 42 / 4%);
+}
+:root:not(.dark) [data-slot="card"]:hover {
+  box-shadow: 0 3px 10px -5px rgb(15 23 42 / 18%), 0 1px 3px rgb(15 23 42 / 5%);
+}
