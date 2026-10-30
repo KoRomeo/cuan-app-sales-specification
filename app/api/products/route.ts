@@ -23,13 +23,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { businessId, name, sellingPrice, costReference, averageCost, minimumStock = 0, openingStock = 0, date = new Date().toISOString().slice(0, 10) } = body
+    const { businessId, name, sellingPrice, costReference, minimumStock = 0, openingStock = 0, date = new Date().toISOString().slice(0, 10) } = body
     if (typeof businessId !== "string" || !businessId.trim() || typeof name !== "string" || !name.trim()) {
       return NextResponse.json({ error: "id, businessId, and name are required" }, { status: 400 })
     }
     const access = await requireBusinessAccess(businessId)
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
-    const values = [sellingPrice, costReference, averageCost, minimumStock, openingStock]
+    const values = [sellingPrice, costReference, minimumStock, openingStock]
     if (values.some((value) => typeof value !== "number" || !Number.isFinite(value) || value < 0) || !Number.isInteger(minimumStock) || !Number.isSafeInteger(openingStock)) {
       return NextResponse.json({ error: "Prices, stock, and minimumStock must be valid non-negative numbers" }, { status: 400 })
     }
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     }
     const product = await db.transaction(async (tx) => {
       const id = await generateEntityId(tx, products, businessId, "PRD", date)
-      const [created] = await tx.insert(products).values({ id, businessId, name: name.trim(), sellingPrice: String(sellingPrice), costReference: String(costReference), averageCost: String(averageCost), minimumStock }).returning()
+      const [created] = await tx.insert(products).values({ id, businessId, name: name.trim(), sellingPrice: String(sellingPrice), costReference: String(costReference), averageCost: openingStock > 0 ? String(costReference) : "0", minimumStock }).returning()
       if (openingStock > 0) {
         await tx.insert(stockMovements).values({
           id: `MOV-OPEN-${created.id}`,
