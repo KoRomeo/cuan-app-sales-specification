@@ -9,7 +9,8 @@ import { writeAudit } from "@/lib/audit"
 
 const STATUSES = ["requested", "ready", "delivered", "cancelled"] as const
 type Status = (typeof STATUSES)[number]
-type Item = { id: string; productId: string; qty: number; price: number | string; discount?: number | string; unitCost: number | string }
+type Item = { id: string; productId: string; qty: number; price: number | string; discount?: number | string; discountType?: 'amount' | 'percent'; unitCost: number | string }
+function itemDiscount(item: Item) { const gross=Number(item.qty)*Number(item.price), value=Number(item.discount??0); return item.discountType==='percent'?gross*value/100:value }
 
 async function access(businessId: string) {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -25,7 +26,8 @@ function items(value: unknown): value is Item[] {
     if (!item || typeof item.id !== "string" || !item.id.trim() || ids.has(item.id) || typeof item.productId !== "string") return false
     ids.add(item.id)
     const qty = Number(item.qty), price = Number(item.price), discount = Number(item.discount ?? 0), cost = Number(item.unitCost)
-    return Number.isSafeInteger(qty) && qty > 0 && Number.isFinite(price) && price >= 0 && Number.isFinite(discount) && discount >= 0 && discount <= price && Number.isFinite(cost) && cost >= 0
+    const type=item.discountType??"amount", gross=qty*price
+    return Number.isSafeInteger(qty)&&qty>0&&Number.isFinite(price)&&price>=0&&(type==="amount"||type==="percent")&&Number.isFinite(discount)&&discount>=0&&(type==="percent"?discount<=100:discount<=gross)&&Number.isFinite(cost)&&cost>=0
   })
 }
 function fail(error: unknown, fallback = "Order operation failed") {
@@ -66,10 +68,10 @@ export async function POST(request: NextRequest) {
       const productRows = await tx.select({ id: products.id, sellingPrice: products.sellingPrice, averageCost: products.averageCost }).from(products).where(and(eq(products.businessId, businessId), inArray(products.id, [...new Set(lineItems.map((item) => item.productId))])))
       const byProduct = new Map(productRows.map((product) => [product.id, product]))
       const normalizedItems = lineItems.map((item) => ({ ...item, price: Number(item.price), unitCost: Number(byProduct.get(item.productId)?.averageCost) }))
-      const total = normalizedItems.reduce((sum, item) => sum + item.qty * item.price - Number(item.discount ?? 0), 0)
+      const total = normalizedItems.reduce((sum, item) => sum + item.qty * item.price - itemDiscount(item), 0)
       if (paidAmount > total) throw new Error("PAYMENT_EXCEEDS_TOTAL")
       await tx.insert(orders).values({ id: generatedId, businessId, date: orderDate, customerId, status, dueDate: dueDate || null, notes: notes || null })
-      await tx.insert(orderItems).values(normalizedItems.map((item) => ({ id: item.id, orderId: generatedId, productId: item.productId, qty: Number(item.qty), price: String(item.price), discount: String(item.discount ?? 0), unitCost: String(item.unitCost) })))
+      await tx.insert(orderItems).values(normalizedItems.map((item) => ({ id: item.id, orderId: generatedId, productId: item.productId, qty: Number(item.qty), price: String(item.price), discount: String(item.discount ?? 0), discountType: item.discountType ?? "amount", unitCost: String(item.unitCost) })))
       // Stock, revenue, and COGS are recognized at Order creation. Negative stock is allowed.
       await tx.insert(stockMovements).values(normalizedItems.map((item) => ({
         id: `SM-SALE-${generatedId}-${item.id}`, businessId, date: orderDate, productId: item.productId,
@@ -117,7 +119,7 @@ export async function PATCH(request: NextRequest) {
       if (!transitions[current.status].includes(next)) throw new Error("INVALID_STATUS")
       const existingItems = await tx.select().from(orderItems).where(eq(orderItems.orderId, id))
       if (customerId !== undefined) await verify(tx, businessId, customerId, lineItems ?? existingItems as Item[])
-      if (lineItems !== undefined) { await tx.delete(orderItems).where(eq(orderItems.orderId, id)); await tx.insert(orderItems).values(lineItems.map((item: Item) => ({ id: item.id, orderId: id, productId: item.productId, qty: Number(item.qty), price: String(item.price), discount: String(item.discount ?? 0), unitCost: String(item.unitCost) }))) }
+      if (lineItems !== undefined) { await tx.delete(orderItems).where(eq(orderItems.orderId, id)); await tx.insert(orderItems).values(lineItems.map((item: Item) => ({ id: item.id, orderId: id, productId: item.productId, qty: Number(item.qty), price: String(item.price), discount: String(item.discount ?? 0), discountType: item.discountType ?? "amount", unitCost: String(item.unitCost) }))) }
       if (next === "delivered") throw new Error("DELIVERY_REQUIRED")
       if (lineItems !== undefined) throw new Error("ORDER_ITEMS_IMMUTABLE")
       if (next === "cancelled") {
