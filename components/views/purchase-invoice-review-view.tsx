@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import useSWR from 'swr'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowLeft, CheckCircle2, RefreshCw, Save, Sparkles, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/common/page-header'
 import { SectionCard } from '@/components/common/section-card'
@@ -31,6 +31,12 @@ export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }
   const { data: products = [] } = useSWR<Product[]>(business?.id ? '/api/products?businessId=' + encodeURIComponent(business.id) : null, fetcher)
   const { data: suppliers = [] } = useSWR<Supplier[]>(business?.id ? '/api/suppliers?businessId=' + encodeURIComponent(business.id) : null, fetcher)
   const { data: financialAccounts = [] } = useSWR<FinancialAccount[]>(business?.id ? '/api/financial-accounts?businessId=' + encodeURIComponent(business.id) : null, fetcher)
+  useEffect(() => {
+    const saved = documents?.find(item => item.id === documentId)?.extractedData
+    if (!saved) return
+    setSupplierChoice(saved.supplierId || '')
+    setCreateSupplier(saved.createSupplier === true)
+  }, [documents, documentId])
   const error = businessError || documentsError
   if (error) return <div role="alert" className="text-sm text-destructive">{error.message}</div>
   if (!business || !documents) return <div className="space-y-4 animate-pulse" aria-label={label('Loading invoice review', 'Memuat pemeriksaan faktur')}><div className="h-8 w-2/5 rounded-md bg-muted"/><div className="h-5 w-1/3 rounded-md bg-muted"/><div className="grid gap-4 lg:grid-cols-2"><div className="h-[42vh] rounded-lg border bg-muted/70"/><div className="space-y-3 rounded-lg border p-5"><div className="h-5 w-2/3 rounded bg-muted"/><div className="h-10 rounded bg-muted"/><div className="h-10 rounded bg-muted"/><div className="h-10 rounded bg-muted"/></div></div></div>
@@ -80,12 +86,11 @@ export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }
     if (!business?.id || !current) return
     setBusy(true)
     try {
-      const response = await fetch('/api/purchase-documents/' + encodeURIComponent(doc!.id) + '/review', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ businessId: business.id, extractedData: current }) })
+      const response = await fetch('/api/purchase-documents/' + encodeURIComponent(doc!.id) + '/review', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ businessId: business.id, extractedData: { ...current, supplierId: createSupplier ? null : supplierChoice, createSupplier } }) })
       const data = await response.json()
       if (!response.ok) throw new Error((data.issues || [data.error]).join('; '))
-      setInvoice(null)
       await mutateDocuments()
-      setMessage(label('Review saved. Continue matching, or confirm to record the purchase.', 'Peninjauan disimpan. Lanjutkan pencocokan, atau konfirmasi untuk mencatat pembelian.'))
+      window.location.href = '/purchase-documents'
     } catch (e) { setMessage(e instanceof Error ? e.message : label('Save failed', 'Gagal menyimpan')) } finally { setBusy(false) }
   }
 
@@ -115,7 +120,7 @@ export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }
     if (paid > 0 && !account) { setMessage(label('Choose an active cash or bank account for this payment.', 'Pilih akun kas atau bank yang aktif untuk pembayaran ini.')); return }
     setBusy(true); setMessage('')
     try {
-      const save = await fetch('/api/purchase-documents/' + encodeURIComponent(doc!.id) + '/review', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ businessId: business.id, extractedData: current }) })
+      const save = await fetch('/api/purchase-documents/' + encodeURIComponent(doc!.id) + '/review', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ businessId: business.id, extractedData: { ...current, supplierId: createSupplier ? null : supplierId, createSupplier } }) })
       const saved = await save.json()
       if (!save.ok) throw new Error((saved.issues || [saved.error]).join('; ') || label('Review save failed', 'Gagal menyimpan peninjauan'))
       const response = await fetch('/api/purchase-documents/' + encodeURIComponent(doc!.id) + '/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ businessId: business.id, supplierId: newSupplier ? undefined : supplierId, createSupplier: newSupplier, itemProductIds: choices, createProductIndexes: newIndexes, date: current.date, dueDate: current.dueDate, paidAmount: paid, paymentAccount: account, paymentId: paid > 0 ? 'PAY-AI-' + safeUuid() : undefined, paymentDate: current.date, notes: 'AI invoice ' + (current.invoiceNumber || doc!.fileName) }) })
