@@ -49,6 +49,7 @@ export function SettingsView() {
   const [profileLoading, setProfileLoading] = useState(true)
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileEmail, setProfileEmail] = useState('')
+  const [profileRole, setProfileRole] = useState('owner')
   const [profileNameError, setProfileNameError] = useState('')
   const [profileEmailError, setProfileEmailError] = useState('')
 
@@ -59,7 +60,7 @@ export function SettingsView() {
         if (!response.ok) throw new Error('Unable to load business details')
         return response.json()
       })
-      .then((business) => { if (active) setBusinessName(business.name ?? '') })
+      .then((business) => { if (active) { setBusinessName(business.name ?? ''); setProfileRole(business.role ?? 'owner') } })
       .catch((error) => { if (active) toast.error(error instanceof Error ? error.message : 'Unable to load business details') })
       .finally(() => { if (active) setBusinessLoading(false) })
     return () => { active = false }
@@ -132,6 +133,8 @@ export function SettingsView() {
       })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.message ?? result.error ?? 'Unable to save profile')
+      setProfileName(name)
+      await mutate('/api/auth/get-session')
       toast.success(locale === 'id' ? 'Profil berhasil disimpan.' : 'Profile saved.')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Unable to save profile')
@@ -254,9 +257,9 @@ export function SettingsView() {
               />
             </Field>
             <Field id="settings-profile-role" label={t('settings.role')}>
-              <Input id="settings-profile-role" value={t('settings.owner')} disabled readOnly />
+              <Input id="settings-profile-role" value={profileRole === "owner" ? t("settings.owner") : profileRole.replace(/[_-]/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())} disabled readOnly />
             </Field>
-            <Button type="submit" disabled={profileLoading || profileSaving} className="w-fit">{profileSaving ? (locale === 'id' ? 'Menyimpan…' : 'Saving…') : t('settings.savePreview')}</Button>
+            <Button type="submit" disabled={profileLoading || profileSaving} className="w-fit">{profileSaving ? (locale === 'id' ? 'Menyimpan…' : 'Saving…') : t('common.save')}</Button>
           </form>
         </SectionCard>
       )}
