@@ -31,8 +31,9 @@ export async function POST(request: NextRequest, { params }: Ctx) {
    // Atomic claim prevents concurrent requests from posting stock/accounting twice.
    const [claimed]=await tx.update(purchaseDocuments).set({status:"confirming",updatedAt:new Date()}).where(and(eq(purchaseDocuments.id,id),eq(purchaseDocuments.businessId,businessId),eq(purchaseDocuments.status,"review"))).returning({id:purchaseDocuments.id})
    if(!claimed)throw new Error("DOCUMENT_ALREADY_BEING_CONFIRMED")
-   let supplierId=body.supplierId
-   if(body.createSupplier){
+   let supplierId=body.supplierId || (typeof data.supplierId === "string" ? data.supplierId : undefined)
+   const createSupplier=body.createSupplier ?? data.createSupplier === true
+   if(createSupplier){
     if(typeof data.supplierName!=="string"||!data.supplierName.trim())throw new Error("SUPPLIER_NAME_REQUIRED")
     const [sameName]=await tx.select({id:suppliers.id}).from(suppliers).where(and(eq(suppliers.businessId,businessId),eq(suppliers.name,data.supplierName.trim()))).limit(1)
     if(sameName)throw new Error("SUPPLIER_DUPLICATE")
@@ -63,7 +64,11 @@ export async function POST(request: NextRequest, { params }: Ctx) {
      const [product]=await tx.select({id:products.id}).from(products).where(and(eq(products.id,productId),eq(products.businessId,businessId))).limit(1)
      if(!product)throw new Error("PRODUCT_NOT_FOUND")
      const discountAmount=discountType==="percent"?gross*discount/100:discount
-    resolved.push({id:productId,qty,unitCost,discount,discountType,netTotal:gross-discountAmount})
+    const netUnitCost=(gross-discountAmount)/qty
+    if(createIndexes.has(i)){
+      await tx.update(products).set({sellingPrice:netUnitCost.toFixed(2),costReference:netUnitCost.toFixed(2),averageCost:netUnitCost.toFixed(2)}).where(and(eq(products.id,productId),eq(products.businessId,businessId)))
+    }
+    resolved.push({id:productId,qty,unitCost:netUnitCost,discount:0,discountType:"amount",netTotal:gross-discountAmount})
    }
    const purchaseId=await generateEntityId(tx,purchases,businessId,"PUR",date)
    const total=resolved.reduce((sum,line)=>sum+line.netTotal,0)
@@ -74,7 +79,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
    let paymentAccount=""
    if(paidAmount>0){const [account]=await tx.select({name:financialAccounts.name}).from(financialAccounts).where(and(eq(financialAccounts.businessId,businessId),eq(financialAccounts.name,body.paymentAccount!.trim()),eq(financialAccounts.active,true))).limit(1);if(!account)throw new Error("PAYMENT_ACCOUNT_NOT_FOUND");paymentAccount=account.name}
    await tx.insert(purchases).values({id:purchaseId,businessId,date,supplierId,dueDate:paidAmount>=total?null:(dueDate||null),notes:body.notes||("Imported from invoice "+(typeof data.invoiceNumber==="string"?data.invoiceNumber:doc.fileName))})
-   await tx.insert(purchaseItems).values(resolved.map((line,i)=>({id:"PI-"+purchaseId+"-"+(i+1),purchaseId,productId:line.id,qty:line.qty,unitCost:line.unitCost.toFixed(2),discount:line.discount.toFixed(2),discountType:line.discountType})))
+   await tx.insert(purchaseItems).values(resolved.map((line,i)=>({id:"PI-"+purchaseId+"-"+(i+1),purchaseId,productId:line.id,qty:line.qty,unitCost:line.unitCost.toFixed(2),discount:"0.00",discountType:"amount"})))
    const productIds=[...new Set(resolved.map(x=>x.id))]
    const oldProducts=await tx.select({id:products.id,averageCost:products.averageCost}).from(products).where(and(eq(products.businessId,businessId),inArray(products.id,productIds)))
    const movements=await tx.select({productId:stockMovements.productId,qty:stockMovements.qty}).from(stockMovements).where(and(eq(stockMovements.businessId,businessId),inArray(stockMovements.productId,productIds)))
