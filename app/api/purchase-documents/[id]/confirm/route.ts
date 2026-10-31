@@ -43,8 +43,8 @@ export async function POST(request: NextRequest, { params }: Ctx) {
    if(!supplierId)throw new Error("SUPPLIER_REQUIRED")
    const [supplier]=await tx.select({id:suppliers.id}).from(suppliers).where(and(eq(suppliers.id,supplierId),eq(suppliers.businessId,businessId))).limit(1)
    if(!supplier)throw new Error("SUPPLIER_NOT_FOUND")
-   const createIndexes=new Set(body.createProductIndexes??[])
-   const chosen=body.itemProductIds??{}
+   const createIndexes=new Set([...(body.createProductIndexes??[]), ...lines.flatMap((line,i)=>line.productMatch === 'new' ? [i] : [])])
+   const chosen={...Object.fromEntries(lines.flatMap((line,i)=>line.productId ? [[String(i),line.productId]] : [])), ...(body.itemProductIds??{})}
    const resolved: Array<{id:string;qty:number;unitCost:number;discount:number;discountType:'amount'|'percent';netTotal:number}>=[]
    for(let i=0;i<lines.length;i++){
     const line=lines[i]
