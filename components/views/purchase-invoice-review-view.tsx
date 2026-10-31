@@ -126,7 +126,7 @@ export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }
     } catch (e) { setMessage(e instanceof Error ? e.message : label('Confirmation failed', 'Konfirmasi gagal')); await mutateDocuments() } finally { setBusy(false) }
   }
 
-  const unmatchedItems = current ? current.items.map((_, i) => i).filter(i => !createProducts.includes(i) && !productChoice[i]) : []
+  const unmatchedItems = current ? current.items.map((_, i) => i).filter(i => current.items[i].productMatch !== 'new' && !current.items[i].productId && !createProducts.includes(i) && !productChoice[i]) : []
   const confirmBlocker = !current ? '' : !current.supplierName?.trim()
     ? label('Supplier name is required.', 'Nama supplier wajib diisi.')
     : !createSupplier && !supplierChoice
