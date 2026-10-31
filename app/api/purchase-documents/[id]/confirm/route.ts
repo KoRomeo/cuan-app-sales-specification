@@ -7,7 +7,7 @@ import { requireBusinessAccess } from "@/lib/api-auth"
 import { purchaseDocuments, purchases, purchaseItems, suppliers, products, stockMovements, journalEntries, journalEntryLines, payments, financialAccounts } from "@/lib/db/schema"
 
 type Ctx = { params: Promise<{ id: string }> }
-type InvoiceItem = { productName?: string; unit?: string | null; quantity?: number; unitCost?: number; lineTotal?: number; discount?: number; discountType?: 'amount' | 'percent' }
+type InvoiceItem = { productName?: string; unit?: string | null; quantity?: number; unitCost?: number; lineTotal?: number; discount?: number; discountType?: 'amount' | 'percent'; productId?: string; productMatch?: 'existing' | 'new' }
 export async function POST(request: NextRequest, { params }: Ctx) {
  const { id } = await params
  let businessId = ""
