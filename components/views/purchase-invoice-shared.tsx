@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Download, FileText, RefreshCw, X, ZoomIn, RotateCw } from 'lucide-react'
 
-export type Line = { productName: string; unit?: string | null; quantity: number; unitCost: number; discount?: number; discountType?: 'amount' | 'percent'; lineTotal?: number; productId?: string }
+export type Line = { productName: string; unit?: string | null; quantity: number; unitCost: number; discount?: number; discountType?: 'amount' | 'percent'; lineTotal?: number; productId?: string; productMatch?: 'existing' | 'new' }
 export type InvoiceData = { invoiceNumber?: string | null; date?: string | null; dueDate?: string | null; supplierName?: string | null; supplierCity?: string | null; total?: number | null; items: Line[] }
 export type PurchaseDocument = { id: string; fileName: string; fileSize: number; mimeType: string; previewBlobPathname?: string | null; previewFileSize?: number | null; status: string; createdAt: string; confidence: number | null; reviewIssues: string[]; errorMessage?: string | null; extractedData?: InvoiceData | null; purchaseId?: string | null }
 export type Product = { id: string; name: string; sellingPrice: string; costReference: string; averageCost: string }
