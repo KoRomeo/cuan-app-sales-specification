@@ -3,26 +3,25 @@
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-const SHOW_DELAY = 200
+const SHOW_DELAY = 180
 
 export function GlobalLoadingOverlay() {
   const pathname = usePathname()
-  const [visible, setVisible] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [navigationVisible, setNavigationVisible] = useState(false)
+  const [processVisible, setProcessVisible] = useState(false)
+  const navigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const processTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const navigationPending = useRef(false)
   const activeProcesses = useRef(0)
-  const processTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const cancelNavigation = useCallback(() => {
     navigationPending.current = false
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = null
-    setVisible(false)
+    if (navigationTimer.current) clearTimeout(navigationTimer.current)
+    navigationTimer.current = null
+    setNavigationVisible(false)
   }, [])
 
-  useEffect(() => {
-    cancelNavigation()
-  }, [pathname, cancelNavigation])
+  useEffect(() => { cancelNavigation() }, [pathname, cancelNavigation])
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
@@ -30,73 +29,53 @@ export function GlobalLoadingOverlay() {
       const target = event.target
       if (!(target instanceof Element)) return
       const link = target.closest('a[href]')
-      if (!(link instanceof HTMLAnchorElement)) return
-      if (link.target === '_blank' || link.hasAttribute('download')) return
+      if (!(link instanceof HTMLAnchorElement) || link.target === '_blank' || link.hasAttribute('download')) return
       const url = new URL(link.href, window.location.href)
-      if (url.origin !== window.location.origin || url.pathname === window.location.pathname && url.search === window.location.search) return
-
+      if (url.origin !== window.location.origin || (url.pathname === window.location.pathname && url.search === window.location.search)) return
       navigationPending.current = true
-      if (timer.current) clearTimeout(timer.current)
-      timer.current = setTimeout(() => {
-        if (navigationPending.current) setVisible(true)
-      }, SHOW_DELAY)
+      if (navigationTimer.current) clearTimeout(navigationTimer.current)
+      navigationTimer.current = setTimeout(() => { if (navigationPending.current) setNavigationVisible(true) }, SHOW_DELAY)
     }
-
     document.addEventListener('click', onClick, true)
     return () => {
       document.removeEventListener('click', onClick, true)
-      if (timer.current) clearTimeout(timer.current)
+      if (navigationTimer.current) clearTimeout(navigationTimer.current)
     }
   }, [])
 
   useEffect(() => {
-    const originalFetch = window.fetch.bind(window)
-    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const originalFetch = window.fetch
+    const wrappedFetch: typeof window.fetch = async (input, init) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-      const isLongProcess = /\/api\/purchase-documents\/[^/]+\/process(?:\?|$)/.test(url)
-      if (!isLongProcess) return originalFetch(input, init)
-
+      const isInvoiceProcess = /\/api\/purchase-documents\/[^/]+\/process(?:\?|$)/.test(url)
+      if (!isInvoiceProcess) return originalFetch.call(window, input, init)
       activeProcesses.current += 1
       if (processTimer.current) clearTimeout(processTimer.current)
-      processTimer.current = setTimeout(() => setVisible(true), SHOW_DELAY)
+      processTimer.current = setTimeout(() => setProcessVisible(true), SHOW_DELAY)
       try {
-        return await originalFetch(input, init)
+        return await originalFetch.call(window, input, init)
       } finally {
         activeProcesses.current = Math.max(0, activeProcesses.current - 1)
         if (activeProcesses.current === 0) {
           if (processTimer.current) clearTimeout(processTimer.current)
           processTimer.current = null
-          setVisible(false)
+          setProcessVisible(false)
         }
       }
     }
-
+    window.fetch = wrappedFetch
     return () => {
-      window.fetch = originalFetch
+      if (window.fetch === wrappedFetch) window.fetch = originalFetch
       if (processTimer.current) clearTimeout(processTimer.current)
     }
   }, [])
 
-  useEffect(() => {
-    if (!visible) return
-    const onPathChange = () => cancelNavigation()
-    window.addEventListener('popstate', onPathChange)
-    return () => window.removeEventListener('popstate', onPathChange)
-  }, [visible, cancelNavigation])
-
-  if (!visible) return null
-
+  if (!navigationVisible && !processVisible) return null
   return (
-    <div
-      className="cuan-loading-overlay fixed inset-0 z-[100] flex items-center justify-center"
-      role="status"
-      aria-live="polite"
-      aria-label="Loading"
-    >
-      <div className="cuan-loading-orbit" aria-hidden="true">
-        <span className="cuan-loading-orbit__ring" />
-        <span className="cuan-loading-orbit__dot" />
-        <span className="cuan-loading-orbit__core" />
+    <div className="cuan-loading-overlay fixed inset-0 z-[100] flex items-center justify-center" role="status" aria-live="polite" aria-label="Loading">
+      <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-background/95 px-5 py-3.5 shadow-lg backdrop-blur-sm">
+        <span className="cuan-loading-spinner" aria-hidden="true" />
+        <span className="text-sm font-medium text-foreground">Loading…</span>
       </div>
     </div>
   )
