@@ -27,7 +27,7 @@ const fetcher = async (url: string) => {
 type PurchaseDetail = {
   id: string; date: string; supplierId: string; dueDate: string | null; notes: string | null; status?: string
   supplier: { id: string; name: string; contact?: string | null; address?: string | null } | null
-  items: Array<{ id: string; productId: string; qty: number; unitCost: string | number }>
+  items: Array<{ id: string; productId: string; qty: number; unitCost: string | number; discount?: string | number; discountType?: "amount" | "percent" }>
   products: Array<{ id: string; name: string; stock: string | number; averageCost: string | number }>
   payments: Array<{ id: string; date: string; amount: string | number; account: string }>
   sourceInvoice: { id: string; fileName: string; createdAt: string; mimeType: string | null } | null
@@ -43,7 +43,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
 
   if (error) return <div role="alert" className="space-y-3 text-sm text-destructive"><p>{error.message}</p><Button variant="outline" onClick={() => mutate()}>Retry</Button></div>
   if (!business || !data || !accounts) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
-  const purchase = { ...data, notes: data.notes ?? '', items: data.items.map((item) => ({ productId: item.productId, qty: Number(item.qty), price: Number(item.unitCost) })), payments: data.payments.map((payment) => ({ ...payment, amount: Number(payment.amount) })) }
+  const purchase = { ...data, notes: data.notes ?? '', items: data.items.map((item) => ({ productId: item.productId, qty: Number(item.qty), price: Number(item.unitCost), discount: Number(item.discount ?? 0), discountType: item.discountType ?? "amount" })), payments: data.payments.map((payment) => ({ ...payment, amount: Number(payment.amount) })) }
   const total = purchaseTotal(purchase as any)
   const paid = purchasePaid(purchase as any)
   const outstanding = purchaseOutstanding(purchase as any)
