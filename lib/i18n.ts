@@ -656,7 +656,7 @@ const en = {
   'top.businessPreview': 'Business selection changes in this view only; no settings were saved.',
 
   'settings.account': 'Account',
-  'settings.accountDesc': 'Manage the demo contact details shown in this workspace.',
+  'settings.accountDesc': 'Manage your account name and review your access role for this business.',
   'settings.businessDesc': 'Update business details for this preview only.',
   'settings.preferencesDesc': 'Choose a display language and theme for this preview.',
   'settings.featureSessionOnly': 'Feature switches only change visible navigation for this session.',
@@ -1436,7 +1436,7 @@ const id: Record<TranslationKey, string> = {
   'top.businessPreview': 'Pilihan bisnis hanya berubah pada tampilan ini; pengaturan tidak disimpan.',
 
   'settings.account': 'Akun',
-  'settings.accountDesc': 'Atur detail kontak profil demo yang ditampilkan di ruang kerja ini.',
+  'settings.accountDesc': 'Atur nama akun dan lihat peran akses Anda pada bisnis ini.',
   'settings.businessDesc': 'Ubah detail bisnis hanya untuk pratinjau ini.',
   'settings.preferencesDesc': 'Pilih bahasa tampilan dan tema untuk pratinjau ini.',
   'settings.featureSessionOnly': 'Sakelar fitur hanya mengubah navigasi yang terlihat selama sesi ini.',
