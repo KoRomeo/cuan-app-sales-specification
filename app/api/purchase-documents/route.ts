@@ -16,11 +16,21 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("GET purchase documents failed", error)
     const databaseError = error as { code?: string; cause?: { code?: string } }
-    if (databaseError?.code === "42P01" || databaseError?.cause?.code === "42P01") {
+    const databaseCode = databaseError?.code ?? databaseError?.cause?.code
+    if (databaseCode === "42P01") {
       return NextResponse.json(
         {
-          error: "The purchase_documents table is missing from the connected database. Apply drizzle/0010_purchase_documents.sql to the same database used by this app, then retry.",
+          error: "The purchase_documents table is missing from the connected database. Run pnpm db:migrate against the DATABASE_URL used by this app, then retry.",
           code: "PURCHASE_DOCUMENTS_TABLE_MISSING",
+        },
+        { status: 503 },
+      )
+    }
+    if (databaseCode === "42703") {
+      return NextResponse.json(
+        {
+          error: "The purchase_documents table is missing columns required by this version. Run pnpm db:migrate against the DATABASE_URL used by this app, then restart the app.",
+          code: "PURCHASE_DOCUMENTS_SCHEMA_OUTDATED",
         },
         { status: 503 },
       )
