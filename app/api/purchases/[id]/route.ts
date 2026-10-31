@@ -73,11 +73,11 @@ export async function PATCH(request: Request, { params }: Context) {
           .where(and(eq(purchaseDocuments.businessId, businessId), eq(purchaseDocuments.purchaseId, id)))
         const productIds = [...new Set(items.map((item) => item.productId))]
         for (const productId of productIds) {
-          const activePurchases = await tx.select({ qty: purchaseItems.qty, unitCost: purchaseItems.unitCost })
+          const activePurchases = await tx.select({ qty: purchaseItems.qty, unitCost: purchaseItems.unitCost, discount: purchaseItems.discount, discountType: purchaseItems.discountType })
             .from(purchaseItems).innerJoin(purchases, eq(purchaseItems.purchaseId, purchases.id))
             .where(and(eq(purchases.businessId, businessId), eq(purchases.status, "active"), eq(purchaseItems.productId, productId)))
           const totalQty = activePurchases.reduce((sum, row) => sum + Number(row.qty), 0)
-          const totalCost = activePurchases.reduce((sum, row) => sum + Number(row.qty) * Number(row.unitCost), 0)
+          const totalCost = activePurchases.reduce((sum, row) => { const gross = Number(row.qty) * Number(row.unitCost); const discount = row.discountType === "percent" ? gross * Number(row.discount) / 100 : Number(row.discount); return sum + Math.ceil(Math.max(0, gross - discount) - 1e-9) }, 0)
           const [product] = await tx.select({ costReference: products.costReference }).from(products)
             .where(and(eq(products.id, productId), eq(products.businessId, businessId))).limit(1)
           if (product) await tx.update(products).set({
@@ -129,9 +129,9 @@ export async function DELETE(request: Request, { params }: Context) {
       await tx.delete(purchaseItems).where(eq(purchaseItems.purchaseId, id))
       await tx.delete(purchases).where(and(eq(purchases.id, id), eq(purchases.businessId, businessId)))
       for (const productId of affectedProductIds) {
-        const remainingPurchases = await tx.select({ qty: purchaseItems.qty, unitCost: purchaseItems.unitCost }).from(purchaseItems).innerJoin(purchases, eq(purchaseItems.purchaseId, purchases.id)).where(and(eq(purchases.businessId, businessId), eq(purchaseItems.productId, productId)))
+        const remainingPurchases = await tx.select({ qty: purchaseItems.qty, unitCost: purchaseItems.unitCost, discount: purchaseItems.discount, discountType: purchaseItems.discountType }).from(purchaseItems).innerJoin(purchases, eq(purchaseItems.purchaseId, purchases.id)).where(and(eq(purchases.businessId, businessId), eq(purchaseItems.productId, productId)))
         const totalQty = remainingPurchases.reduce((sum, row) => sum + Number(row.qty), 0)
-        const totalCost = remainingPurchases.reduce((sum, row) => sum + Number(row.qty) * Number(row.unitCost), 0)
+        const totalCost = remainingPurchases.reduce((sum, row) => { const gross = Number(row.qty) * Number(row.unitCost); const discount = row.discountType === "percent" ? gross * Number(row.discount) / 100 : Number(row.discount); return sum + Math.ceil(Math.max(0, gross - discount) - 1e-9) }, 0)
         const [product] = await tx.select({ costReference: products.costReference }).from(products).where(and(eq(products.id, productId), eq(products.businessId, businessId))).limit(1)
         if (product) await tx.update(products).set({ averageCost: String(totalQty > 0 ? totalCost / totalQty : Number(product.costReference)) }).where(and(eq(products.id, productId), eq(products.businessId, businessId)))
       }
