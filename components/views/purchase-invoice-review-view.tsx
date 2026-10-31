@@ -69,6 +69,9 @@ export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }
   const extracted = doc.extractedData
   const current: InvoiceData | null = invoice || extracted || null
   const update = (patch: Partial<InvoiceData>) => setInvoice(old => ({ ...(old || extracted!), ...patch }))
+  const calculatedInvoiceTotal = current?.items.reduce((sum, line) => { const gross = Number(line.quantity) * Number(line.unitCost); const discount = line.discountType === "percent" ? gross * Number(line.discount ?? 0) / 100 : Number(line.discount ?? 0); return sum + Math.ceil(Math.max(0, gross - discount) - 1e-9) }, 0) ?? 0
+  const statedInvoiceTotal = Number(current?.total)
+  const finalInvoiceTotal = current?.total != null && Number.isFinite(statedInvoiceTotal) && statedInvoiceTotal >= 0 && Math.abs(statedInvoiceTotal - calculatedInvoiceTotal) <= 100 ? Math.round(statedInvoiceTotal) : calculatedInvoiceTotal
 
   async function extractWithAI() {
     if (!business?.id) return
@@ -116,7 +119,7 @@ export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }
     if (unresolved.length) { setMessage(label('Match every item with a product or add it as a new product. Items not matched yet: ', 'Cocokkan setiap item dengan produk atau tambahkan sebagai produk baru. Item yang belum dicocokkan: ') + unresolved.map(i => '#' + (i + 1)).join(', ')); return }
     const paid = Math.max(0, Number(paidAmount || 0))
     const account = paymentAccount || financialAccounts.find(a => a.active && a.name.toLowerCase() === 'cash')?.name || financialAccounts.find(a => a.active)?.name || ''
-    if (paid > current.items.reduce((sum, line) => { const gross=Number(line.quantity)*Number(line.unitCost), discount=line.discountType==='percent'?gross*Number(line.discount??0)/100:Number(line.discount??0); return sum+Math.ceil(Math.max(0,gross-discount)-1e-9) }, 0)) { setMessage(label('Payment cannot exceed the invoice total.', 'Pembayaran tidak boleh melebihi total faktur.')); return }
+    if (paid > finalInvoiceTotal) { setMessage(label('Payment cannot exceed the invoice total.', 'Pembayaran tidak boleh melebihi total faktur.')); return }
     if (paid > 0 && !account) { setMessage(label('Choose an active cash or bank account for this payment.', 'Pilih akun kas atau bank yang aktif untuk pembayaran ini.')); return }
     setBusy(true); setMessage('')
     try {

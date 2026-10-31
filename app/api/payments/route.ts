@@ -73,13 +73,13 @@ export async function POST(request: Request) {
         priorPayments = Number(paid?.amount ?? 0)
         description = `Customer payment received into ${account.trim()} for ${orderId}`
       } else {
-        const [purchase] = await tx.select({ id: purchases.id, status: purchases.status }).from(purchases)
+        const [purchase] = await tx.select({ id: purchases.id, status: purchases.status, totalOverride: purchases.totalOverride }).from(purchases)
           .where(and(eq(purchases.id, purchaseId), eq(purchases.businessId, businessId))).for("update").limit(1)
         if (!purchase) throw new Error("PURCHASE_NOT_FOUND")
         if (purchase.status === "cancelled") throw new Error("PURCHASE_CANCELLED")
-        const lines = await tx.select({ qty: purchaseItems.qty, unitCost: purchaseItems.unitCost })
+        const lines = await tx.select({ qty: purchaseItems.qty, unitCost: purchaseItems.unitCost, discount: purchaseItems.discount, discountType: purchaseItems.discountType })
           .from(purchaseItems).where(eq(purchaseItems.purchaseId, purchaseId))
-        total = lines.reduce((sum, line) => sum + Number(line.qty) * Number(line.unitCost), 0)
+        total = purchase.totalOverride != null ? Number(purchase.totalOverride) : lines.reduce((sum, line) => { const gross = Number(line.qty) * Number(line.unitCost); const discount = line.discountType === "percent" ? gross * Number(line.discount) / 100 : Number(line.discount); return sum + Math.ceil(Math.max(0, gross - discount) - 1e-9) }, 0)
         const [paid] = await tx.select({ amount: sql<string>`coalesce(sum(${payments.amount}), 0)` }).from(payments)
           .where(and(eq(payments.businessId, businessId), eq(payments.purchaseId, purchaseId)))
         priorPayments = Number(paid?.amount ?? 0)

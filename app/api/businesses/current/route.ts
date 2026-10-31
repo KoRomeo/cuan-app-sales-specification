@@ -10,7 +10,7 @@ export async function GET() {
   if (!session?.user) return NextResponse.json({ error: "Authentication required" }, { status: 401 })
 
   const [membership] = await db
-    .select({ id: businesses.id, name: businesses.name, type: businesses.type })
+    .select({ id: businesses.id, name: businesses.name, type: businesses.type, role: businessMembers.role })
     .from(businessMembers)
     .innerJoin(businesses, eq(businesses.id, businessMembers.businessId))
     .where(eq(businessMembers.userId, session.user.id))
