@@ -78,8 +78,11 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
                 <th scope="col" className="h-10 px-4 text-right font-medium">Subtotal</th>
               </tr></thead>
               <tbody className="divide-y">
-                {purchase.items.map((item: { productId: string; qty: number; price: number }, index: number) => {
+                {purchase.items.map((item: { productId: string; qty: number; price: number; discount?: number; discountType?: "amount" | "percent" }, index: number) => {
                   const product = productById.get(item.productId)
+                  const gross = item.qty * item.price
+                  const discount = item.discountType === "percent" ? gross * Number(item.discount ?? 0) / 100 : Number(item.discount ?? 0)
+                  const lineTotal = Math.ceil(Math.max(0, gross - discount) - 1e-9)
                   return <tr key={data.items[index]?.id ?? item.productId}>
                     <td className="w-[42%] px-4 py-3 md:px-5">
                       <p className="truncate font-medium" title={product?.name ?? item.productId}>{product?.name ?? item.productId}</p>
@@ -88,7 +91,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
                     </td>
                     <td className="px-4 py-3 text-right font-mono tabular-nums">{item.qty.toLocaleString('id-ID')}</td>
                     <td className="px-4 py-3 text-right font-mono tabular-nums">{formatIDR(item.price)}</td>
-                    <td className="px-4 py-3 text-right font-mono font-medium tabular-nums">{formatIDR(item.qty * item.price)}</td>
+                    <td className="px-4 py-3 text-right font-mono font-medium tabular-nums">{formatIDR(lineTotal)}</td>
                   </tr>
                 })}
               </tbody>
