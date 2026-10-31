@@ -150,14 +150,6 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
           </button>
         </div>
 
-        {!collapsed && (
-          <div className="shrink-0 border-t border-sidebar-border p-3">
-            <div className="rounded-lg border border-sidebar-border/70 bg-sidebar-accent/45 px-3 py-2.5">
-              <p className="text-xs font-medium text-sidebar-foreground">CV Cuan Sejahtera</p>
-              <p className="mt-0.5 text-[10px] text-sidebar-muted">IDR · Moving Weighted Average</p>
-            </div>
-          </div>
-        )}
       </aside>
 
       {/* Floating category panel sits outside the scroll container so it never gets clipped. */}
