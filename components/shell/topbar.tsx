@@ -154,7 +154,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
               <DropdownMenuLabel className="px-3 py-2">
                 <span className="block truncate text-sm font-semibold text-foreground">{userName}</span>
                 <span className="block truncate text-xs font-normal text-muted-foreground">{session?.user?.email || ''}</span>
-                <span className="mt-1 block text-xs font-medium capitalize text-muted-foreground">{business?.role || ''}</span>
+                <span className="mt-1 block text-xs font-medium capitalize text-muted-foreground">{business?.role === "owner" ? t("settings.owner") : business?.role?.replace(/[_-]/g, " ") || ""}</span>
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
