@@ -5,7 +5,7 @@ import { AlertTriangle, Download, FileText, RefreshCw, X, ZoomIn, RotateCw } fro
 
 export type Line = { productName: string; unit?: string | null; quantity: number; unitCost: number; discount?: number; discountType?: 'amount' | 'percent'; lineTotal?: number; productId?: string }
 export type InvoiceData = { invoiceNumber?: string | null; date?: string | null; dueDate?: string | null; supplierName?: string | null; supplierCity?: string | null; total?: number | null; items: Line[] }
-export type PurchaseDocument = { id: string; fileName: string; fileSize: number; mimeType: string; status: string; createdAt: string; confidence: number | null; reviewIssues: string[]; errorMessage?: string | null; extractedData?: InvoiceData | null; purchaseId?: string | null }
+export type PurchaseDocument = { id: string; fileName: string; fileSize: number; mimeType: string; previewBlobPathname?: string | null; previewFileSize?: number | null; status: string; createdAt: string; confidence: number | null; reviewIssues: string[]; errorMessage?: string | null; extractedData?: InvoiceData | null; purchaseId?: string | null }
 export type Product = { id: string; name: string; sellingPrice: string; costReference: string; averageCost: string }
 export type Supplier = { id: string; name: string; contact?: string | null }
 export type FinancialAccount = { id: string; name: string; type: 'cash' | 'bank'; active: boolean }
@@ -71,7 +71,7 @@ export function InvoiceFilePreview({ documentId, businessId, fileName, mimeType,
     async function load() {
       setState('loading'); setErrorText('')
       try {
-        const response = await fetch('/api/purchase-documents/' + encodeURIComponent(documentId) + '/file?businessId=' + encodeURIComponent(businessId))
+        const response = await fetch('/api/purchase-documents/' + encodeURIComponent(documentId) + '/file?businessId=' + encodeURIComponent(businessId) + (mimeType.startsWith('image/') ? '&variant=preview' : ''))
         if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.error || 'HTTP ' + response.status) }
         const blob = await response.blob()
         if (cancelled) return
