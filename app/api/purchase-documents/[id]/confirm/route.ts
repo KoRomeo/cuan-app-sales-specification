@@ -80,7 +80,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
    let paymentAccount=""
    if(paidAmount>0){const [account]=await tx.select({name:financialAccounts.name}).from(financialAccounts).where(and(eq(financialAccounts.businessId,businessId),eq(financialAccounts.name,body.paymentAccount!.trim()),eq(financialAccounts.active,true))).limit(1);if(!account)throw new Error("PAYMENT_ACCOUNT_NOT_FOUND");paymentAccount=account.name}
    await tx.insert(purchases).values({id:purchaseId,businessId,date,supplierId,dueDate:paidAmount>=total?null:(dueDate||null),notes:body.notes||("Imported from invoice "+(typeof data.invoiceNumber==="string"?data.invoiceNumber:doc.fileName))})
-   await tx.insert(purchaseItems).values(resolved.map((line,i)=>({id:"PI-"+purchaseId+"-"+(i+1),purchaseId,productId:line.id,qty:line.qty,unitCost:lines[i].unitCost!.toFixed(2),discount:lines[i].discount!.toFixed(2),discountType:lines[i].discountType??"amount"})))
+   await tx.insert(purchaseItems).values(resolved.map((line,i)=>({id:"PI-"+purchaseId+"-"+(i+1),purchaseId,productId:line.id,qty:line.qty,unitCost:Number(lines[i].unitCost ?? 0).toFixed(2),discount:Number(lines[i].discount ?? 0).toFixed(2),discountType:lines[i].discountType??"amount"})))
    const productIds=[...new Set(resolved.map(x=>x.id))]
    const oldProducts=await tx.select({id:products.id,averageCost:products.averageCost}).from(products).where(and(eq(products.businessId,businessId),inArray(products.id,productIds)))
    const movements=await tx.select({productId:stockMovements.productId,qty:stockMovements.qty}).from(stockMovements).where(and(eq(stockMovements.businessId,businessId),inArray(stockMovements.productId,productIds)))
