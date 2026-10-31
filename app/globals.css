@@ -630,3 +630,25 @@ body > * {
     transition: none;
   }
 }
+
+/* Night mode is intentionally flat: keep the canvas and cards free of gradients. */
+.dark .app-shell-surface,
+.app-shell-surface.dark {
+  background-color: var(--background) !important;
+  background-image: none !important;
+}
+.dark .app-shell-surface::before,
+.app-shell-surface.dark::before {
+  content: none !important;
+  display: none !important;
+}
+.dark [data-slot="card"],
+.dark .app-card {
+  border: 1px solid var(--border) !important;
+  background: var(--card) !important;
+  box-shadow: 0 12px 32px -20px rgb(0 0 0 / 48%) !important;
+}
+.dark [data-slot="card"]:hover,
+.dark .app-card:hover {
+  background: var(--card) !important;
+}
