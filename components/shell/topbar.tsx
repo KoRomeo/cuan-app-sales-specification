@@ -1,9 +1,9 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
-import { Bell, Building2, Check, ChevronsUpDown, LogIn, Menu, Moon, Search, Settings, Sun, User, UserPlus } from 'lucide-react'
+import { authClient } from '@/lib/auth-client'
+import { Bell, Building2, Check, ChevronsUpDown, LogOut, Menu, Moon, Search, Settings, Sun, User } from 'lucide-react'
 import useSWR from 'swr'
 import { LocaleSwitcher } from '@/components/common/locale-switcher'
 import { useApp } from '@/components/providers'
@@ -24,7 +24,12 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
   const { t } = useApp()
   const { resolvedTheme, setTheme } = useTheme()
   const router = useRouter()
-  const { data: business } = useSWR<{ id: string; name: string; type: string }>('/api/businesses/current', (url: string) => fetch(url, { cache: 'no-store' }).then(async (response) => { if (!response.ok) throw new Error('Unable to load business'); return response.json() }))
+  const { data: session, mutate: mutateSession } = useSWR<{ user?: { name?: string; email?: string; image?: string | null } } | null>('/api/auth/get-session', (url: string) => fetch(url, { cache: 'no-store' }).then(async response => { if (!response.ok) throw new Error('Unable to load account'); return response.json() }))
+  const { data: business } = useSWR<{ id: string; name: string; type: string; role?: string }>('/api/businesses/current', (url: string) => fetch(url, { cache: 'no-store' }).then(async (response) => { if (!response.ok) throw new Error('Unable to load business'); return response.json() }))
+
+  const userName = session?.user?.name?.trim() || session?.user?.email?.split('@')[0] || 'User'
+  const initials = userName.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || 'U'
+  const signOut = async () => { await authClient.signOut(); await mutateSession(null, false); router.replace('/login'); router.refresh() }
 
   const negativeCount = products.filter((p) => p.stock < 0).length
   const overdueCount = orders.filter((o) => isOverdue(o.dueDate, orderOutstanding(o))).length
@@ -138,38 +143,33 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
               <button
                 type="button"
                 aria-label={t('top.profile')}
-                className="ml-1 flex size-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[oklch(0.45_0.2_268)] text-xs font-semibold text-white ring-2 ring-background"
+                className="ml-1 flex size-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary to-[oklch(0.45_0.2_268)] text-xs font-semibold text-white ring-2 ring-background"
               />
             }
           >
-            SE
+            {session?.user?.image ? <img src={session.user.image} alt="" className="size-full object-cover" /> : initials}
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-64">
             <DropdownMenuGroup>
-              <DropdownMenuLabel>
-                <span className="block text-sm font-medium text-foreground">Shane Emanuel</span>
-                <span className="block text-xs font-normal">shane@cuanapp.id</span>
-                <span className="mt-1 block whitespace-normal text-xs font-normal text-muted-foreground">{t('top.profilePreview')}</span>
+              <DropdownMenuLabel className="px-3 py-2">
+                <span className="block truncate text-sm font-semibold text-foreground">{userName}</span>
+                <span className="block truncate text-xs font-normal text-muted-foreground">{session?.user?.email || ''}</span>
+                <span className="mt-1 block text-xs font-medium capitalize text-muted-foreground">{business?.role || ''}</span>
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem render={<Link href="/settings?tab=profile" />}>
+            <DropdownMenuItem onClick={() => router.push('/settings?tab=profile')}>
               <User />
               {t('top.profile')}
             </DropdownMenuItem>
-            <DropdownMenuItem render={<Link href="/settings" />}>
+            <DropdownMenuItem onClick={() => router.push('/settings')}>
               <Settings />
               {t('nav.settings')}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>{t('top.accessPreview')}</DropdownMenuLabel>
-            <DropdownMenuItem render={<Link href="/login" />}>
-              <LogIn />
-              {t('auth.loginAction')}
-            </DropdownMenuItem>
-            <DropdownMenuItem render={<Link href="/register" />}>
-              <UserPlus />
-              {t('auth.registerAction')}
+            <DropdownMenuItem onClick={() => void signOut()}>
+              <LogOut />
+              {t('top.signOut')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
