@@ -254,6 +254,7 @@ supplierId: text("supplier_id")
     .notNull()
     .references(() => suppliers.id),
 status: text("status").notNull().default("active"),
+totalOverride: decimal("total_override", { precision: 14, scale: 2 }),
 dueDate: date("due_date"),
 notes: text("notes"),
 createdAt: timestamp("created_at", { withTimezone: true })

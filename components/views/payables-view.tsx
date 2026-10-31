@@ -8,8 +8,8 @@ import { PageHeader } from '@/components/common/page-header'
 import { useApp } from '@/components/providers'
 import { formatDate } from '@/lib/format'
 
-type PurchaseItem = { id: string; productId: string; qty: number | string; unitCost: number | string }
-type Purchase = { id: string; date: string; dueDate?: string | null; supplierId: string; status?: string; items: PurchaseItem[] }
+type PurchaseItem = { id: string; productId: string; qty: number | string; unitCost: number | string; discount?: number | string; discountType?: "amount" | "percent" }
+type Purchase = { id: string; date: string; dueDate?: string | null; supplierId: string; status?: string; totalOverride?: number | string | null; items: PurchaseItem[] }
 type Supplier = { id: string; name: string }
 type Payment = { id: string; purchaseId?: string | null; amount: number | string }
 const fetcher = async (url: string) => { const r = await fetch(url); const body = await r.json(); if (!r.ok) throw new Error(body.error || 'Unable to load payables'); return body }
@@ -25,7 +25,8 @@ export function PayablesView() {
   if (!business || !purchases || !suppliers || !payments) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
   const supplierNames = new Map(suppliers.map(s => [s.id, s.name]))
   const rows: PayableRow[] = purchases.filter(p => p.status !== 'cancelled').map(p => {
-    const total = p.items.reduce((sum, i) => sum + Number(i.qty) * Number(i.unitCost), 0)
+    const calculatedTotal = p.items.reduce((sum, i) => { const gross = Number(i.qty) * Number(i.unitCost); const discount = i.discountType === "percent" ? gross * Number(i.discount ?? 0) / 100 : Number(i.discount ?? 0); return sum + Math.ceil(Math.max(0, gross - discount) - 1e-9) }, 0)
+    const total = p.totalOverride != null ? Number(p.totalOverride) : calculatedTotal
     const paid = payments.filter(pay => pay.purchaseId === p.id).reduce((sum, pay) => sum + Number(pay.amount), 0)
     const outstanding = Math.max(0, total - paid)
     return { id: p.id, date: p.date, dueDate: p.dueDate || null, supplier: supplierNames.get(p.supplierId) || p.supplierId, total, paid, outstanding, status: outstanding <= 0.005 ? 'paid' : paid > 0.005 ? 'partial' : p.dueDate && p.dueDate < new Date().toISOString().slice(0,10) ? 'overdue' : 'open' }

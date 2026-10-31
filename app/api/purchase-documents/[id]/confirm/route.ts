@@ -72,14 +72,17 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     resolved.push({id:productId,qty,unitCost,discount,discountType,netTotal})
    }
    const purchaseId=await generateEntityId(tx,purchases,businessId,"PUR",date)
-   const total=resolved.reduce((sum,line)=>sum+line.netTotal,0)
+   const calculatedTotal=resolved.reduce((sum,line)=>sum+line.netTotal,0)
+   const statedInvoiceTotal=Number(data.total)
+   const hasInvoiceTotal=data.total!==null&&data.total!==undefined&&Number.isFinite(statedInvoiceTotal)&&statedInvoiceTotal>=0&&Math.abs(statedInvoiceTotal-calculatedTotal)<=100
+   const total=hasInvoiceTotal?Math.round(statedInvoiceTotal):calculatedTotal
    const paidAmount=Number(body.paidAmount??0)
    if(!Number.isFinite(paidAmount)||paidAmount<0||paidAmount>total)throw new Error("INVALID_PAID_AMOUNT")
    const paymentDate=body.paymentDate||date
    if(paidAmount>0&&(!body.paymentId?.trim()||Number.isNaN(Date.parse(paymentDate+"T00:00:00Z"))||!body.paymentAccount?.trim()))throw new Error("INVALID_PAYMENT")
    let paymentAccount=""
    if(paidAmount>0){const [account]=await tx.select({name:financialAccounts.name}).from(financialAccounts).where(and(eq(financialAccounts.businessId,businessId),eq(financialAccounts.name,body.paymentAccount!.trim()),eq(financialAccounts.active,true))).limit(1);if(!account)throw new Error("PAYMENT_ACCOUNT_NOT_FOUND");paymentAccount=account.name}
-   await tx.insert(purchases).values({id:purchaseId,businessId,date,supplierId,dueDate:paidAmount>=total?null:(dueDate||null),notes:body.notes||("Imported from invoice "+(typeof data.invoiceNumber==="string"?data.invoiceNumber:doc.fileName))})
+   await tx.insert(purchases).values({id:purchaseId,businessId,date,supplierId,totalOverride:hasInvoiceTotal?total.toFixed(2):null,dueDate:paidAmount>=total?null:(dueDate||null),notes:body.notes||("Imported from invoice "+(typeof data.invoiceNumber==="string"?data.invoiceNumber:doc.fileName))})
    await tx.insert(purchaseItems).values(resolved.map((line,i)=>({id:"PI-"+purchaseId+"-"+(i+1),purchaseId,productId:line.id,qty:line.qty,unitCost:Number(lines[i].unitCost ?? 0).toFixed(2),discount:Number(lines[i].discount ?? 0).toFixed(2),discountType:lines[i].discountType??"amount"})))
    const productIds=[...new Set(resolved.map(x=>x.id))]
    const oldProducts=await tx.select({id:products.id,averageCost:products.averageCost}).from(products).where(and(eq(products.businessId,businessId),inArray(products.id,productIds)))

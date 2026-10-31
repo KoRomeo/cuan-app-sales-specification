@@ -83,6 +83,7 @@ export interface Purchase {
   payments: Payment[]
   dueDate: string | null
   notes: string
+  totalOverride?: number | string | null
 }
 
 export interface Replacement {
@@ -529,7 +530,7 @@ export const orderPaid = (o: Order) => o.payments.reduce((s, p) => s + p.amount,
 export const orderOutstanding = (o: Order) =>
   o.status === 'cancelled' ? 0 : Math.max(orderTotal(o) - orderPaid(o), 0)
 
-export const purchaseTotal = (p: Purchase) => p.items.reduce((sum, item) => {
+export const purchaseTotal = (p: Purchase) => p.totalOverride != null ? Number(p.totalOverride) : p.items.reduce((sum, item) => {
   const gross = item.qty * item.price
   const discount = item.discountType === 'percent' ? gross * Number(item.discount ?? 0) / 100 : Number(item.discount ?? 0)
   return sum + Math.ceil(Math.max(0, gross - discount) - 1e-9)
