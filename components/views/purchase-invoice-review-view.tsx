@@ -113,7 +113,7 @@ export function PurchaseInvoiceReviewView({ documentId }: { documentId: string }
     const supplierId = supplierChoice
     if (!current.supplierName?.trim()) { setMessage(label('Supplier name is required.', 'Nama supplier wajib diisi.')); return }
     if (!newSupplier && !supplierId) { setMessage(label('Select a supplier first', 'Pilih supplier terlebih dahulu')); return }
-    const choices = { ...Object.fromEntries(current.items.flatMap((item, i) => item.productId ? [[i, item.productId]] : [])), ...productChoice }
+    const choices: Record<number, string> = { ...Object.fromEntries(current.items.flatMap((item, i) => item.productId ? [[i, item.productId]] : [])), ...productChoice }
     const newIndexes = [...new Set([...createProducts, ...current.items.flatMap((item, i) => item.productMatch === 'new' ? [i] : [])])]
     const unresolved = current.items.map((_, i) => i).filter(i => !newIndexes.includes(i) && !choices[i])
     if (unresolved.length) { setMessage(label('Match every item with a product or add it as a new product. Items not matched yet: ', 'Cocokkan setiap item dengan produk atau tambahkan sebagai produk baru. Item yang belum dicocokkan: ') + unresolved.map(i => '#' + (i + 1)).join(', ')); return }
