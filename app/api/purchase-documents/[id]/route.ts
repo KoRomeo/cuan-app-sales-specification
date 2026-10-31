@@ -26,8 +26,9 @@ export async function DELETE(request: NextRequest, { params }: Context) {
       throw new Error("BLOB_READ_WRITE_TOKEN is missing. Add the Blob Read-Write token to .env.development.local.")
     }
 
-    // Remove the original private Blob first. Keep the database record if Blob deletion fails.
-    await del(document.blobPathname, { token: process.env.BLOB_READ_WRITE_TOKEN })
+    // Remove both the original and its optional preview before deleting the database record.
+    const paths = [document.blobPathname, document.previewBlobPathname].filter((path): path is string => Boolean(path))
+    await del(paths, { token: process.env.BLOB_READ_WRITE_TOKEN })
     await db.delete(purchaseDocuments)
       .where(and(eq(purchaseDocuments.id, id), eq(purchaseDocuments.businessId, businessId)))
 

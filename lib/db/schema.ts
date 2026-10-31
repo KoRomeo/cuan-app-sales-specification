@@ -532,6 +532,8 @@ export const purchaseDocuments = pgTable("purchase_documents", {
   mimeType: text("mime_type").notNull(),
   fileSize: integer("file_size").notNull(),
   blobPathname: text("blob_pathname").notNull(),
+  previewBlobPathname: text("preview_blob_pathname"),
+  previewFileSize: integer("preview_file_size"),
   status: text("status").notNull().default("queued"),
   targetType: text("target_type").notNull().default("purchase"),
   extractedData: jsonb("extracted_data").$type<Record<string, unknown> | null>(),
