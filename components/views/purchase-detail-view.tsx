@@ -25,7 +25,7 @@ const fetcher = async (url: string) => {
   return data
 }
 type PurchaseDetail = {
-  id: string; date: string; supplierId: string; dueDate: string | null; notes: string | null; status?: string
+  id: string; date: string; supplierId: string; dueDate: string | null; notes: string | null; status?: string; totalOverride?: string | number | null
   supplier: { id: string; name: string; contact?: string | null; address?: string | null } | null
   items: Array<{ id: string; productId: string; qty: number; unitCost: string | number; discount?: string | number; discountType?: "amount" | "percent" }>
   products: Array<{ id: string; name: string; stock: string | number; averageCost: string | number }>
