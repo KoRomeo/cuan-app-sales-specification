@@ -173,7 +173,8 @@ export async function POST(request: NextRequest) {
       }).from(products).where(and(eq(products.businessId, businessId), inArray(products.id, productIds)))
       if (foundProducts.length !== productIds.length) throw new Error("PRODUCT_NOT_FOUND")
 
-      const total = items.reduce((sum, item) => sum + Number(item.qty)*Number(item.unitCost)-purchaseLineDiscount(item), 0)
+      const lineTotal = (item: PurchaseInputItem) => Math.ceil(Math.max(0, Number(item.qty) * Number(item.unitCost) - purchaseLineDiscount(item)) - 1e-9)
+      const total = items.reduce((sum, item) => sum + lineTotal(item), 0)
       if (paidAmount > total) throw new Error("PAYMENT_EXCEEDS_TOTAL")
 
       await tx.insert(purchases).values({
@@ -209,7 +210,7 @@ export async function POST(request: NextRequest) {
       for (const item of items) {
         const current = quantities.get(item.productId) ?? { qty: 0, totalCost: 0 }
         current.qty += Number(item.qty)
-        current.totalCost += Number(item.qty)*Number(item.unitCost)-purchaseLineDiscount(item)
+        current.totalCost += lineTotal(item)
         quantities.set(item.productId, current)
       }
 
