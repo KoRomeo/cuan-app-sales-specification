@@ -37,6 +37,30 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   }
 }
 
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  try {
+    const body = await request.json()
+    const businessId = typeof body.businessId === "string" ? body.businessId : ""
+    if (!businessId || body.status !== "delivered") return NextResponse.json({ error: "Only delivery completion can be updated here" }, { status: 400 })
+    const session = await auth.api.getSession({ headers: await headers() })
+    if (!session?.user) return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    const [member] = await db.select({ role: businessMembers.role }).from(businessMembers).where(and(eq(businessMembers.businessId, businessId), eq(businessMembers.userId, session.user.id))).limit(1)
+    if (!member) return NextResponse.json({ error: "Order not found" }, { status: 404 })
+    const [order] = await db.select().from(orders).where(and(eq(orders.id, id), eq(orders.businessId, businessId))).limit(1)
+    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 })
+    const [delivery] = await db.select({ id: deliveries.id }).from(deliveries).where(eq(deliveries.orderId, id)).limit(1)
+    if (!delivery) return NextResponse.json({ error: "Create a delivery record before marking this order as delivered" }, { status: 409 })
+    if (order.status === "cancelled") return NextResponse.json({ error: "Cancelled orders cannot be marked as delivered" }, { status: 409 })
+    await db.update(orders).set({ status: "delivered" }).where(and(eq(orders.id, id), eq(orders.businessId, businessId)))
+    await writeAudit({ businessId, page: "Orders", action: "Confirmed delivery arrival", reference: id })
+    return NextResponse.json({ message: "Delivery marked as delivered" })
+  } catch (error) {
+    console.error("PATCH /api/orders/[id]", error)
+    return NextResponse.json({ error: "Unable to update delivery status" }, { status: 500 })
+  }
+}
+
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
