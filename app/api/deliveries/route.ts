@@ -108,8 +108,9 @@ export async function POST(request: Request) {
           ])
         }
       }
-      // Stock and COGS are recorded when the Order is created. Delivery only updates per-Order delivery status.
-      await tx.update(orders).set({ status: "delivered" })
+      // Creating a delivery means the order is on its way, not yet received by the customer.
+      // Keep it at Ready until the recipient confirms arrival in the Order detail.
+      await tx.update(orders).set({ status: "ready" })
         .where(and(eq(orders.businessId, businessId), inArray(orders.id, orderIds)))
       return deliveryIds
     })
