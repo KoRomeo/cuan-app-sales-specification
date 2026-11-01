@@ -138,17 +138,17 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
               <span className={`relative z-10 mt-1 size-2.5 shrink-0 rounded-full ring-4 ${data.sourceInvoice?.status === 'confirmed' || !data.sourceInvoice ? 'bg-success ring-success/10' : 'bg-warning ring-warning/10'}`} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">{locale === 'id' ? 'Nota dikonfirmasi' : 'Invoice confirmed'}</p>
-                <p className="text-xs text-muted-foreground">{data.sourceInvoice?.confirmedAt ? new Date(data.sourceInvoice.confirmedAt).toLocaleString('id-ID') : data.sourceInvoice?.status === 'confirmed' ? (locale === 'id' ? 'Konfirmasi tercatat' : 'Confirmation recorded') : (locale === 'id' ? 'Menunggu pemeriksaan dan konfirmasi nota' : 'Waiting for invoice review and confirmation')}</p>
+                <p className="text-xs text-muted-foreground">{data.sourceInvoice?.confirmedAt ? new Date(data.sourceInvoice.confirmedAt).toLocaleString(locale === 'id' ? 'id-ID' : 'en-US') : data.sourceInvoice?.status === 'confirmed' ? (locale === 'id' ? 'Konfirmasi tercatat' : 'Confirmation recorded') : (locale === 'id' ? 'Menunggu pemeriksaan dan konfirmasi nota' : 'Waiting for invoice review and confirmation')}</p>
               </div>
-              <Pill tone={data.sourceInvoice?.status === 'confirmed' || !data.sourceInvoice ? 'success' : 'warning'}>{data.sourceInvoice?.status === 'confirmed' || !data.sourceInvoice ? 'Selesai' : 'Menunggu'}</Pill>
+              <Pill tone={data.sourceInvoice?.status === 'confirmed' || !data.sourceInvoice ? 'success' : 'warning'}>{data.sourceInvoice?.status === 'confirmed' || !data.sourceInvoice ? (locale === 'id' ? 'Selesai' : 'Done') : (locale === 'id' ? 'Menunggu' : 'Pending')}</Pill>
             </li>
             <li className="flex gap-3">
-              <span className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ${data.stockMovements.length ? 'bg-success ring-success/10' : 'bg-warning ring-warning/10'}`} />
+              <span className={`relative z-10 mt-1 size-2.5 shrink-0 rounded-full ring-4 ${data.stockMovements.length ? 'bg-success ring-success/10' : 'bg-warning ring-warning/10'}`} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">{data.stockMovements.length ? (locale === 'id' ? 'Barang sampai di gudang' : 'Goods received at warehouse') : data.sourceInvoice && data.sourceInvoice.status !== 'confirmed' ? (locale === 'id' ? 'Menunggu nota dikonfirmasi' : 'Awaiting invoice confirmation') : (locale === 'id' ? 'Barang dalam perjalanan' : 'Goods in transit')}</p>
                 <p className="text-xs text-muted-foreground">{data.stockMovements.length ? `Stok diterima · ${formatDate(data.stockMovements[0].date)}` : (locale === 'id' ? 'Penerimaan barang belum dicatat' : 'Goods receipt has not been recorded')}</p>
               </div>
-              <Pill tone={data.stockMovements.length ? 'success' : 'warning'}>{data.stockMovements.length ? 'Diterima' : 'Dalam proses'}</Pill>
+              <Pill tone={data.stockMovements.length ? 'success' : 'warning'}>{data.stockMovements.length ? (locale === 'id' ? 'Diterima' : 'Received') : (locale === 'id' ? 'Dalam proses' : 'In progress')}</Pill>
             </li>
             <li className="flex gap-3">
               <span className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ${outstanding <= 0 ? 'bg-success ring-success/10' : paid > 0 ? 'bg-warning ring-warning/10' : 'bg-muted-foreground/40 ring-muted/60'}`} />
@@ -156,7 +156,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
                 <p className="text-sm font-medium">{outstanding <= 0 ? (locale === 'id' ? 'Pembayaran lunas' : 'Payment completed') : paid > 0 ? (locale === 'id' ? 'Pembayaran sebagian' : 'Partially paid') : (locale === 'id' ? 'Belum ada pembayaran' : 'Awaiting payment')}</p>
                 <p className="text-xs text-muted-foreground">{purchase.payments.length ? purchase.payments.map((payment) => `${formatDate(payment.date)} · ${formatIDR(payment.amount)}`).join('  |  ') : (locale === 'id' ? 'Belum ada pembayaran yang dicatat' : 'No payments recorded yet')}</p>
               </div>
-              <Pill tone={outstanding <= 0 ? 'success' : paid > 0 ? 'warning' : 'neutral'}>{outstanding <= 0 ? 'Lunas' : paid > 0 ? 'Sebagian' : 'Belum dibayar'}</Pill>
+              <Pill tone={outstanding <= 0 ? 'success' : paid > 0 ? 'warning' : 'neutral'}>{outstanding <= 0 ? (locale === 'id' ? 'Lunas' : 'Paid') : paid > 0 ? (locale === 'id' ? 'Sebagian' : 'Partial') : (locale === 'id' ? 'Belum dibayar' : 'Unpaid')}</Pill>
             </li>
           </ol>
         </SectionCard>
