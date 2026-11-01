@@ -1,6 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 const SHOW_DELAY = 180
@@ -9,6 +10,7 @@ export function GlobalLoadingOverlay() {
   const pathname = usePathname()
   const [navigationVisible, setNavigationVisible] = useState(false)
   const [processVisible, setProcessVisible] = useState(false)
+  const [portalReady, setPortalReady] = useState(false)
   const navigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const processTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const navigationPending = useRef(false)
@@ -20,6 +22,8 @@ export function GlobalLoadingOverlay() {
     navigationTimer.current = null
     setNavigationVisible(false)
   }, [])
+
+  useEffect(() => { setPortalReady(true) }, [])
 
   useEffect(() => { cancelNavigation() }, [pathname, cancelNavigation])
 
@@ -70,13 +74,14 @@ export function GlobalLoadingOverlay() {
     }
   }, [])
 
-  if (!navigationVisible && !processVisible) return null
-  return (
-    <div className="cuan-loading-overlay fixed inset-0 z-[100] flex items-center justify-center" role="status" aria-live="polite" aria-label="Loading">
+  if (!portalReady || (!navigationVisible && !processVisible)) return null
+  return createPortal(
+    <div className="cuan-loading-overlay" role="status" aria-live="polite" aria-label="Loading">
       <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-background/95 px-5 py-3.5 shadow-lg backdrop-blur-sm">
         <span className="cuan-loading-spinner" aria-hidden="true" />
         <span className="text-sm font-medium text-foreground">Loading…</span>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
