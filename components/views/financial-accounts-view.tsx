@@ -17,7 +17,7 @@ import { formatIDR } from '@/lib/format'
 
 type LedgerLine = { debit: number; credit: number }
 type AccountingSummary = { ledger: Record<string, LedgerLine> }
-type FinancialAccount = { id: string; businessId: string; name: string; type: 'cash' | 'bank'; openingBalance: string; active: boolean; currentBalance?: number }
+type FinancialAccount = { id: string; businessId: string; name: string; type: 'cash' | 'bank'; accountNumber: string | null; openingBalance: string; active: boolean; currentBalance?: number }
 type CashAccount = FinancialAccount & { balance: number }
 type CashTransaction = { id: string; date: string; kind: string; reference: string; description: string; lines: Array<{ account: string; debit: number; credit: number }> }
 const TODAY = new Date().toLocaleDateString('en-CA')
@@ -119,7 +119,7 @@ export function FinancialAccountsView() {
 
   const columns: Column<CashAccount>[] = [
     { key: 'code', header: t('reports.code'), cell: (account) => <IdCell>{account.id.slice(0, 11).toUpperCase()}</IdCell> },
-    { key: 'name', header: t('common.account'), cell: (account) => <span className="font-medium">{account.name}</span> },
+    { key: 'name', header: t('common.account'), cell: (account) => <div className="min-w-0"><p className="font-medium">{account.name}</p>{account.type === 'bank' && account.accountNumber && <p className="mt-0.5 font-mono text-xs text-muted-foreground">{account.accountNumber}</p>}</div> },
     { key: 'type', header: t('fin.type'), cell: (account) => <Pill tone={account.type === 'cash' ? 'warning' : 'primary'}>{account.type === 'cash' ? t('fin.cash') : t('fin.bank')}</Pill> },
     { key: 'balance', header: t('fin.currentBalance'), align: 'right', cell: (account) => <Money value={account.balance} className="font-semibold" /> },
     { key: 'status', header: 'Status', cell: (account) => <Pill tone={account.active ? 'success' : 'neutral'}>{account.active ? 'Active' : 'Inactive'}</Pill> },
