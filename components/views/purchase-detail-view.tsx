@@ -145,7 +145,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
             <li className="flex gap-3">
               <span className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ${data.stockMovements.length ? 'bg-success ring-success/10' : 'bg-warning ring-warning/10'}`} />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">{data.stockMovements.length ? 'Barang sampai di gudang' : 'Barang dalam perjalanan'}</p>
+                <p className="text-sm font-medium">{data.stockMovements.length ? 'Barang sampai di gudang' : data.sourceInvoice && data.sourceInvoice.status !== 'confirmed' ? 'Menunggu nota dikonfirmasi' : 'Barang dalam perjalanan'}</p>
                 <p className="text-xs text-muted-foreground">{data.stockMovements.length ? `Stok diterima · ${formatDate(data.stockMovements[0].date)}` : 'Penerimaan barang belum dicatat'}</p>
               </div>
               <Pill tone={data.stockMovements.length ? 'success' : 'warning'}>{data.stockMovements.length ? 'Diterima' : 'Dalam proses'}</Pill>
