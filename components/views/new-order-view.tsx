@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { Check, Plus, Save, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -11,6 +10,7 @@ import { SearchableSelect } from '@/components/common/searchable-select'
 import { PageHeader } from '@/components/common/page-header'
 import { SectionCard } from '@/components/common/section-card'
 import { ConfirmDialog } from '@/components/common/confirm-dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -71,6 +71,7 @@ export function NewOrderView() {
   const [draftReady, setDraftReady] = useState(false)
   const [draftExists, setDraftExists] = useState(false)
   const [discardOpen, setDiscardOpen] = useState(false)
+  const [leaveOpen, setLeaveOpen] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const draftKey = business?.id ? `cuanapp:order-draft:${business.id}` : null
 
@@ -316,12 +317,8 @@ export function NewOrderView() {
                 <span className="inline-flex items-center gap-1.5"><Check className="size-3.5 text-success" />{draftExists ? (locale === 'id' ? 'Draft tersimpan otomatis' : 'Draft saved automatically') : (locale === 'id' ? 'Draft siap disimpan' : 'Draft ready to save')}</span>
                 {lastSaved && <span>{locale === 'id' ? 'Tersimpan' : 'Saved'} {lastSaved.toLocaleTimeString(locale === 'id' ? 'id-ID' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>}
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" className="flex-1" onClick={saveDraftNow}><Save />{locale === 'id' ? 'Simpan Draft' : 'Save Draft'}</Button>
-                <Button type="button" variant="outline" className="flex-1" disabled={!draftExists} onClick={() => setDiscardOpen(true)}><Trash2 />{locale === 'id' ? 'Buang Draft' : 'Discard Draft'}</Button>
-              </div>
               <div className="flex gap-2">
-                <Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/orders" />}>
+                <Button type="button" variant="outline" className="flex-1" onClick={() => setLeaveOpen(true)}>
                   {t('common.cancel')}
                 </Button>
                 <Button type="submit" className="flex-1" disabled={isSaving || (Number(paid || 0) > 0 && !selectedPaymentAccount)}>{isSaving ? 'Saving…' : (locale === 'id' ? 'Simpan Order' : 'Save Order')}</Button>
@@ -330,14 +327,18 @@ export function NewOrderView() {
           </SectionCard>
         </div>
       </form>
-      <ConfirmDialog
-        open={discardOpen}
-        onOpenChange={setDiscardOpen}
-        title={locale === 'id' ? 'Buang draft order?' : 'Discard order draft?'}
-        description={locale === 'id' ? 'Semua informasi yang belum disimpan sebagai order akan dihapus dari draft.' : 'All information not yet saved as an order will be removed from this draft.'}
-        confirmLabel={locale === 'id' ? 'Buang Draft' : 'Discard Draft'}
-        onConfirm={discardDraft}
-      />
+      <Dialog open={leaveOpen} onOpenChange={setLeaveOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{locale === 'id' ? 'Simpan pekerjaan Order?' : 'Save your Order progress?'}</DialogTitle>
+            <DialogDescription>{locale === 'id' ? 'Kamu sedang meninggalkan halaman Order. Pilih untuk menyimpan draft sementara atau membuangnya.' : 'You are leaving the Order page. Choose whether to save this progress as a draft or discard it.'}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col-reverse sm:flex-row">
+            <Button type="button" variant="outline" onClick={() => { discardDraft(); router.push('/orders') }}><Trash2 />{locale === 'id' ? 'Buang Draft' : 'Discard Draft'}</Button>
+            <Button type="button" onClick={() => { saveDraftNow(); setLeaveOpen(false); router.push('/orders') }}><Save />{locale === 'id' ? 'Simpan Draft' : 'Save Draft'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <ConfirmDialog
         open={lineToRemove !== null}
         onOpenChange={(open) => {
