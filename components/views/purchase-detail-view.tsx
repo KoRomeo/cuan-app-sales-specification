@@ -34,7 +34,7 @@ type PurchaseDetail = {
   stockMovements: Array<{ id: string; date: string; qty: number; reference: string }>
 }
 export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
-  const { t } = useApp()
+  const { t, locale } = useApp()
   const { mutate: globalMutate } = useSWRConfig()
   const [payOpen, setPayOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -124,37 +124,37 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
           </dl>
           {total > 0 && <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={Math.round((paid / total) * 100)} aria-valuemin={0} aria-valuemax={100}><div className="h-full rounded-full bg-success" style={{ width: `${Math.min((paid / total) * 100, 100)}%` }} /></div>}
         </SectionCard>
-        <SectionCard title="Activity log">
-          <ol className="relative ml-1 space-y-4 before:absolute before:bottom-2 before:left-[5px] before:top-2 before:w-px before:bg-border">
+        <SectionCard title={locale === "id" ? "Log aktivitas" : "Activity log"}>
+          <ol className="relative ml-1 space-y-4 before:absolute before:z-0 before:bottom-2 before:left-[5px] before:top-2 before:w-px before:bg-border">
             <li className="flex gap-3">
               <span className="relative z-10 mt-1 size-2.5 shrink-0 rounded-full bg-success ring-4 ring-success/10" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">{data.sourceInvoice ? 'Nota diterima untuk ditinjau' : 'Pembelian dicatat'}</p>
-                <p className="text-xs text-muted-foreground">{new Date(data.sourceInvoice?.createdAt ?? data.createdAt).toLocaleString('id-ID')}</p>
+                <p className="text-sm font-medium">{data.sourceInvoice ? (locale === 'id' ? 'Nota diterima untuk ditinjau' : 'Invoice received for review') : (locale === 'id' ? 'Pembelian dicatat' : 'Purchase recorded')}</p>
+                <p className="text-xs text-muted-foreground">{new Date(data.sourceInvoice?.createdAt ?? data.createdAt).toLocaleString(locale === 'id' ? 'id-ID' : 'en-US')}</p>
               </div>
-              <Pill tone="success">Selesai</Pill>
+              <Pill tone="success">{locale === 'id' ? 'Selesai' : 'Done'}</Pill>
             </li>
             <li className="flex gap-3">
               <span className={`relative z-10 mt-1 size-2.5 shrink-0 rounded-full ring-4 ${data.sourceInvoice?.status === 'confirmed' || !data.sourceInvoice ? 'bg-success ring-success/10' : 'bg-warning ring-warning/10'}`} />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">Nota dikonfirmasi</p>
-                <p className="text-xs text-muted-foreground">{data.sourceInvoice?.confirmedAt ? new Date(data.sourceInvoice.confirmedAt).toLocaleString('id-ID') : data.sourceInvoice?.status === 'confirmed' ? 'Konfirmasi tercatat' : 'Menunggu pemeriksaan dan konfirmasi nota'}</p>
+                <p className="text-sm font-medium">{locale === 'id' ? 'Nota dikonfirmasi' : 'Invoice confirmed'}</p>
+                <p className="text-xs text-muted-foreground">{data.sourceInvoice?.confirmedAt ? new Date(data.sourceInvoice.confirmedAt).toLocaleString('id-ID') : data.sourceInvoice?.status === 'confirmed' ? (locale === 'id' ? 'Konfirmasi tercatat' : 'Confirmation recorded') : (locale === 'id' ? 'Menunggu pemeriksaan dan konfirmasi nota' : 'Waiting for invoice review and confirmation')}</p>
               </div>
               <Pill tone={data.sourceInvoice?.status === 'confirmed' || !data.sourceInvoice ? 'success' : 'warning'}>{data.sourceInvoice?.status === 'confirmed' || !data.sourceInvoice ? 'Selesai' : 'Menunggu'}</Pill>
             </li>
             <li className="flex gap-3">
               <span className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ${data.stockMovements.length ? 'bg-success ring-success/10' : 'bg-warning ring-warning/10'}`} />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">{data.stockMovements.length ? 'Barang sampai di gudang' : data.sourceInvoice && data.sourceInvoice.status !== 'confirmed' ? 'Menunggu nota dikonfirmasi' : 'Barang dalam perjalanan'}</p>
-                <p className="text-xs text-muted-foreground">{data.stockMovements.length ? `Stok diterima · ${formatDate(data.stockMovements[0].date)}` : 'Penerimaan barang belum dicatat'}</p>
+                <p className="text-sm font-medium">{data.stockMovements.length ? (locale === 'id' ? 'Barang sampai di gudang' : 'Goods received at warehouse') : data.sourceInvoice && data.sourceInvoice.status !== 'confirmed' ? (locale === 'id' ? 'Menunggu nota dikonfirmasi' : 'Awaiting invoice confirmation') : (locale === 'id' ? 'Barang dalam perjalanan' : 'Goods in transit')}</p>
+                <p className="text-xs text-muted-foreground">{data.stockMovements.length ? `Stok diterima · ${formatDate(data.stockMovements[0].date)}` : (locale === 'id' ? 'Penerimaan barang belum dicatat' : 'Goods receipt has not been recorded')}</p>
               </div>
               <Pill tone={data.stockMovements.length ? 'success' : 'warning'}>{data.stockMovements.length ? 'Diterima' : 'Dalam proses'}</Pill>
             </li>
             <li className="flex gap-3">
               <span className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ${outstanding <= 0 ? 'bg-success ring-success/10' : paid > 0 ? 'bg-warning ring-warning/10' : 'bg-muted-foreground/40 ring-muted/60'}`} />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">{outstanding <= 0 ? 'Pembayaran lunas' : paid > 0 ? 'Pembayaran sebagian' : 'Belum ada pembayaran'}</p>
-                <p className="text-xs text-muted-foreground">{purchase.payments.length ? purchase.payments.map((payment) => `${formatDate(payment.date)} · ${formatIDR(payment.amount)}`).join('  |  ') : 'Belum ada pembayaran yang dicatat'}</p>
+                <p className="text-sm font-medium">{outstanding <= 0 ? (locale === 'id' ? 'Pembayaran lunas' : 'Payment completed') : paid > 0 ? (locale === 'id' ? 'Pembayaran sebagian' : 'Partially paid') : (locale === 'id' ? 'Belum ada pembayaran' : 'Awaiting payment')}</p>
+                <p className="text-xs text-muted-foreground">{purchase.payments.length ? purchase.payments.map((payment) => `${formatDate(payment.date)} · ${formatIDR(payment.amount)}`).join('  |  ') : (locale === 'id' ? 'Belum ada pembayaran yang dicatat' : 'No payments recorded yet')}</p>
               </div>
               <Pill tone={outstanding <= 0 ? 'success' : paid > 0 ? 'warning' : 'neutral'}>{outstanding <= 0 ? 'Lunas' : paid > 0 ? 'Sebagian' : 'Belum dibayar'}</Pill>
             </li>
