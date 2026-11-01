@@ -29,7 +29,9 @@ type DashboardPurchase = {
   date: string
   supplierId: string
   dueDate: string | null
-  items: Array<{ productId: string; qty: number; unitCost: number }>
+  status?: string
+  totalOverride?: number | string | null
+  items: Array<{ productId: string; qty: number; unitCost: number; discount?: number | string; discountType?: 'amount' | 'percent' }>
   payments: DashboardPayment[]
 }
 type DashboardData = {
@@ -75,9 +77,17 @@ const dateRange = (filter:DashboardDateFilter):[string,string] => {
 const totalOfOrder = (order: DashboardOrder) => order.items.reduce((sum, item) => sum + item.qty * item.price - item.discount, 0)
 const paidOfOrder = (order: DashboardOrder) => order.payments.reduce((sum, payment) => sum + payment.amount, 0)
 const outstandingOfOrder = (order: DashboardOrder) => order.status === 'cancelled' ? 0 : Math.max(totalOfOrder(order) - paidOfOrder(order), 0)
-const totalOfPurchase = (purchase: DashboardPurchase) => purchase.items.reduce((sum, item) => sum + item.qty * item.unitCost, 0)
+const totalOfPurchase = (purchase: DashboardPurchase) => purchase.totalOverride != null
+  ? Number(purchase.totalOverride)
+  : purchase.items.reduce((sum, item) => {
+      const gross = Number(item.qty) * Number(item.unitCost)
+      const discount = item.discountType === 'percent'
+        ? gross * Number(item.discount ?? 0) / 100
+        : Number(item.discount ?? 0)
+      return sum + Math.ceil(Math.max(0, gross - discount) - 1e-9)
+    }, 0)
 const paidOfPurchase = (purchase: DashboardPurchase) => purchase.payments.reduce((sum, payment) => sum + payment.amount, 0)
-const outstandingOfPurchase = (purchase: DashboardPurchase) => Math.max(totalOfPurchase(purchase) - paidOfPurchase(purchase), 0)
+const outstandingOfPurchase = (purchase: DashboardPurchase) => purchase.status === 'cancelled' ? 0 : Math.max(totalOfPurchase(purchase) - paidOfPurchase(purchase), 0)
 const statusOfPayment = (total: number, paid: number): 'unpaid' | 'partial' | 'paid' => paid <= 0 ? 'unpaid' : paid >= total ? 'paid' : 'partial'
 const stockStatus = (product: DashboardData['products'][number]): 'normal' | 'low' | 'negative' => product.stock < 0 ? 'negative' : product.minimumStock > 0 && product.stock < product.minimumStock ? 'low' : 'normal'
 const isPastDue = (dueDate: string | null, outstanding: number, today: string) => Boolean(dueDate && outstanding > 0 && dueDate < today)
@@ -183,7 +193,7 @@ export function DashboardView() {
 
   const supplierById = (id: string) => suppliers.find((supplier) => supplier.id === id)
   const payableBySupplier = purchases
-    .filter((purchase) => outstandingOfPurchase(purchase) > 0)
+    .filter((purchase) => purchase.status !== 'cancelled' && outstandingOfPurchase(purchase) > 0)
     .map((purchase) => ({ purchase, supplier: supplierById(purchase.supplierId), amount: outstandingOfPurchase(purchase) }))
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 5)
