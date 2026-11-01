@@ -237,99 +237,29 @@
   margin: 0;
 }
 
+@page cuan-a6 { size: 105mm 148mm portrait; margin: 0; }
+@page cuan-a4 { size: 210mm 297mm portrait; margin: 0; }
+
+.document-a6 { page: cuan-a6; width: 105mm; min-height: 148mm; padding: 5mm; box-sizing: border-box; }
+.document-a4 { page: cuan-a4; width: 210mm; min-height: 297mm; padding: 12mm; box-sizing: border-box; }
+
 @media print {
-  html, body {
-    width: 105mm !important;
-    min-width: 105mm !important;
-    height: 148mm !important;
-    min-height: 148mm !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: visible !important;
-    background: #fff !important;
+  html, body { width: auto !important; min-width: 0 !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
+  body * { visibility: hidden !important; }
+  [role="dialog"], [data-radix-portal], [data-slot="dialog-overlay"], [data-slot="dialog-content"] {
+    position: static !important; display: contents !important; transform: none !important; width: auto !important; height: auto !important; max-width: none !important; max-height: none !important; overflow: visible !important; border: 0 !important; box-shadow: none !important; background: transparent !important;
   }
-
-  body * {
-    visibility: hidden !important;
-  }
-
-  [role="dialog"],
-  [data-radix-portal],
-  [data-slot="dialog-overlay"],
-  [data-slot="dialog-content"] {
-    position: static !important;
-    display: contents !important;
-    transform: none !important;
-    width: auto !important;
-    height: auto !important;
-    max-width: none !important;
-    max-height: none !important;
-    overflow: visible !important;
-    border: 0 !important;
-    box-shadow: none !important;
-    background: transparent !important;
-  }
-
-  .print-area,
-  .print-area * {
-    visibility: visible !important;
-  }
-
-  .print-area {
-    position: absolute !important;
-    display: block !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 105mm !important;
-    height: 148mm !important;
-    min-height: 148mm !important;
-    max-width: 105mm !important;
-    margin: 0 !important;
-    padding: 5mm !important;
-    overflow: hidden !important;
-    box-sizing: border-box !important;
-    aspect-ratio: 105 / 148 !important;
-    background: #fff !important;
-    color: #000 !important;
-    box-shadow: none !important;
-    font-size: 7pt !important;
-    line-height: 1.15 !important;
-    break-after: avoid !important;
-    break-inside: avoid !important;
-  }
-
-  .print-area table {
-    width: 100% !important;
-    margin-top: 2mm !important;
-    font-size: 6.5pt !important;
-    table-layout: fixed !important;
-  }
-
-  .print-area tr {
-    height: 4mm !important;
-  }
-
-  .print-area th,
-  .print-area td {
-    height: 4mm !important;
-    padding: 0.5mm !important;
-    line-height: 1.05 !important;
-  }
-
-  .print-area h1 {
-    font-size: 17pt !important;
-  }
-
-  .print-area section {
-    break-inside: avoid !important;
-  }
-
-  .print-area .mt-10 { margin-top: 2mm !important; }
-  .print-area .mt-12 { margin-top: 3mm !important; }
-  .print-area .mt-20 { margin-top: 4mm !important; }
-  .print-area .mt-8 { margin-top: 2mm !important; }
-  .print-area .py-5 { padding-top: 1.5mm !important; padding-bottom: 1.5mm !important; }
-  .print-area .py-4 { padding-top: 1.5mm !important; padding-bottom: 1.5mm !important; }
+  .print-area, .print-area * { visibility: visible !important; }
+  .print-area { position: absolute !important; top: 0 !important; left: 0 !important; margin: 0 !important; overflow: visible !important; background: #fff !important; color: #000 !important; box-shadow: none !important; break-after: avoid !important; break-inside: avoid !important; }
+  .print-area.document-a6 { width: 105mm !important; min-height: 148mm !important; padding: 5mm !important; font-size: 7pt !important; line-height: 1.15 !important; }
+  .print-area.document-a4 { width: 210mm !important; min-height: 297mm !important; padding: 12mm !important; font-size: 9pt !important; line-height: 1.25 !important; }
+  .print-area table { width: 100% !important; margin-top: 3mm !important; table-layout: fixed !important; }
+  .print-area th, .print-area td { padding: 1mm !important; line-height: 1.15 !important; }
+  .print-area.document-a6 table { font-size: 6.5pt !important; }
+  .print-area.document-a6 tbody tr { height: 6mm !important; }
+  .print-area.document-a4 table { font-size: 8pt !important; }
+  .print-area.document-a4 tbody tr { height: 8mm !important; }
+  .print-area section, .print-area footer { break-inside: avoid !important; }
 }
 
 /* Keep the loading indicator visible on both light and dark pages. */
