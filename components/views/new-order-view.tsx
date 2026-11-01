@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Plus, Trash2 } from 'lucide-react'
+import { Check, Plus, Save, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSWRConfig } from 'swr'
@@ -38,6 +38,16 @@ interface Line {
   discountType: 'amount' | 'percent'
 }
 
+type OrderDraft = {
+  customerId: string
+  orderDate: string
+  dueDate: string
+  notes: string
+  lines: Line[]
+  paid: string
+  paymentAccount: string
+}
+
 export function NewOrderView() {
   const { locale, t } = useApp()
   const router = useRouter()
@@ -55,10 +65,77 @@ export function NewOrderView() {
   const [paymentAccount, setPaymentAccount] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [lineToRemove, setLineToRemove] = useState<number | null>(null)
+  const [orderDate, setOrderDate] = useState(TODAY)
+  const [dueDate, setDueDate] = useState('')
+  const [notes, setNotes] = useState('')
+  const [draftReady, setDraftReady] = useState(false)
+  const [draftExists, setDraftExists] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const draftKey = business?.id ? `cuanapp:order-draft:${business.id}` : null
 
   useEffect(() => {
-    if (lines.length === 0 && productRows?.[0]) setLines([{ key: 1, productId: productRows[0].id, qty: 1, price: Number(productRows[0].sellingPrice), discount: 0, discountType: 'amount' }])
-  }, [lines.length, productRows])
+    if (!draftKey) return
+    try {
+      const raw = sessionStorage.getItem(draftKey)
+      if (raw) {
+        const draft = JSON.parse(raw) as OrderDraft
+        setCustomerId(draft.customerId ?? '')
+        setOrderDate(draft.orderDate || TODAY)
+        setDueDate(draft.dueDate ?? '')
+        setNotes(draft.notes ?? '')
+        setLines(Array.isArray(draft.lines) ? draft.lines : [])
+        setPaid(draft.paid ?? '0')
+        setPaymentAccount(draft.paymentAccount ?? '')
+        setDraftExists(true)
+        setLastSaved(new Date())
+      }
+    } catch {
+      sessionStorage.removeItem(draftKey)
+    } finally {
+      setDraftReady(true)
+    }
+  }, [draftKey])
+
+  useEffect(() => {
+    if (!draftReady || lines.length > 0 || !productRows?.[0]) return
+    setLines([{ key: 1, productId: productRows[0].id, qty: 1, price: Number(productRows[0].sellingPrice), discount: 0, discountType: 'amount' }])
+  }, [draftReady, lines.length, productRows])
+
+  useEffect(() => {
+    if (!draftReady || !draftKey) return
+    const draft: OrderDraft = { customerId, orderDate, dueDate, notes, lines, paid, paymentAccount }
+    try {
+      sessionStorage.setItem(draftKey, JSON.stringify(draft))
+      setDraftExists(Boolean(customerId || notes || dueDate || lines.length || Number(paid) > 0 || paymentAccount))
+      setLastSaved(new Date())
+    } catch {
+      toast.error(locale === 'id' ? 'Draft tidak dapat disimpan di browser ini.' : 'Unable to save draft in this browser.')
+    }
+  }, [draftReady, draftKey, customerId, orderDate, dueDate, notes, lines, paid, paymentAccount, locale])
+
+  const saveDraftNow = () => {
+    if (!draftKey) return
+    sessionStorage.setItem(draftKey, JSON.stringify({ customerId, orderDate, dueDate, notes, lines, paid, paymentAccount } satisfies OrderDraft))
+    setDraftExists(true)
+    setLastSaved(new Date())
+    toast.success(locale === 'id' ? 'Draft order berhasil disimpan.' : 'Order draft saved.')
+  }
+
+  const discardDraft = () => {
+    if (draftKey) sessionStorage.removeItem(draftKey)
+    setCustomerId('')
+    setOrderDate(TODAY)
+    setDueDate('')
+    setNotes('')
+    setLines(productRows?.[0] ? [{ key: 1, productId: productRows[0].id, qty: 1, price: Number(productRows[0].sellingPrice), discount: 0, discountType: 'amount' }] : [])
+    setPaid('0')
+    setPaymentAccount('')
+    setDraftExists(false)
+    setLastSaved(null)
+    setDiscardOpen(false)
+    toast.success(locale === 'id' ? 'Draft order dibuang.' : 'Order draft discarded.')
+  }
 
   const update = (key: number, patch: Partial<Line>) =>
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)))
@@ -96,7 +173,7 @@ export function NewOrderView() {
             const form = new FormData(event.currentTarget)
             const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
             const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-              id: `ORD-${Date.now()}`, businessId: business.id, date: form.get('orderDate'), customerId: form.get('customerId'), status: 'requested', dueDate: form.get('dueDate') || null, notes: form.get('notes') || null, paidAmount: Number(paid || 0), paymentAccount: selectedPaymentAccount, paymentDate: form.get('orderDate'), paymentId: Number(paid || 0) > 0 ? `PAY-ORD-${Date.now()}` : undefined,
+              id: `ORD-${Date.now()}`, businessId: business.id, date: orderDate, customerId: form.get('customerId'), status: 'requested', dueDate: dueDate || null, notes: notes || null, paidAmount: Number(paid || 0), paymentAccount: selectedPaymentAccount, paymentDate: orderDate, paymentId: Number(paid || 0) > 0 ? `PAY-ORD-${Date.now()}` : undefined,
               items: lines.map((line) => ({ id: `OI-${Date.now()}-${line.key}`, productId: line.productId, qty: line.qty, price: line.price, discount: line.discount, discountType: line.discountType, unitCost: productsById.get(line.productId)?.averageCost ?? 0 })),
             }) })
             const result = await response.json()
@@ -109,6 +186,8 @@ export function NewOrderView() {
               globalMutate(`/api/accounting?businessId=${encodeURIComponent(business.id)}`),
               globalMutate(`/api/dashboard?businessId=${encodeURIComponent(business.id)}`),
             ])
+            if (draftKey) sessionStorage.removeItem(draftKey)
+            setDraftExists(false)
             toast.success(t('form.savedFeedback'))
             router.push(`/orders/${encodeURIComponent(result.id)}`)
           } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to save order') } finally { setIsSaving(false) }
@@ -124,7 +203,7 @@ export function NewOrderView() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="date">{t('orders.orderDate')}</Label>
-                <Input id="date" name="orderDate" type="date" defaultValue={TODAY} required />
+                <Input id="date" name="orderDate" type="date" value={orderDate} onChange={(event) => setOrderDate(event.target.value)} required />
               </div>
             </div>
           </SectionCard>
@@ -194,7 +273,7 @@ export function NewOrderView() {
           </SectionCard>
 
           <SectionCard title={t('common.notes')}>
-            <Textarea name="notes" rows={3} placeholder="…" />
+            <Textarea name="notes" rows={3} placeholder="…" value={notes} onChange={(event) => setNotes(event.target.value)} />
           </SectionCard>
         </div>
 
@@ -221,7 +300,7 @@ export function NewOrderView() {
               </div>
               {total > 0 && Number(paid || 0) < total && <div className="flex flex-col gap-1.5">
                 <Label htmlFor="due">{t('common.dueDate')}</Label>
-                <Input id="due" name="dueDate" type="date" />
+                <Input id="due" name="dueDate" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
               </div>}
               {Number(paid || 0) > 0 && <div className="flex flex-col gap-1.5">
                 <Label htmlFor="sale-payment-account">{(locale === 'id' ? 'Terima pembayaran ke akun kas/bank' : 'Receive payment into cash/bank account')}</Label>
@@ -233,15 +312,33 @@ export function NewOrderView() {
                 <span className="font-mono font-semibold tabular-nums text-warning">{formatIDR(Math.max(total - Number(paid || 0), 0))}</span>
               </div>
             </div>
-            <div className="mt-5 flex gap-2">
-              <Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/orders" />}>
-                {t('common.cancel')}
-              </Button>
-              <Button type="submit" className="flex-1" disabled={isSaving || (Number(paid || 0) > 0 && !selectedPaymentAccount)}>{isSaving ? 'Saving…' : 'Save Order'}</Button>
+            <div className="mt-5 flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5"><Check className="size-3.5 text-success" />{draftExists ? (locale === 'id' ? 'Draft tersimpan otomatis' : 'Draft saved automatically') : (locale === 'id' ? 'Draft siap disimpan' : 'Draft ready to save')}</span>
+                {lastSaved && <span>{locale === 'id' ? 'Tersimpan' : 'Saved'} {lastSaved.toLocaleTimeString(locale === 'id' ? 'id-ID' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" className="flex-1" onClick={saveDraftNow}><Save />{locale === 'id' ? 'Simpan Draft' : 'Save Draft'}</Button>
+                <Button type="button" variant="outline" className="flex-1" disabled={!draftExists} onClick={() => setDiscardOpen(true)}><Trash2 />{locale === 'id' ? 'Buang Draft' : 'Discard Draft'}</Button>
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" className="flex-1" nativeButton={false} render={<Link href="/orders" />}>
+                  {t('common.cancel')}
+                </Button>
+                <Button type="submit" className="flex-1" disabled={isSaving || (Number(paid || 0) > 0 && !selectedPaymentAccount)}>{isSaving ? 'Saving…' : (locale === 'id' ? 'Simpan Order' : 'Save Order')}</Button>
+              </div>
             </div>
           </SectionCard>
         </div>
       </form>
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title={locale === 'id' ? 'Buang draft order?' : 'Discard order draft?'}
+        description={locale === 'id' ? 'Semua informasi yang belum disimpan sebagai order akan dihapus dari draft.' : 'All information not yet saved as an order will be removed from this draft.'}
+        confirmLabel={locale === 'id' ? 'Buang Draft' : 'Discard Draft'}
+        onConfirm={discardDraft}
+      />
       <ConfirmDialog
         open={lineToRemove !== null}
         onOpenChange={(open) => {
