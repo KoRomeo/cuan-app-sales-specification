@@ -25,11 +25,21 @@ const fetcher = (url: string) => fetch(url).then(async (response) => {
   if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load purchases')
   return response.json()
 })
-type PersistedPurchase = { id: string; date: string; supplierId: string; dueDate: string | null; notes: string | null; status?: string; items: Array<{ productId: string; qty: number; unitCost: string | number }> }
+type PersistedPurchase = { id: string; date: string; supplierId: string; dueDate: string | null; notes: string | null; status?: string; totalOverride?: string | number | null; items: Array<{ productId: string; qty: number; unitCost: string | number; discount?: string | number; discountType?: 'amount' | 'percent' }> }
 type PersistedPayment = { id: string; date: string; amount: string | number; account: string; purchaseId: string | null }
 type PersistedParty = { id: string; name: string; phone?: string | null; address?: string | null }
+function persistedPurchaseTotal(purchase: { totalOverride?: string | number | null; items: Array<{ qty: number; unitCost: string | number; discount?: string | number; discountType?: 'amount' | 'percent' }> }) {
+  if (purchase.totalOverride != null) return Number(purchase.totalOverride)
+  return purchase.items.reduce((sum, item) => {
+    const gross = Number(item.qty) * Number(item.unitCost)
+    const discount = item.discountType === 'percent'
+      ? gross * Number(item.discount ?? 0) / 100
+      : Number(item.discount ?? 0)
+    return sum + Math.ceil(Math.max(0, gross - discount) - 1e-9)
+  }, 0)
+}
 function mapPurchase(row: PersistedPurchase, payments: PersistedPayment[]): Purchase {
-  return { ...row, notes: row.notes ?? '', items: row.items.map((item) => ({ productId: item.productId, qty: item.qty, price: Number(item.unitCost) })), payments: payments.filter((payment) => payment.purchaseId === row.id).map((payment) => ({ id: payment.id, date: payment.date, amount: Number(payment.amount), account: payment.account })) }
+  return { ...row, notes: row.notes ?? '', items: row.items.map((item) => ({ productId: item.productId, qty: item.qty, price: Number(item.unitCost), discount: Number(item.discount ?? 0), discountType: item.discountType })), payments: payments.filter((payment) => payment.purchaseId === row.id).map((payment) => ({ id: payment.id, date: payment.date, amount: Number(payment.amount), account: payment.account })) }
 }
 
 export function PurchasesView() {
@@ -128,7 +138,9 @@ type PersistedSupplier = { id: string; businessId: string; name: string; contact
 type SupplierPurchaseRow = {
   id: string
   supplierId: string
-  items: Array<{ qty: number; unitCost: string | number }>
+  status?: string
+  totalOverride?: string | number | null
+  items: Array<{ qty: number; unitCost: string | number; discount?: string | number; discountType?: 'amount' | 'percent' }>
 }
 type SupplierPaymentRow = { purchaseId: string | null; amount: string | number }
 
@@ -156,9 +168,8 @@ export function SuppliersView() {
   const purchases = purchaseRows ?? []
   const payments = paymentRows ?? []
   const stats = (supplier: PersistedSupplier) => {
-    const supplierPurchases = purchases.filter((purchase) => purchase.supplierId === supplier.id)
-    const total = supplierPurchases.reduce((sum, purchase) =>
-      sum + purchase.items.reduce((itemSum, item) => itemSum + Number(item.qty) * Number(item.unitCost), 0), 0)
+    const supplierPurchases = purchases.filter((purchase) => purchase.supplierId === supplier.id && purchase.status !== 'cancelled')
+    const total = supplierPurchases.reduce((sum, purchase) => sum + persistedPurchaseTotal(purchase), 0)
     const paid = supplierPurchases.reduce((sum, purchase) =>
       sum + payments.filter((payment) => payment.purchaseId === purchase.id).reduce((paymentSum, payment) => paymentSum + Number(payment.amount), 0), 0)
     return { count: supplierPurchases.length, total, outstanding: Math.max(total - paid, 0) }
