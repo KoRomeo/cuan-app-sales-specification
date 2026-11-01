@@ -33,6 +33,7 @@ export function FinancialAccountsView() {
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [type, setType] = useState<'cash' | 'bank'>('bank')
+  const [accountNumber, setAccountNumber] = useState('')
   const [openingBalance, setOpeningBalance] = useState('0')
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
@@ -72,13 +73,14 @@ export function FinancialAccountsView() {
     try {
       const response = await fetch('/api/financial-accounts', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessId: business.id, name: name.trim(), type, openingBalance: Number(openingBalance) }),
+        body: JSON.stringify({ businessId: business.id, name: name.trim(), type, accountNumber: type === 'bank' ? accountNumber.trim() : null, openingBalance: Number(openingBalance) }),
       })
       const result = await response.json()
       if (!response.ok) throw new Error(result.error ?? 'Unable to create account')
       await Promise.all([mutateAccounts(), mutateAccounting(), mutateHistory()])
       setName('')
       setType('bank')
+      setAccountNumber('')
       setOpeningBalance('0')
       setShowForm(false)
     } catch (error) {
@@ -140,10 +142,11 @@ export function FinancialAccountsView() {
         <div className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2"><Label htmlFor="account-name">Account name</Label><Input id="account-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Bank BCA" /></div>
           <div className="space-y-2"><Label htmlFor="account-type">Account type</Label><SearchableSelect id="account-type" value={type} onChange={(value) => setType(String(value) as 'cash' | 'bank')} options={[{value:'cash',label:t('fin.cash')},{value:'bank',label:t('fin.bank')}]} placeholder={t('common.select')} searchPlaceholder={t('common.search')} /></div>
+          <div className="space-y-2"><Label htmlFor="account-number">Account number</Label><Input id="account-number" value={accountNumber} onChange={(event) => setAccountNumber(event.target.value)} placeholder="Enter bank account number" disabled={type !== 'bank'} /></div>
           <div className="space-y-2"><Label htmlFor="opening-balance">Opening balance (Rp)</Label><Input id="opening-balance" type="number" min="0" value={openingBalance} onChange={(event) => setOpeningBalance(event.target.value)} /></div>
         </div>
         {formError && <p role="alert" className="mt-3 text-sm text-destructive">{formError}</p>}
-        <div className="mt-4 flex justify-end gap-2"><Button variant="outline" onClick={() => { setShowForm(false); setFormError('') }}>Cancel</Button><Button disabled={saving || !name.trim() || Number(openingBalance) < 0} onClick={createAccount}>{saving ? 'Saving…' : 'Save account'}</Button></div>
+        <div className="mt-4 flex justify-end gap-2"><Button variant="outline" onClick={() => { setShowForm(false); setFormError('') }}>Cancel</Button><Button disabled={saving || !name.trim() || (type === 'bank' && !accountNumber.trim()) || Number(openingBalance) < 0} onClick={createAccount}>{saving ? 'Saving…' : 'Save account'}</Button></div>
       </section>}
       {transactionMode && <section className="mb-5 rounded-lg border border-border bg-card p-4">
         <h3 className="mb-4 font-semibold">{transactionMode === 'money_in' ? 'Add funds (Money In)' : 'Transfer between accounts'}</h3>
