@@ -399,7 +399,7 @@ type PersistedDelivery = {
   address: string
   transportCost: string | number
   transportAccount: string
-  orders: Array<{ id: string; customerId: string; customerName: string }>
+  orders: Array<{ id: string; customerId: string; customerName: string; status: string }>
 }
 type DeliveryOrderOption = { id: string; status: string; customerId: string; date: string }
 
@@ -407,6 +407,7 @@ export function DeliveriesView() {
   const { t, locale } = useApp()
   const [selectedDeliveryIds, setSelectedDeliveryIds] = useState<string[]>([])
   const [open, setOpen] = useState(false)
+  const [deliveryUpdating, setDeliveryUpdating] = useState<string | null>(null)
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', customersFetcher)
   const { data: rows, error, isLoading, mutate } = useSWR<PersistedDelivery[]>(
     business?.id ? `/api/deliveries?businessId=${encodeURIComponent(business.id)}` : null,
@@ -428,6 +429,7 @@ export function DeliveriesView() {
     { key: 'recipient', header: t('orders.recipient'), cell: (d) => d.recipient || '—' },
     { key: 'driver', header: 'Driver name', cell: (d) => d.driverName || '—' },
     { key: 'transport', header: t('orders.transportCost'), align: 'right', cell: (d) => <Money value={Number(d.transportCost)} className={Number(d.transportCost) === 0 ? 'text-muted-foreground' : ''} /> },
+    { key: 'deliveryStatus', header: locale === 'id' ? 'Status pengiriman' : 'Delivery status', cell: (d) => d.orders[0]?.status === 'delivered' ? <Pill tone="success">{locale === 'id' ? 'Sampai tujuan' : 'Delivered'}</Pill> : <div className="flex items-center gap-2"><Pill tone="warning">{locale === 'id' ? 'Dalam perjalanan' : 'In transit'}</Pill><Button size="sm" variant="outline" disabled={deliveryUpdating === d.id} onClick={async (event) => { event.stopPropagation(); const orderId = d.orders[0]?.id; if (!orderId || !business?.id) return; setDeliveryUpdating(d.id); try { const response = await fetch(`/api/orders/${encodeURIComponent(orderId)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ businessId: business.id, status: 'delivered' }) }); const result = await response.json(); if (!response.ok) throw new Error(result.error ?? 'Unable to update delivery status'); await Promise.all([mutate(), mutateOrders()]); toast.success(locale === 'id' ? 'Status pengiriman diperbarui.' : 'Delivery status updated.'); } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to update delivery status'); } finally { setDeliveryUpdating(null); } }}>{deliveryUpdating === d.id ? t('common.loading') : (locale === 'id' ? 'Tandai sampai' : 'Mark delivered')}</Button></div> },
   ]
   const saveDelivery = async (values: Record<string, string>) => {
     if (!business?.id) throw new Error('Business not found')
