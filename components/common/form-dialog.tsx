@@ -150,20 +150,20 @@ export function FormDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-lg">
-        <form noValidate onSubmit={handleSubmit} aria-busy={isChecking} className="flex flex-col gap-4">
+        <form noValidate onSubmit={handleSubmit} aria-busy={isChecking} className="flex min-w-0 flex-col gap-5">
           <DialogHeader>
             <DialogTitle className="text-base">{title}</DialogTitle>
             {(description || !persisted) && <DialogDescription>{description ?? t('common.prototypeNote')}</DialogDescription>}
             {!persisted && <p role="note" className="rounded-md border bg-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground">{t('form.previewFeedback')}</p>}
           </DialogHeader>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid min-w-0 grid-cols-2 gap-4">
             {fields.map((field) => {
               const id = `field-${field.name}`
               const required = field.required ?? field.type !== 'textarea'
               const describedBy = [field.hint ? `${id}-hint` : null, errors[field.name] ? `${id}-error` : null].filter(Boolean).join(' ') || undefined
               return (
-                <div key={field.name} className={cn('flex flex-col gap-1.5', field.half ? 'col-span-2 sm:col-span-1' : 'col-span-2')}>
+                <div key={field.name} className={cn('flex min-w-0 flex-col gap-1.5', field.half ? 'col-span-2 sm:col-span-1' : 'col-span-2')}>
                   <Label htmlFor={id}>
                     {field.label}
                     {required && <span aria-hidden="true" className="ml-1 text-destructive">*</span>}
