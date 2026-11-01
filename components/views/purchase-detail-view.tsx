@@ -151,7 +151,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
               <Pill tone={data.stockMovements.length ? 'success' : 'warning'}>{data.stockMovements.length ? (locale === 'id' ? 'Diterima' : 'Received') : (locale === 'id' ? 'Dalam proses' : 'In progress')}</Pill>
             </li>
             <li className="flex gap-3">
-              <span className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ${outstanding <= 0 ? 'bg-success ring-success/10' : paid > 0 ? 'bg-warning ring-warning/10' : 'bg-muted-foreground/40 ring-muted/60'}`} />
+              <span className={`relative z-10 mt-1 size-2.5 shrink-0 rounded-full ring-4 ${outstanding <= 0 ? 'bg-success ring-success/10' : paid > 0 ? 'bg-warning ring-warning/10' : 'bg-muted-foreground/40 ring-muted/60'}`} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">{outstanding <= 0 ? (locale === 'id' ? 'Pembayaran lunas' : 'Payment completed') : paid > 0 ? (locale === 'id' ? 'Pembayaran sebagian' : 'Partially paid') : (locale === 'id' ? 'Belum ada pembayaran' : 'Awaiting payment')}</p>
                 <p className="text-xs text-muted-foreground">{purchase.payments.length ? purchase.payments.map((payment) => `${formatDate(payment.date)} · ${formatIDR(payment.amount)}`).join('  |  ') : (locale === 'id' ? 'Belum ada pembayaran yang dicatat' : 'No payments recorded yet')}</p>
