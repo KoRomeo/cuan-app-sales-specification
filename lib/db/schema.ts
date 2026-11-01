@@ -69,6 +69,7 @@ export const financialAccounts = pgTable("financial_accounts", {
   businessId: text("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   type: text("type").notNull(),
+  accountNumber: text("account_number"),
   openingBalance: decimal("opening_balance", { precision: 14, scale: 2 }).notNull().default("0"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
