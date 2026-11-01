@@ -35,14 +35,14 @@ export async function GET(request: Request) {
       .innerJoin(customers, eq(customers.id, orders.customerId))
       .where(eq(orders.businessId, businessId)).orderBy(desc(deliveries.date))
 
-    const grouped = new Map<string, { id: string; date: string; method: string; recipient: string; driverName: string; address: string; transportCost: string; transportAccount: string; orders: Array<{ id: string; customerId: string; customerName: string }> }>()
+    const grouped = new Map<string, { id: string; date: string; method: string; recipient: string; driverName: string; address: string; transportCost: string; transportAccount: string; orders: Array<{ id: string; customerId: string; customerName: string; status: string }> }>()
     for (const row of rows) {
       let delivery = grouped.get(row.id)
       if (!delivery) {
         delivery = { id: row.id, date: row.date, method: row.method, recipient: row.recipient, driverName: row.driverName, address: row.address, transportCost: row.transportCost, transportAccount: row.transportAccount, orders: [] }
         grouped.set(row.id, delivery)
       }
-      delivery.orders.push({ id: row.orderId, customerId: row.customerId, customerName: row.customerName })
+      delivery.orders.push({ id: row.orderId, customerId: row.customerId, customerName: row.customerName, status: row.orderStatus })
     }
     return NextResponse.json([...grouped.values()])
   } catch (error) {
