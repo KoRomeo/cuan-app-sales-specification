@@ -14,6 +14,7 @@ import { Pill, StockStatusBadge } from '@/components/common/status-badge'
 import type { Tone } from '@/components/common/tone'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { type MovementType, type Product, type StockMovement, stockStatusOf, TODAY } from '@/lib/data'
 import { formatIDR, formatDate, formatPercent } from '@/lib/format'
 
@@ -195,6 +196,10 @@ export function ProductsView() {
 export function StockView() {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [historyEvents, setHistoryEvents] = useState<Array<{ type: 'purchase' | 'order'; id: string; date: string; createdAt: string; qty: number; unitPrice: number; total: number; status: string }>>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState('')
   const [products, setProducts] = useState<Product[]>([])
   const [businessId, setBusinessId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -205,6 +210,23 @@ export function StockView() {
     const result = await response.json()
     if (!response.ok || !Array.isArray(result.products)) throw new Error(result.error ?? 'Unable to load stock')
     setProducts(result.products.map((row: Record<string, unknown>) => toProduct(row, Number(row.stock ?? 0))))
+  }
+  async function showProductHistory(product: Product) {
+    setSelectedProduct(product)
+    setHistoryEvents([])
+    setHistoryError('')
+    setHistoryLoading(true)
+    try {
+      const business = await getCurrentBusiness()
+      const response = await fetch(`/api/stock/${encodeURIComponent(product.id)}/history?businessId=${encodeURIComponent(business.id)}`)
+      const result = await response.json()
+      if (!response.ok || !Array.isArray(result.events)) throw new Error(result.error ?? 'Unable to load product history')
+      setHistoryEvents(result.events)
+    } catch (reason) {
+      setHistoryError(reason instanceof Error ? reason.message : 'Unable to load product history')
+    } finally {
+      setHistoryLoading(false)
+    }
   }
   useEffect(() => { loadStock().catch((reason) => setError(reason instanceof Error ? reason.message : 'Unable to load stock')) }, [])
   const sorted = [...products].sort((a, b) => a.stock - b.stock)
@@ -267,10 +289,38 @@ export function StockView() {
           { value: 'low', label: t('stock.low'), predicate: (p) => stockStatusOf(p) === 'low' },
           { value: 'negative', label: t('stock.negative'), predicate: (p) => p.stock < 0 },
         ]}
-        rowHref={() => '/stock-movements'}
+        onRowClick={showProductHistory}
         deletable={false}
         editable={false}
       />
+      <Dialog open={!!selectedProduct} onOpenChange={(next) => { if (!next) setSelectedProduct(null) }}>
+        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-2xl">
+          <div className="space-y-1">
+            <DialogTitle>{selectedProduct?.name ?? 'Product activity'}</DialogTitle>
+            <DialogDescription>Riwayat pembelian dan penjualan produk ini.</DialogDescription>
+          </div>
+          {historyLoading ? <p className="py-8 text-center text-sm text-muted-foreground">Memuat riwayat transaksi…</p>
+            : historyError ? <p role="alert" className="py-5 text-sm text-destructive">{historyError}</p>
+            : historyEvents.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">Belum ada transaksi pembelian atau penjualan untuk produk ini.</p>
+            : <div className="space-y-3">
+              {historyEvents.map((event, index) => <div key={event.type + event.id + index} className="rounded-lg border bg-card p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{event.type === 'purchase' ? 'Pembelian' : 'Penjualan'}</p>
+                    <p className="font-mono text-sm font-semibold text-primary">{event.id}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{formatDate(event.date)} · {new Date(event.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                  <Pill tone={event.type === 'purchase' ? 'success' : 'primary'}>{event.type === 'purchase' ? 'Stok masuk' : 'Stok keluar'}</Pill>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div><p className="text-xs text-muted-foreground">Jumlah</p><p className="font-mono font-semibold tabular-nums">{event.qty.toLocaleString('id-ID')} unit</p></div>
+                  <div><p className="text-xs text-muted-foreground">Harga per unit</p><p className="font-mono font-semibold tabular-nums">{formatIDR(event.unitPrice)}</p></div>
+                  <div className="col-span-2 sm:col-span-1"><p className="text-xs text-muted-foreground">Total transaksi</p><p className="font-mono font-semibold tabular-nums">{formatIDR(event.total)}</p></div>
+                </div>
+              </div>)}
+            </div>}
+        </DialogContent>
+      </Dialog>
       <FormDialog
         open={open}
         onOpenChange={setOpen}
