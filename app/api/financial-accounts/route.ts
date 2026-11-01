@@ -37,8 +37,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { businessId, name, type, openingBalance = 0 } = body
-    if (typeof businessId !== "string" || !businessId.trim() || typeof name !== "string" || !name.trim() || !["cash", "bank"].includes(type)) {
+    const { businessId, name, type, accountNumber, openingBalance = 0 } = body
+    if (typeof businessId !== "string" || !businessId.trim() || typeof name !== "string" || !name.trim() || !["cash", "bank"].includes(type) || (type === "bank" && (typeof accountNumber !== "string" || !accountNumber.trim()))) {
       return NextResponse.json({ error: "businessId, name, and a valid account type are required" }, { status: 400 })
     }
     if (typeof openingBalance !== "number" || !Number.isFinite(openingBalance) || openingBalance < 0) {
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     const created = await db.transaction(async (tx) => {
       const id = `FA-${crypto.randomUUID()}`
       const [account] = await tx.insert(financialAccounts).values({
-        id, businessId, name: name.trim(), type, openingBalance: String(openingBalance), active: true,
+        id, businessId, name: name.trim(), type, accountNumber: type === "bank" ? accountNumber.trim() : null, openingBalance: String(openingBalance), active: true,
       }).returning()
       if (openingBalance > 0) {
         const entryId = `JE-OPENING-${id}`
