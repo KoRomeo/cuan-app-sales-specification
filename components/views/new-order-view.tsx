@@ -70,7 +70,6 @@ export function NewOrderView() {
   const [notes, setNotes] = useState('')
   const [draftReady, setDraftReady] = useState(false)
   const [draftExists, setDraftExists] = useState(false)
-  const [discardOpen, setDiscardOpen] = useState(false)
   const [leaveOpen, setLeaveOpen] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const draftKey = business?.id ? `cuanapp:order-draft:${business.id}` : null
@@ -134,7 +133,6 @@ export function NewOrderView() {
     setPaymentAccount('')
     setDraftExists(false)
     setLastSaved(null)
-    setDiscardOpen(false)
     toast.success(locale === 'id' ? 'Draft order dibuang.' : 'Order draft discarded.')
   }
 
