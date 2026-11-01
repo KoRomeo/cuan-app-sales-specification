@@ -14,6 +14,7 @@ export function DocumentPreview({
   onOpenChange,
   customerOverride,
   productNames,
+  bankAccounts = [],
 }: {
   order: Order
   kind: 'invoice' | 'delivery'
@@ -21,6 +22,7 @@ export function DocumentPreview({
   onOpenChange: (open: boolean) => void
   customerOverride?: { id: string; name: string; address?: string | null } | null
   productNames?: Record<string, string>
+  bankAccounts?: Array<{ name: string; accountNumber: string | null }>
 }) {
   const { t, features } = useApp()
   const customer = customerOverride ?? customerById(order.customerId)
@@ -113,8 +115,8 @@ export function DocumentPreview({
                 <div>Hormat Kami</div>
               </section>
               <section className="mt-6 space-y-1 text-[9px]">
-                <p>Metode Pembayaran :</p>
-                <p>Cash atau Transfer Bank BCA | No. Rekening: 123-456-789</p>
+                <p>Metode Pembayaran: Tunai atau transfer bank</p>
+                {bankAccounts.length > 0 ? bankAccounts.map((account) => <p key={account.name}>{account.name} · No. Rekening: {account.accountNumber}</p>) : <p>Silakan hubungi kami untuk informasi rekening pembayaran.</p>}
               </section>
             </article>
           ) : (
