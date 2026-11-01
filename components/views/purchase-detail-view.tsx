@@ -125,9 +125,9 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
           {total > 0 && <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={Math.round((paid / total) * 100)} aria-valuemin={0} aria-valuemax={100}><div className="h-full rounded-full bg-success" style={{ width: `${Math.min((paid / total) * 100, 100)}%` }} /></div>}
         </SectionCard>
         <SectionCard title="Activity log">
-          <ol className="space-y-4">
+          <ol className="relative ml-1 space-y-4 before:absolute before:bottom-2 before:left-[5px] before:top-2 before:w-px before:bg-border">
             <li className="flex gap-3">
-              <span className="mt-1 size-2.5 shrink-0 rounded-full bg-success ring-4 ring-success/10" />
+              <span className="relative z-10 mt-1 size-2.5 shrink-0 rounded-full bg-success ring-4 ring-success/10" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">{data.sourceInvoice ? 'Nota diterima untuk ditinjau' : 'Pembelian dicatat'}</p>
                 <p className="text-xs text-muted-foreground">{new Date(data.sourceInvoice?.createdAt ?? data.createdAt).toLocaleString('id-ID')}</p>
@@ -135,7 +135,7 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
               <Pill tone="success">Selesai</Pill>
             </li>
             <li className="flex gap-3">
-              <span className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ${data.sourceInvoice?.status === 'confirmed' || !data.sourceInvoice ? 'bg-success ring-success/10' : 'bg-warning ring-warning/10'}`} />
+              <span className={`relative z-10 mt-1 size-2.5 shrink-0 rounded-full ring-4 ${data.sourceInvoice?.status === 'confirmed' || !data.sourceInvoice ? 'bg-success ring-success/10' : 'bg-warning ring-warning/10'}`} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">Nota dikonfirmasi</p>
                 <p className="text-xs text-muted-foreground">{data.sourceInvoice?.confirmedAt ? new Date(data.sourceInvoice.confirmedAt).toLocaleString('id-ID') : data.sourceInvoice?.status === 'confirmed' ? 'Konfirmasi tercatat' : 'Menunggu pemeriksaan dan konfirmasi nota'}</p>
