@@ -307,10 +307,10 @@ export function StockView() {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{event.type === 'purchase' ? 'Pembelian' : 'Penjualan'}</p>
-                    <p className="font-mono text-sm font-semibold text-primary">{event.id}</p>
+                    {event.type === 'purchase' ? <Link href={`/purchases/${encodeURIComponent(event.id)}`} className="font-mono text-sm font-semibold text-primary hover:underline">{event.id}</Link> : <Link href={`/orders/${encodeURIComponent(event.id)}`} className="font-mono text-sm font-semibold text-primary hover:underline">{event.id}</Link>}
                     <p className="mt-1 text-xs text-muted-foreground">{formatDate(event.date)} · {new Date(event.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
-                  <Pill tone={event.type === 'purchase' ? 'success' : 'primary'}>{event.type === 'purchase' ? 'Stok masuk' : 'Stok keluar'}</Pill>
+                  <Pill tone={event.status === 'cancelled' ? 'neutral' : event.type === 'purchase' ? 'success' : 'primary'}>{event.status === 'cancelled' ? 'Dibatalkan' : event.type === 'purchase' ? 'Stok masuk' : 'Stok keluar'}</Pill>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <div><p className="text-xs text-muted-foreground">Jumlah</p><p className="font-mono font-semibold tabular-nums">{event.qty.toLocaleString('id-ID')} unit</p></div>
