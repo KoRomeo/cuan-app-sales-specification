@@ -39,7 +39,7 @@ const fetcher = async (url: string) => {
   return result
 }
 type DetailResponse = {
-  id: string; date: string; customerId: string; status: Order['status']; dueDate: string | null; notes: string | null
+  id: string; date: string; createdAt: string; customerId: string; status: Order['status']; dueDate: string | null; notes: string | null
   customer: { id: string; name: string; phone: string | null; address: string | null } | null
   items: Array<{ id: string; productId: string; qty: number; price: string | number; discount: string | number; discountType?: 'amount' | 'percent'; unitCost: string | number }>
   products: Array<{ id: string; name: string; averageCost: string | number; stock: string | number }>
@@ -49,7 +49,7 @@ type DetailResponse = {
 }
 
 export function OrderDetailView({ orderId }: { orderId: string }) {
-  const { t, features } = useApp()
+  const { t, features, locale } = useApp()
   const { data, error, mutate } = useSWR<DetailResponse>(`/api/orders/${encodeURIComponent(orderId)}`, fetcher)
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
   const { data: financialAccounts } = useSWR<Array<{ id: string; name: string; active: boolean; type: 'cash' | 'bank'; accountNumber: string | null }>>(business?.id ? `/api/financial-accounts?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
@@ -309,6 +309,15 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
             )}
           </SectionCard>
 
+          <SectionCard title={locale === 'id' ? 'Log aktivitas' : 'Activity log'}>
+            <ol className="space-y-4">
+              <li className="flex gap-3"><span className="mt-1 size-2.5 shrink-0 rounded-full bg-success ring-4 ring-success/10" /><div className="min-w-0 flex-1"><p className="text-sm font-medium">{locale === 'id' ? 'Pesanan disiapkan' : 'Order prepared'}</p><p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleString(locale === 'id' ? 'id-ID' : 'en-US')}</p></div><Pill tone="success">{locale === 'id' ? 'Selesai' : 'Done'}</Pill></li>
+              <li className="flex gap-3"><span className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ${order.status === 'ready' || order.status === 'delivered' ? 'bg-success ring-success/10' : 'bg-muted-foreground/40 ring-muted/60'}`} /><div className="min-w-0 flex-1"><p className="text-sm font-medium">{locale === 'id' ? 'Pesanan siap diantar' : 'Order ready for delivery'}</p><p className="text-xs text-muted-foreground">{order.status === 'ready' || order.status === 'delivered' ? (locale === 'id' ? 'Pesanan telah disiapkan untuk pengiriman' : 'Order marked ready for delivery') : (locale === 'id' ? 'Menunggu pesanan disiapkan' : 'Waiting for order preparation')}</p></div><Pill tone={order.status === 'ready' || order.status === 'delivered' ? 'success' : 'neutral'}>{order.status === 'ready' || order.status === 'delivered' ? (locale === 'id' ? 'Selesai' : 'Done') : (locale === 'id' ? 'Menunggu' : 'Pending')}</Pill></li>
+              <li className="flex gap-3"><span className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ${order.delivery ? 'bg-success ring-success/10' : 'bg-muted-foreground/40 ring-muted/60'}`} /><div className="min-w-0 flex-1"><p className="text-sm font-medium">{locale === 'id' ? 'Pesanan dalam perjalanan' : 'Order in transit'}</p><p className="text-xs text-muted-foreground">{order.delivery ? `${locale === 'id' ? 'Pengiriman' : 'Delivery'} · ${formatDate(order.delivery.date)}` : (locale === 'id' ? 'Pengiriman belum dibuat' : 'Delivery has not been created')}</p></div><Pill tone={order.delivery ? 'success' : 'neutral'}>{order.delivery ? (locale === 'id' ? 'Tercatat' : 'Recorded') : (locale === 'id' ? 'Menunggu' : 'Pending')}</Pill></li>
+              <li className="flex gap-3"><span className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ${order.status === 'delivered' ? 'bg-success ring-success/10' : 'bg-muted-foreground/40 ring-muted/60'}`} /><div className="min-w-0 flex-1"><p className="text-sm font-medium">{locale === 'id' ? 'Pesanan sampai di tujuan' : 'Order delivered'}</p><p className="text-xs text-muted-foreground">{order.status === 'delivered' ? (order.delivery ? formatDate(order.delivery.date) : (locale === 'id' ? 'Status terkirim' : 'Marked as delivered')) : (locale === 'id' ? 'Menunggu konfirmasi penerimaan' : 'Waiting for delivery confirmation')}</p></div><Pill tone={order.status === 'delivered' ? 'success' : 'neutral'}>{order.status === 'delivered' ? (locale === 'id' ? 'Selesai' : 'Done') : (locale === 'id' ? 'Menunggu' : 'Pending')}</Pill></li>
+              <li className="flex gap-3"><span className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ${outstanding <= 0 ? 'bg-success ring-success/10' : paid > 0 ? 'bg-warning ring-warning/10' : 'bg-muted-foreground/40 ring-muted/60'}`} /><div className="min-w-0 flex-1"><p className="text-sm font-medium">{outstanding <= 0 ? (locale === 'id' ? 'Pembayaran lunas' : 'Payment completed') : paid > 0 ? (locale === 'id' ? 'Pembayaran sebagian' : 'Partially paid') : (locale === 'id' ? 'Belum ada pembayaran' : 'Awaiting payment')}</p><p className="text-xs text-muted-foreground">{order.payments.length ? order.payments.map((payment) => `${formatDate(payment.date)} · ${formatIDR(payment.amount)}`).join('  |  ') : (locale === 'id' ? 'Belum ada pembayaran yang dicatat' : 'No payments recorded yet')}</p></div><Pill tone={outstanding <= 0 ? 'success' : paid > 0 ? 'warning' : 'neutral'}>{outstanding <= 0 ? (locale === 'id' ? 'Lunas' : 'Paid') : paid > 0 ? (locale === 'id' ? 'Sebagian' : 'Partial') : (locale === 'id' ? 'Belum dibayar' : 'Unpaid')}</Pill></li>
+            </ol>
+          </SectionCard>
           <SectionCard title={t('orders.profitability')}>
             <dl className="divide-y">
               <DetailRow label={t('orders.revenue')}><span className="font-mono">{formatIDR(total)}</span></DetailRow>
