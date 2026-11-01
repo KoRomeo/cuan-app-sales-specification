@@ -172,7 +172,7 @@ export function NewOrderView() {
           try {
             const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
             const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-              id: `ORD-${Date.now()}`, businessId: business.id, date: orderDate, customerId: form.get('customerId'), status: 'requested', dueDate: dueDate || null, notes: notes || null, paidAmount: Number(paid || 0), paymentAccount: selectedPaymentAccount, paymentDate: orderDate, paymentId: Number(paid || 0) > 0 ? `PAY-ORD-${Date.now()}` : undefined,
+              id: `ORD-${Date.now()}`, businessId: business.id, date: orderDate, customerId, status: 'requested', dueDate: dueDate || null, notes: notes || null, paidAmount: Number(paid || 0), paymentAccount: selectedPaymentAccount, paymentDate: orderDate, paymentId: Number(paid || 0) > 0 ? `PAY-ORD-${Date.now()}` : undefined,
               items: lines.map((line) => ({ id: `OI-${Date.now()}-${line.key}`, productId: line.productId, qty: line.qty, price: line.price, discount: line.discount, discountType: line.discountType, unitCost: productsById.get(line.productId)?.averageCost ?? 0 })),
             }) })
             const result = await response.json()
