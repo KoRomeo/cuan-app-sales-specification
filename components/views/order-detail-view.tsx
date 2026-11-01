@@ -52,7 +52,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
   const { t, features } = useApp()
   const { data, error, mutate } = useSWR<DetailResponse>(`/api/orders/${encodeURIComponent(orderId)}`, fetcher)
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', fetcher)
-  const { data: financialAccounts } = useSWR<Array<{ id: string; name: string; active: boolean }>>(business?.id ? `/api/financial-accounts?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
+  const { data: financialAccounts } = useSWR<Array<{ id: string; name: string; active: boolean; type: 'cash' | 'bank'; accountNumber: string | null }>>(business?.id ? `/api/financial-accounts?businessId=${encodeURIComponent(business.id)}` : null, fetcher)
   const [doc, setDoc] = useState<'invoice' | 'delivery' | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -355,7 +355,7 @@ export function OrderDetailView({ orderId }: { orderId: string }) {
         </div>
       </div>
 
-      {doc && <DocumentPreview order={order} kind={doc} open={!!doc} onOpenChange={(o) => !o && setDoc(null)} customerOverride={customer ? { id: customer.id, name: customer.name, address: customer.address } : null} productNames={Object.fromEntries(data.products.map((product) => [product.id, product.name]))} />}
+      {doc && <DocumentPreview order={order} kind={doc} open={!!doc} onOpenChange={(o) => !o && setDoc(null)} customerOverride={customer ? { id: customer.id, name: customer.name, address: customer.address } : null} productNames={Object.fromEntries(data.products.map((product) => [product.id, product.name]))} bankAccounts={(financialAccounts ?? []).filter((account) => account.active && account.type === "bank" && account.accountNumber).map(({ name, accountNumber }) => ({ name, accountNumber }))} />}
       <FormDialog
         open={editOpen}
         onOpenChange={setEditOpen}
