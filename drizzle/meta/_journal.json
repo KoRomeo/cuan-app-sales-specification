@@ -127,6 +127,13 @@
       "when": 1793440000002,
       "tag": "0017_purchase_invoice_total_override",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793530000000,
+      "tag": "0018_financial_account_number",
+      "breakpoints": true
     }
   ]
 }
