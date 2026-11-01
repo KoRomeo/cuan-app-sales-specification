@@ -111,6 +111,7 @@ interface DataTableProps<T> {
   addLabel?: string
   onAdd?: () => void
   rowHref?: (row: T) => string
+  onRowClick?: (row: T) => void
   contextActions?: (row: T) => RowAction[]
   editable?: boolean
   deletable?: boolean
@@ -135,6 +136,7 @@ export function DataTable<T>({
   addLabel,
   onAdd,
   rowHref,
+  onRowClick,
   contextActions,
   editable = true,
   deletable = true,
@@ -420,8 +422,9 @@ export function DataTable<T>({
                       return
                     }
                     if (href) router.push(href)
+                    else onRowClick?.(row)
                   }}
-                  className={cn('border-b transition-colors last:border-0 hover:bg-muted/40', (href || (selectable && selectionMode)) && 'cursor-pointer', selectable && selectionMode && selectedRowIds.includes(getRowId(row)) && 'bg-primary/5')}
+                  className={cn('border-b transition-colors last:border-0 hover:bg-muted/40', (href || onRowClick || (selectable && selectionMode)) && 'cursor-pointer', selectable && selectionMode && selectedRowIds.includes(getRowId(row)) && 'bg-primary/5')}
                 >
                   {selectable && selectionMode && <td className="w-10 px-3"><input aria-label={t('common.selectRow', { id: getRowId(row) })} type="checkbox" checked={selectedRowIds.includes(getRowId(row))} onClick={(event) => event.stopPropagation()} onChange={(event) => { const ids = new Set(selectedRowIds); event.target.checked ? ids.add(getRowId(row)) : ids.delete(getRowId(row)); onSelectedRowIdsChange?.([...ids]) }} /></td>}
                   {visibleColumns.map((c, index) => {
