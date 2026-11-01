@@ -71,6 +71,7 @@ export function NewOrderView() {
   const [draftReady, setDraftReady] = useState(false)
   const [draftExists, setDraftExists] = useState(false)
   const [leaveOpen, setLeaveOpen] = useState(false)
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const draftKey = business?.id ? `cuanapp:order-draft:${business.id}` : null
 
@@ -113,6 +114,27 @@ export function NewOrderView() {
       toast.error(locale === 'id' ? 'Draft tidak dapat disimpan di browser ini.' : 'Unable to save draft in this browser.')
     }
   }, [draftReady, draftKey, customerId, orderDate, dueDate, notes, lines, paid, paymentAccount, locale])
+
+  useEffect(() => {
+    const interceptInternalNavigation = (event: MouseEvent) => {
+      if (!draftExists || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      const target = event.target
+      if (!(target instanceof Element)) return
+      const anchor = target.closest('a[href]') as HTMLAnchorElement | null
+      if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download')) return
+      let destination: URL
+      try { destination = new URL(anchor.href) } catch { return }
+      if (destination.origin !== window.location.origin) return
+      const nextPath = destination.pathname + destination.search + destination.hash
+      if (destination.pathname === window.location.pathname) return
+      event.preventDefault()
+      event.stopPropagation()
+      setPendingNavigation(nextPath)
+      setLeaveOpen(true)
+    }
+    document.addEventListener('click', interceptInternalNavigation, true)
+    return () => document.removeEventListener('click', interceptInternalNavigation, true)
+  }, [draftExists])
 
   const saveDraftNow = () => {
     if (!draftKey) return
@@ -316,7 +338,7 @@ export function NewOrderView() {
                 {lastSaved && <span>{locale === 'id' ? 'Tersimpan' : 'Saved'} {lastSaved.toLocaleTimeString(locale === 'id' ? 'id-ID' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>}
               </div>
               <div className="flex gap-2">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setLeaveOpen(true)}>
+                <Button type="button" variant="outline" className="flex-1" onClick={() => { setPendingNavigation('/orders'); setLeaveOpen(true) }}>
                   {t('common.cancel')}
                 </Button>
                 <Button type="submit" className="flex-1" disabled={isSaving || (Number(paid || 0) > 0 && !selectedPaymentAccount)}>{isSaving ? 'Saving…' : (locale === 'id' ? 'Simpan Order' : 'Save Order')}</Button>
@@ -332,8 +354,8 @@ export function NewOrderView() {
             <DialogDescription>{locale === 'id' ? 'Kamu sedang meninggalkan halaman Order. Pilih untuk menyimpan draft sementara atau membuangnya.' : 'You are leaving the Order page. Choose whether to save this progress as a draft or discard it.'}</DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col-reverse sm:flex-row">
-            <Button type="button" variant="outline" onClick={() => { discardDraft(); router.push('/orders') }}><Trash2 />{locale === 'id' ? 'Buang Draft' : 'Discard Draft'}</Button>
-            <Button type="button" onClick={() => { saveDraftNow(); setLeaveOpen(false); router.push('/orders') }}><Save />{locale === 'id' ? 'Simpan Draft' : 'Save Draft'}</Button>
+            <Button type="button" variant="outline" onClick={() => { discardDraft(); router.push(pendingNavigation ?? '/orders'); setPendingNavigation(null) }}><Trash2 />{locale === 'id' ? 'Buang Draft' : 'Discard Draft'}</Button>
+            <Button type="button" onClick={() => { saveDraftNow(); setLeaveOpen(false); router.push(pendingNavigation ?? '/orders'); setPendingNavigation(null) }}><Save />{locale === 'id' ? 'Simpan Draft' : 'Save Draft'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
