@@ -165,6 +165,14 @@
 }
 
 .cuan-loading-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  transform: none !important;
   background: rgb(255 255 255 / 5%);
   -webkit-backdrop-filter: blur(1px);
   backdrop-filter: blur(1px);
