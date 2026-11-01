@@ -25,12 +25,13 @@ const fetcher = async (url: string) => {
   return data
 }
 type PurchaseDetail = {
-  id: string; date: string; supplierId: string; dueDate: string | null; notes: string | null; status?: string; totalOverride?: string | number | null
+  id: string; date: string; createdAt: string; supplierId: string; dueDate: string | null; notes: string | null; status?: string; totalOverride?: string | number | null
   supplier: { id: string; name: string; contact?: string | null; address?: string | null } | null
   items: Array<{ id: string; productId: string; qty: number; unitCost: string | number; discount?: string | number; discountType?: "amount" | "percent" }>
   products: Array<{ id: string; name: string; stock: string | number; averageCost: string | number }>
   payments: Array<{ id: string; date: string; amount: string | number; account: string }>
-  sourceInvoice: { id: string; fileName: string; createdAt: string; mimeType: string | null } | null
+  sourceInvoice: { id: string; fileName: string; createdAt: string; mimeType: string | null; status: string; confirmedAt: string | null } | null
+  stockMovements: Array<{ id: string; date: string; qty: number; reference: string }>
 }
 export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
   const { t } = useApp()
@@ -122,6 +123,42 @@ export function PurchaseDetailView({ purchaseId }: { purchaseId: string }) {
             </DetailRow>
           </dl>
           {total > 0 && <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={Math.round((paid / total) * 100)} aria-valuemin={0} aria-valuemax={100}><div className="h-full rounded-full bg-success" style={{ width: `${Math.min((paid / total) * 100, 100)}%` }} /></div>}
+        </SectionCard>
+        <SectionCard title="Activity log">
+          <ol className="space-y-4">
+            <li className="flex gap-3">
+              <span className="mt-1 size-2.5 shrink-0 rounded-full bg-success ring-4 ring-success/10" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{data.sourceInvoice ? 'Nota diterima untuk ditinjau' : 'Pembelian dicatat'}</p>
+                <p className="text-xs text-muted-foreground">{new Date(data.sourceInvoice?.createdAt ?? data.createdAt).toLocaleString('id-ID')}</p>
+              </div>
+              <Pill tone="success">Selesai</Pill>
+            </li>
+            <li className="flex gap-3">
+              <span className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ${data.sourceInvoice?.status === 'confirmed' || !data.sourceInvoice ? 'bg-success ring-success/10' : 'bg-warning ring-warning/10'}`} />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">Nota dikonfirmasi</p>
+                <p className="text-xs text-muted-foreground">{data.sourceInvoice?.confirmedAt ? new Date(data.sourceInvoice.confirmedAt).toLocaleString('id-ID') : data.sourceInvoice?.status === 'confirmed' ? 'Konfirmasi tercatat' : 'Menunggu pemeriksaan dan konfirmasi nota'}</p>
+              </div>
+              <Pill tone={data.sourceInvoice?.status === 'confirmed' || !data.sourceInvoice ? 'success' : 'warning'}>{data.sourceInvoice?.status === 'confirmed' || !data.sourceInvoice ? 'Selesai' : 'Menunggu'}</Pill>
+            </li>
+            <li className="flex gap-3">
+              <span className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ${data.stockMovements.length ? 'bg-success ring-success/10' : 'bg-warning ring-warning/10'}`} />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{data.stockMovements.length ? 'Barang sampai di gudang' : 'Barang dalam perjalanan'}</p>
+                <p className="text-xs text-muted-foreground">{data.stockMovements.length ? `Stok diterima · ${formatDate(data.stockMovements[0].date)}` : 'Penerimaan barang belum dicatat'}</p>
+              </div>
+              <Pill tone={data.stockMovements.length ? 'success' : 'warning'}>{data.stockMovements.length ? 'Diterima' : 'Dalam proses'}</Pill>
+            </li>
+            <li className="flex gap-3">
+              <span className={`mt-1 size-2.5 shrink-0 rounded-full ring-4 ${outstanding <= 0 ? 'bg-success ring-success/10' : paid > 0 ? 'bg-warning ring-warning/10' : 'bg-muted-foreground/40 ring-muted/60'}`} />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">{outstanding <= 0 ? 'Pembayaran lunas' : paid > 0 ? 'Pembayaran sebagian' : 'Belum ada pembayaran'}</p>
+                <p className="text-xs text-muted-foreground">{purchase.payments.length ? purchase.payments.map((payment) => `${formatDate(payment.date)} · ${formatIDR(payment.amount)}`).join('  |  ') : 'Belum ada pembayaran yang dicatat'}</p>
+              </div>
+              <Pill tone={outstanding <= 0 ? 'success' : paid > 0 ? 'warning' : 'neutral'}>{outstanding <= 0 ? 'Lunas' : paid > 0 ? 'Sebagian' : 'Belum dibayar'}</Pill>
+            </li>
+          </ol>
         </SectionCard>
         <SectionCard title="Purchase summary">
           <dl className="divide-y">
