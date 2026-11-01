@@ -57,14 +57,23 @@ function ThemeAwareToaster() {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('en')
+  const [localeReady, setLocaleReady] = useState(false)
   const [features, setFeatures] = useState<Features>(defaultFeatures)
 
   useEffect(() => {
+    const saved = window.localStorage.getItem('cuanapp:locale')
+    if (saved === 'id' || saved === 'en') setLocaleState(saved)
+    setLocaleReady(true)
+  }, [])
+
+  useEffect(() => {
     document.documentElement.lang = locale
-  }, [locale])
+    if (localeReady) window.localStorage.setItem('cuanapp:locale', locale)
+  }, [locale, localeReady])
 
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next)
+    window.localStorage.setItem('cuanapp:locale', next)
   }, [])
 
   const t = useCallback(
