@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     const rows = await db.select({
       id: deliveries.id, date: deliveries.date, method: deliveries.method,
       recipient: deliveries.recipient, driverName: deliveries.driverName, address: deliveries.address, transportCost: deliveries.transportCost, transportAccount: deliveries.transportAccount,
-      orderId: orders.id, customerId: orders.customerId, customerName: customers.name,
+      orderId: orders.id, customerId: orders.customerId, customerName: customers.name, orderStatus: orders.status,
     }).from(deliveries)
       .innerJoin(orders, and(eq(orders.id, deliveries.orderId), eq(orders.businessId, businessId)))
       .innerJoin(customers, eq(customers.id, orders.customerId))
