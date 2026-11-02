@@ -19,17 +19,19 @@ export function KpiCard({
   tone?: Tone
   href?: string
 }) {
+  const amountDigits = typeof value === 'string' ? value.replace(/\D/g, '').length : 0
+  const valueSize = amountDigits >= 12 ? 'text-xs sm:text-sm md:text-base' : amountDigits >= 9 ? 'text-sm sm:text-base md:text-lg' : 'text-xl md:text-2xl'
   const body = (
     <>
       <div className="flex items-start justify-between gap-3">
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
         {Icon && (
-          <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg', toneSoft[tone])}>
+          <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-md', toneSoft[tone])}>
             <Icon className="size-4" />
           </span>
         )}
       </div>
-      <p className={cn('mt-3 font-mono text-xl font-semibold tabular-nums tracking-tight md:text-2xl', tone === 'destructive' && toneText.destructive)}>
+      <p className={cn('mt-3 min-w-0 overflow-x-auto whitespace-nowrap font-mono font-semibold tabular-nums tracking-tight', valueSize, tone === 'destructive' && toneText.destructive)}>
         {value}
       </p>
       {hint && <div className="mt-1.5 text-xs text-muted-foreground">{hint}</div>}
@@ -40,7 +42,7 @@ export function KpiCard({
   )
 
   const className =
-    'group relative flex flex-col rounded-xl border bg-card p-4 shadow-xs transition-colors md:p-5'
+    'group relative flex flex-col rounded-md border bg-card p-4 shadow-xs transition-colors md:p-5'
 
   if (href) {
     return (

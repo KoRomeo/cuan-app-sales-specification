@@ -1,324 +1,527 @@
 'use client'
 
-import { AlertTriangle, CalendarClock, HandCoins, Plus, Receipt, Tags, Users, Wallet } from 'lucide-react'
-import { useState } from 'react'
-import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
-import { FormDialog } from '@/components/common/form-dialog'
+import useSWR from 'swr'
+
+import Link from 'next/link'
+import {
+  ArrowRight,
+  BarChart3,
+  BookOpen,
+  Boxes,
+  CheckCircle2,
+  PieChart,
+  Scale,
+  ShoppingBag,
+  TriangleAlert,
+  Waves,
+  type LucideIcon,
+} from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { type Column, DataTable, IdCell, Money } from '@/components/common/data-table'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
 import { PageHeader } from '@/components/common/page-header'
 import { PeriodSelect } from '@/components/common/period-select'
 import { SectionCard } from '@/components/common/section-card'
 import { Pill } from '@/components/common/status-badge'
 import { useApp } from '@/components/providers'
-import { Button } from '@/components/ui/button'
+import { SearchableSelect } from '@/components/common/searchable-select'
 import {
+  accountBalance,
+  balanceSheet,
+  cashFlow,
+  chartOfAccounts,
+  inventoryValue,
+  isBalanced,
+  journalEntries,
+} from '@/lib/accounting'
+import {
+  activeOrders,
   customerById,
   customers,
-  type Expense,
-  expenseCategories,
-  expenses,
   inRange,
-  isOverdue,
-  type Order,
-  orderOutstanding,
-  orders,
-  orderTotal,
+  lineSubtotal,
   type Period,
   periodRange,
-  profitAndLoss,
-  type Purchase,
+  productById,
+  products,
   purchaseOutstanding,
   purchases,
   purchaseTotal,
+  stockStatusOf,
   supplierById,
+  suppliers,
+  orderCogs,
+  orderTotal,
   TODAY,
 } from '@/lib/data'
-import { formatDate, formatIDR, formatPercent } from '@/lib/format'
+import { formatDate, formatNumber, formatPercent } from '@/lib/format'
+import type { TranslationKey } from '@/lib/i18n'
+import { cn } from '@/lib/utils'
 
-const accounts = ['Cash', 'Bank BCA', 'Bank Mandiri'].map((v) => ({ value: v, label: v }))
-const in7Days = '2026-10-13'
-
-function DueCell({ due, outstanding }: { due: string | null; outstanding: number }) {
+function ReportHeader({
+  title,
+  description,
+  period,
+  onPeriod,
+}: {
+  title: string
+  description: string
+  period?: Period
+  onPeriod?: (p: Period) => void
+}) {
   const { t } = useApp()
-  if (!due) return <span className="text-xs text-muted-foreground">{t('common.noDueDate')}</span>
-  if (isOverdue(due, outstanding))
+  return (
+    <PageHeader
+      breadcrumbs={[{ label: t('nav.reports'), href: '/reports' }, { label: title }]}
+      title={title}
+      description={description}
+      actions={period && onPeriod ? <PeriodSelect value={period} onChange={onPeriod} /> : undefined}
+    />
+  )
+}
+
+function AccountingGate({ children }: { children: React.ReactNode }) {
+  const { t, features } = useApp()
+  if (!features.accounting) {
     return (
-      <span className="flex items-center gap-2">
-        <span className="font-mono text-xs text-destructive">{formatDate(due)}</span>
-        <Pill tone="destructive">{t('common.overdue')}</Pill>
-      </span>
+      <div className="rounded-xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">
+        {t('reports.accountingOff')}
+      </div>
     )
-  return <span className="font-mono text-xs text-muted-foreground">{formatDate(due)}</span>
+  }
+  return <>{children}</>
 }
 
-export function ReceivablesView() {
-  const { t } = useApp()
-  const [open, setOpen] = useState(false)
-  const rows = orders.filter((o) => orderOutstanding(o) > 0).sort((a, b) => (a.date < b.date ? -1 : 1))
-  const total = rows.reduce((s, o) => s + orderOutstanding(o), 0)
-  const overdue = rows.filter((o) => isOverdue(o.dueDate, orderOutstanding(o)))
+interface ReportLink {
+  href: string
+  title: TranslationKey
+  desc: TranslationKey
+  icon: LucideIcon
+  group: 'operational' | 'financial'
+  accounting?: boolean
+}
 
-  const columns: Column<Order>[] = [
-    { key: 'id', header: t('orders.id'), cell: (o) => <IdCell>{o.id}</IdCell> },
-    { key: 'date', header: t('common.date'), cell: (o) => <span className="font-mono text-xs text-muted-foreground">{formatDate(o.date)}</span> },
-    { key: 'customer', header: t('common.customer'), cell: (o) => <span className="font-medium">{customerById(o.customerId)?.name}</span> },
-    { key: 'due', header: t('common.dueDate'), cell: (o) => <DueCell due={o.dueDate} outstanding={orderOutstanding(o)} /> },
-    { key: 'total', header: t('common.total'), align: 'right', cell: (o) => <Money value={orderTotal(o)} className="text-muted-foreground" /> },
-    { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (o) => <Money value={orderOutstanding(o)} className="font-semibold text-warning" /> },
+const reportLinks: ReportLink[] = [
+  { href: '/reports/sales', title: 'reports.sales', desc: 'reports.salesDesc', icon: BarChart3, group: 'operational' },
+  { href: '/reports/purchases', title: 'reports.purchase', desc: 'reports.purchaseDesc', icon: ShoppingBag, group: 'operational' },
+  { href: '/reports/inventory', title: 'reports.inventory', desc: 'reports.inventoryDesc', icon: Boxes, group: 'operational' },
+  { href: '/profit-loss', title: 'nav.profitLoss', desc: 'reports.plDesc', icon: PieChart, group: 'financial' },
+  { href: '/reports/balance-sheet', title: 'reports.balanceSheet', desc: 'reports.bsDesc', icon: Scale, group: 'financial', accounting: true },
+  { href: '/reports/cash-flow', title: 'reports.cashFlow', desc: 'reports.cfDesc', icon: Waves, group: 'financial', accounting: true },
+  { href: '/reports/general-ledger', title: 'reports.ledger', desc: 'reports.glDesc', icon: BookOpen, group: 'financial', accounting: true },
+]
+
+export function ReportsHubView() {
+  const { t, features } = useApp()
+  const visible = reportLinks.filter((r) => !r.accounting || features.accounting)
+  const groups: { label: string; items: ReportLink[] }[] = [
+    { label: t('nav.reports'), items: visible.filter((r) => r.group === 'operational') },
+    { label: t('reports.financial'), items: visible.filter((r) => r.group === 'financial') },
   ]
 
   return (
     <>
-      <PageHeader
-        breadcrumbs={[{ label: t('nav.finance') }, { label: t('nav.receivables') }]}
-        title={t('receivables.title')}
-        description={t('receivables.desc')}
-        actions={
-          <Button size="sm" onClick={() => setOpen(true)}>
-            <Wallet />
-            {t('orders.addPayment')}
-          </Button>
-        }
-      />
-      <KpiGrid>
-        <KpiCard label={t('receivables.total')} value={formatIDR(total)} icon={HandCoins} tone="warning" />
-        <KpiCard label={t('receivables.overdue')} value={formatIDR(overdue.reduce((s, o) => s + orderOutstanding(o), 0))} hint={`${overdue.length} ${t('common.orders')}`} icon={AlertTriangle} tone="destructive" />
-        <KpiCard label={t('receivables.dueSoon')} value={rows.filter((o) => o.dueDate && o.dueDate >= TODAY && o.dueDate <= in7Days).length} icon={CalendarClock} />
-        <KpiCard label={t('receivables.customersOwing')} value={new Set(rows.map((o) => o.customerId)).size} icon={Users} tone="neutral" />
-      </KpiGrid>
-      <DataTable
-        rows={rows}
-        columns={columns}
-        getRowId={(o) => o.id}
-        searchText={(o) => `${o.id} ${customerById(o.customerId)?.name}`}
-        filters={[
-          { value: 'all', label: t('common.all'), predicate: () => true },
-          { value: 'overdue', label: t('common.overdue'), predicate: (o) => isOverdue(o.dueDate, orderOutstanding(o)) },
-          { value: 'nodue', label: t('common.noDueDate'), predicate: (o) => !o.dueDate },
-        ]}
-        rowHref={(o) => `/orders/${o.id}`}
-        editable={false}
-        deletable={false}
-        contextActions={() => [{ label: t('orders.addPayment'), icon: Wallet, onSelect: () => setOpen(true) }]}
-      />
-      <FormDialog
-        open={open}
-        onOpenChange={setOpen}
-        title={t('orders.addPayment')}
-        description={t('receivables.allocationHint')}
-        fields={[
-          { name: 'customer', label: t('common.customer'), type: 'select', options: customers.filter((c) => rows.some((o) => o.customerId === c.id)).map((c) => ({ value: c.id, label: c.name })) },
-          { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'account', label: t('receivables.receiveTo'), type: 'select', options: accounts, half: true },
-          { name: 'amount', label: t('receivables.paymentAmount'), type: 'number', prefix: 'Rp' },
-        ]}
-      />
+      <PageHeader breadcrumbs={[{ label: t('nav.reports') }]} title={t('reports.title')} description={t('reports.desc')} />
+      <div className="flex flex-col gap-8">
+        {groups.map((g) => (
+          <section key={g.label} aria-label={g.label}>
+            <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">{g.label}</h2>
+            <div className="grid gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3">
+              {g.items.map((r) => (
+                <Link
+                  key={r.href}
+                  href={r.href}
+                  className="group flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-xs transition-colors hover:border-primary/40 md:p-5"
+                >
+                  <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <r.icon className="size-4.5" />
+                  </span>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold">{t(r.title)}</h3>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t(r.desc)}</p>
+                  </div>
+                  <span className="flex items-center gap-1 text-xs font-medium text-primary">
+                    {t('reports.open')}
+                    <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
     </>
   )
 }
 
-export function PayablesView() {
-  const { t } = useApp()
-  const [open, setOpen] = useState(false)
-  const rows = purchases.filter((p) => purchaseOutstanding(p) > 0)
-  const total = rows.reduce((s, p) => s + purchaseOutstanding(p), 0)
-  const overdue = rows.filter((p) => isOverdue(p.dueDate, purchaseOutstanding(p)))
-
-  const columns: Column<Purchase>[] = [
-    { key: 'id', header: t('purchases.id'), cell: (p) => <IdCell>{p.id}</IdCell> },
-    { key: 'date', header: t('common.date'), cell: (p) => <span className="font-mono text-xs text-muted-foreground">{formatDate(p.date)}</span> },
-    { key: 'supplier', header: t('common.supplier'), cell: (p) => <span className="font-medium">{supplierById(p.supplierId)?.name}</span> },
-    { key: 'due', header: t('common.dueDate'), cell: (p) => <DueCell due={p.dueDate} outstanding={purchaseOutstanding(p)} /> },
-    { key: 'total', header: t('common.total'), align: 'right', cell: (p) => <Money value={purchaseTotal(p)} className="text-muted-foreground" /> },
-    { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (p) => <Money value={purchaseOutstanding(p)} className="font-semibold text-warning" /> },
-  ]
-
-  return (
-    <>
-      <PageHeader
-        breadcrumbs={[{ label: t('nav.finance') }, { label: t('nav.payables') }]}
-        title={t('payables.title')}
-        description={t('payables.desc')}
-        actions={
-          <Button size="sm" onClick={() => setOpen(true)}>
-            <Wallet />
-            {t('orders.addPayment')}
-          </Button>
-        }
-      />
-      <KpiGrid>
-        <KpiCard label={t('payables.total')} value={formatIDR(total)} icon={HandCoins} tone="warning" />
-        <KpiCard label={t('receivables.overdue')} value={formatIDR(overdue.reduce((s, p) => s + purchaseOutstanding(p), 0))} icon={AlertTriangle} tone="destructive" />
-        <KpiCard label={t('receivables.dueSoon')} value={rows.filter((p) => p.dueDate && p.dueDate >= TODAY && p.dueDate <= in7Days).length} icon={CalendarClock} />
-        <KpiCard label={t('payables.suppliersOwed')} value={new Set(rows.map((p) => p.supplierId)).size} icon={Users} tone="neutral" />
-      </KpiGrid>
-      <DataTable
-        rows={rows}
-        columns={columns}
-        getRowId={(p) => p.id}
-        searchText={(p) => `${p.id} ${supplierById(p.supplierId)?.name}`}
-        filters={[
-          { value: 'all', label: t('common.all'), predicate: () => true },
-          { value: 'overdue', label: t('common.overdue'), predicate: (p) => isOverdue(p.dueDate, purchaseOutstanding(p)) },
-          { value: 'nodue', label: t('common.noDueDate'), predicate: (p) => !p.dueDate },
-        ]}
-        editable={false}
-        deletable={false}
-        contextActions={() => [{ label: t('orders.addPayment'), icon: Wallet, onSelect: () => setOpen(true) }]}
-      />
-      <FormDialog
-        open={open}
-        onOpenChange={setOpen}
-        title={t('orders.addPayment')}
-        fields={[
-          { name: 'purchase', label: t('purchases.id'), type: 'select', options: rows.map((p) => ({ value: p.id, label: `${p.id} · ${supplierById(p.supplierId)?.name}` })) },
-          { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'account', label: t('payables.payFrom'), type: 'select', options: accounts, half: true },
-          { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp' },
-        ]}
-      />
-    </>
-  )
+interface SalesRow {
+  id: string
+  name: string
+  qty: number
+  orders: number
+  revenue: number
+  cogs: number
 }
 
-export function ExpensesView() {
+export function SalesReportView() {
   const { t } = useApp()
-  const [open, setOpen] = useState(false)
-  const [catOpen, setCatOpen] = useState(false)
-  const total = expenses.reduce((s, e) => s + e.amount, 0)
-  const byCat = expenseCategories
-    .map((c) => [c, expenses.filter((e) => e.category === c).reduce((s, e) => s + e.amount, 0)] as const)
-    .filter(([, v]) => v > 0)
-    .sort((a, b) => b[1] - a[1])
+  const [period, setPeriod] = useState<Period>('thisMonth')
 
-  const columns: Column<Expense>[] = [
-    { key: 'id', header: 'ID', cell: (e) => <IdCell>{e.id}</IdCell> },
-    { key: 'date', header: t('common.date'), cell: (e) => <span className="font-mono text-xs text-muted-foreground">{formatDate(e.date)}</span> },
-    { key: 'category', header: t('common.category'), cell: (e) => <Pill tone="neutral">{e.category}</Pill> },
-    { key: 'description', header: t('common.description'), cell: (e) => <span className="font-medium">{e.description}</span> },
-    { key: 'account', header: t('common.account'), cell: (e) => <span className="text-muted-foreground">{e.account}</span> },
-    { key: 'amount', header: t('common.amount'), align: 'right', cell: (e) => <Money value={e.amount} /> },
+  const { orders, revenue, cogs, byCustomer, byProduct } = useMemo(() => {
+    const range = periodRange(period)
+    const orders = activeOrders().filter((o) => inRange(o.date, range))
+    const customerMap = new Map<string, SalesRow>()
+    const productMap = new Map<string, SalesRow>()
+    for (const o of orders) {
+      const c = customerMap.get(o.customerId) ?? {
+        id: o.customerId,
+        name: customerById(o.customerId)?.name ?? o.customerId,
+        qty: 0,
+        orders: 0,
+        revenue: 0,
+        cogs: 0,
+      }
+      c.orders += 1
+      c.revenue += orderTotal(o)
+      c.cogs += orderCogs(o)
+      c.qty += o.items.reduce((s, it) => s + it.qty, 0)
+      customerMap.set(c.id, c)
+      for (const it of o.items) {
+        const p = productMap.get(it.productId) ?? {
+          id: it.productId,
+          name: productById(it.productId)?.name ?? it.productId,
+          qty: 0,
+          orders: 0,
+          revenue: 0,
+          cogs: 0,
+        }
+        p.qty += it.qty
+        p.orders += 1
+        p.revenue += lineSubtotal(it)
+        p.cogs += it.qty * it.unitCost
+        productMap.set(p.id, p)
+      }
+    }
+    const byRevenue = (a: SalesRow, b: SalesRow) => b.revenue - a.revenue
+    return {
+      orders,
+      revenue: orders.reduce((s, o) => s + orderTotal(o), 0),
+      cogs: orders.reduce((s, o) => s + orderCogs(o), 0),
+      byCustomer: [...customerMap.values()].sort(byRevenue),
+      byProduct: [...productMap.values()].sort(byRevenue),
+    }
+  }, [period])
+
+  const columns = (nameHeader: string): Column<SalesRow>[] => [
+    { key: 'name', header: nameHeader, className: nameHeader === t('common.product') ? 'w-[32%]' : undefined, cell: (r) => <span className="block truncate font-medium" title={r.name}>{r.name}</span> },
+    { key: 'qty', header: t('common.qty'), align: 'right', cell: (r) => <span className="font-mono tabular-nums">{formatNumber(r.qty)}</span> },
+    { key: 'revenue', header: t('reports.revenue'), align: 'right', cell: (r) => <Money value={r.revenue} /> },
+    { key: 'profit', header: t('reports.grossProfit'), align: 'right', cell: (r) => <Money value={r.revenue - r.cogs} /> },
+    {
+      key: 'margin',
+      header: t('reports.margin'),
+      align: 'right',
+      cell: (r) => <span className="font-mono tabular-nums">{r.revenue ? formatPercent(((r.revenue - r.cogs) / r.revenue) * 100) : '—'}</span>,
+    },
   ]
 
   return (
     <>
-      <PageHeader
-        breadcrumbs={[{ label: t('nav.finance') }, { label: t('nav.expenses') }]}
-        title={t('expenses.title')}
-        description={t('expenses.desc')}
-        actions={
-          <Button size="sm" variant="outline" onClick={() => setCatOpen(true)}>
-            <Tags />
-            {t('expenses.addCategory')}
-          </Button>
-        }
-      />
+      <ReportHeader title={t('reports.sales')} description={t('reports.salesDesc')} period={period} onPeriod={setPeriod} />
       <KpiGrid>
-        <KpiCard label={t('expenses.total')} value={formatIDR(total)} icon={Receipt} />
-        <KpiCard label={t('expenses.largest')} value={byCat[0]?.[0] ?? '—'} hint={byCat[0] ? formatIDR(byCat[0][1]) : undefined} icon={Tags} tone="warning" />
-        <KpiCard label={t('expenses.count')} value={expenses.length} icon={Plus} tone="neutral" />
-        <KpiCard label={t('period.thisMonth')} value={formatIDR(expenses.filter((e) => inRange(e.date, periodRange('thisMonth'))).reduce((s, e) => s + e.amount, 0))} icon={CalendarClock} />
+        <KpiCard label={t('reports.revenue')} value={<Money value={revenue} />} icon={BarChart3} />
+        <KpiCard label={t('reports.orders')} value={formatNumber(orders.length)} icon={ShoppingBag} tone="neutral" />
+        <KpiCard
+          label={t('reports.aov')}
+          value={<Money value={orders.length ? revenue / orders.length : 0} />}
+          icon={Scale}
+          tone="warning"
+        />
+        <KpiCard label={t('reports.grossProfit')} value={<Money value={revenue - cogs} />} icon={PieChart} tone="success" />
       </KpiGrid>
-
-      <div className="grid gap-4 xl:grid-cols-4">
-        <div className="xl:col-span-3">
+      <div className="flex flex-col gap-6">
+        <SectionCard title={t('reports.byProduct')} bodyClassName="p-0">
           <DataTable
-            rows={expenses}
-            columns={columns}
-            getRowId={(e) => e.id}
-            searchText={(e) => `${e.id} ${e.category} ${e.description}`}
-            filters={[{ value: 'all', label: t('common.all'), predicate: () => true }, ...byCat.slice(0, 4).map(([c]) => ({ value: c, label: c, predicate: (e: Expense) => e.category === c }))]}
-            addLabel={t('expenses.add')}
-            onAdd={() => setOpen(true)}
+            rows={byProduct}
+            columns={columns(t('common.product'))}
+            getRowId={(r) => r.id}
+            searchText={(r) => r.name}
+            editable={false}
+            deletable={false}
+            pageSize={8}
           />
-        </div>
-        <SectionCard title={t('common.category')}>
-          <ul className="flex flex-col gap-3">
-            {byCat.map(([c, v]) => (
-              <li key={c}>
-                <div className="flex justify-between text-sm">
-                  <span>{c}</span>
-                  <span className="font-mono text-xs tabular-nums text-muted-foreground">{formatPercent((v / total) * 100)}</span>
-                </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${(v / byCat[0][1]) * 100}%` }} />
-                </div>
-                <p className="mt-1 font-mono text-[11px] tabular-nums text-muted-foreground">{formatIDR(v)}</p>
-              </li>
-            ))}
-          </ul>
+        </SectionCard>
+        <SectionCard title={t('reports.byCustomer')} bodyClassName="p-0">
+          <DataTable
+            rows={byCustomer}
+            columns={columns(t('common.customer'))}
+            getRowId={(r) => r.id}
+            searchText={(r) => r.name}
+            editable={false}
+            deletable={false}
+            pageSize={8}
+          />
         </SectionCard>
       </div>
-
-      <FormDialog
-        open={open}
-        onOpenChange={setOpen}
-        title={t('expenses.add')}
-        fields={[
-          { name: 'date', label: t('common.date'), type: 'date', defaultValue: TODAY, half: true },
-          { name: 'category', label: t('common.category'), type: 'select', half: true, options: expenseCategories.map((c) => ({ value: c, label: c })) },
-          { name: 'amount', label: t('common.amount'), type: 'number', prefix: 'Rp', half: true },
-          { name: 'account', label: t('common.account'), type: 'select', half: true, options: accounts },
-          { name: 'description', label: t('common.description'), type: 'textarea' },
-        ]}
-      />
-      <FormDialog open={catOpen} onOpenChange={setCatOpen} title={t('expenses.addCategory')} fields={[{ name: 'name', label: t('expenses.categoryName') }]} />
     </>
   )
 }
 
-function PlRow({ label, value, strong, negative, indent }: { label: string; value: number; strong?: boolean; negative?: boolean; indent?: boolean }) {
+export function PurchaseReportView() {
+  const { t } = useApp()
+  const [period, setPeriod] = useState<Period>('thisMonth')
+
+  const { list, total, outstanding, bySupplier } = useMemo(() => {
+    const range = periodRange(period)
+    const list = purchases.filter((p) => inRange(p.date, range))
+    const map = new Map<string, { id: string; name: string; count: number; total: number; outstanding: number }>()
+    for (const p of list) {
+      const s = map.get(p.supplierId) ?? {
+        id: p.supplierId,
+        name: supplierById(p.supplierId)?.name ?? p.supplierId,
+        count: 0,
+        total: 0,
+        outstanding: 0,
+      }
+      s.count += 1
+      s.total += purchaseTotal(p)
+      s.outstanding += purchaseOutstanding(p)
+      map.set(s.id, s)
+    }
+    return {
+      list,
+      total: list.reduce((s, p) => s + purchaseTotal(p), 0),
+      outstanding: list.reduce((s, p) => s + purchaseOutstanding(p), 0),
+      bySupplier: [...map.values()].sort((a, b) => b.total - a.total),
+    }
+  }, [period])
+
+  type Row = (typeof bySupplier)[number]
+  const columns: Column<Row>[] = [
+    { key: 'name', header: t('common.supplier'), cell: (r) => <span className="font-medium">{r.name}</span> },
+    { key: 'count', header: t('reports.purchaseCount'), align: 'right', cell: (r) => <span className="font-mono tabular-nums">{r.count}</span> },
+    { key: 'total', header: t('common.total'), align: 'right', cell: (r) => <Money value={r.total} /> },
+    { key: 'outstanding', header: t('common.outstanding'), align: 'right', cell: (r) => <Money value={r.outstanding} /> },
+  ]
+
   return (
-    <div className={`flex items-center justify-between gap-4 py-2.5 text-sm ${strong ? 'font-semibold' : ''} ${indent ? 'pl-4 text-muted-foreground' : ''}`}>
+    <>
+      <ReportHeader title={t('reports.purchase')} description={t('reports.purchaseDesc')} period={period} onPeriod={setPeriod} />
+      <KpiGrid>
+        <KpiCard label={t('reports.purchaseTotal')} value={<Money value={total} />} icon={ShoppingBag} />
+        <KpiCard label={t('reports.purchaseCount')} value={formatNumber(list.length)} icon={BarChart3} tone="neutral" />
+        <KpiCard label={t('common.outstanding')} value={<Money value={outstanding} />} icon={Scale} tone="warning" />
+        <KpiCard label={t('nav.suppliers')} value={formatNumber(suppliers.length)} icon={Boxes} tone="neutral" />
+      </KpiGrid>
+      <SectionCard title={t('reports.bySupplier')} bodyClassName="p-0">
+        <DataTable
+          rows={bySupplier}
+          columns={columns}
+          getRowId={(r) => r.id}
+          searchText={(r) => r.name}
+          editable={false}
+          deletable={false}
+        />
+      </SectionCard>
+    </>
+  )
+}
+
+export function InventoryReportView() {
+  const { t } = useApp()
+  const low = products.filter((p) => stockStatusOf(p) === 'low').length
+  const negative = products.filter((p) => stockStatusOf(p) === 'negative').length
+
+  const columns: Column<(typeof products)[number]>[] = [
+    { key: 'id', header: 'ID', cell: (p) => <IdCell>{p.id}</IdCell> },
+    { key: 'name', header: t('common.product'), className: 'w-[32%]', cell: (p) => <span className="block truncate font-medium" title={p.name}>{p.name}</span> },
+    {
+      key: 'stock',
+      header: t('nav.stock'),
+      align: 'right',
+      cell: (p) => (
+        <span className={cn('font-mono tabular-nums', p.stock < 0 && 'text-destructive')}>{formatNumber(p.stock)}</span>
+      ),
+    },
+    { key: 'min', header: t('reports.minimum'), align: 'right', cell: (p) => <span className="font-mono tabular-nums">{formatNumber(p.minimumStock)}</span> },
+    { key: 'avg', header: t('reports.avgCost'), align: 'right', cell: (p) => <Money value={p.averageCost} /> },
+    { key: 'value', header: t('reports.stockValue'), align: 'right', cell: (p) => <Money value={Math.max(p.stock, 0) * p.averageCost} /> },
+    {
+      key: 'status',
+      header: t('common.status'),
+      cell: (p) => {
+        const s = stockStatusOf(p)
+        return <Pill tone={s === 'negative' ? 'destructive' : s === 'low' ? 'warning' : 'success'}>{t(`stock.${s}`)}</Pill>
+      },
+    },
+  ]
+
+  return (
+    <>
+      <ReportHeader title={t('reports.inventory')} description={t('reports.inventoryDesc')} />
+      <KpiGrid>
+        <KpiCard label={t('reports.inventoryValue')} value={<Money value={inventoryValue()} />} icon={Boxes} />
+        <KpiCard label={t('nav.products')} value={formatNumber(products.length)} icon={ShoppingBag} tone="neutral" />
+        <KpiCard label={t('stock.low')} value={formatNumber(low)} icon={TriangleAlert} tone="warning" />
+        <KpiCard label={t('stock.negative')} value={formatNumber(negative)} icon={TriangleAlert} tone="destructive" />
+      </KpiGrid>
+      <DataTable
+        rows={products}
+        columns={columns}
+        getRowId={(p) => p.id}
+        searchText={(p) => `${p.id} ${p.name}`}
+        editable={false}
+        deletable={false}
+      />
+    </>
+  )
+}
+
+function StatementRow({
+  label,
+  value,
+  strong,
+  muted,
+}: {
+  label: string
+  value: number
+  strong?: boolean
+  muted?: boolean
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-between gap-4 py-2 text-sm',
+        strong && 'border-t font-semibold',
+        muted && 'text-muted-foreground',
+      )}
+    >
       <span>{label}</span>
-      <span className={`font-mono tabular-nums ${strong && value < 0 ? 'text-destructive' : ''}`}>
-        {negative ? `(${formatIDR(value)})` : formatIDR(value)}
-      </span>
+      <Money value={value} />
     </div>
   )
 }
 
-export function ProfitLossView() {
+export function BalanceSheetView() {
   const { t } = useApp()
-  const [period, setPeriod] = useState<Period>('thisMonth')
-  const pl = profitAndLoss(periodRange(period))
-  const pct = (v: number) => (pl.revenue ? formatPercent((v / pl.revenue) * 100) : '—')
+  const bs = balanceSheet(TODAY)
+  const balanced = bs.totalAssets === bs.totalLiabilities + bs.totalEquity
 
   return (
     <>
-      <PageHeader
-        breadcrumbs={[{ label: t('nav.finance') }, { label: t('nav.profitLoss') }]}
-        title={t('pl.title')}
-        description={t('pl.desc')}
-        actions={<PeriodSelect value={period} onChange={setPeriod} />}
-      />
-      <KpiGrid>
-        <KpiCard label={t('pl.revenue')} value={formatIDR(pl.revenue)} icon={HandCoins} />
-        <KpiCard label={t('pl.grossProfit')} value={formatIDR(pl.grossProfit)} hint={`${pct(pl.grossProfit)} ${t('dash.margin')}`} icon={Wallet} tone="success" />
-        <KpiCard label={t('pl.operating')} value={formatIDR(pl.operating)} icon={Receipt} tone="warning" />
-        <KpiCard label={t('pl.netProfit')} value={formatIDR(pl.netProfit)} hint={`${pct(pl.netProfit)} ${t('dash.margin')}`} icon={Wallet} tone={pl.netProfit < 0 ? 'destructive' : 'success'} />
-      </KpiGrid>
-
-      <SectionCard title={t('pl.statement')} description={t(`period.${period}`)} className="mx-auto max-w-3xl">
-        <div className="divide-y">
-          <PlRow label={t('pl.revenue')} value={pl.revenue} strong />
-          <PlRow label={t('pl.cogs')} value={pl.cogs} negative indent />
-          <div className="rounded-md bg-success/8 px-3">
-            <PlRow label={t('pl.grossProfit')} value={pl.grossProfit} strong />
-          </div>
-          <div className="py-1">
-            <p className="pt-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">{t('pl.operating')}</p>
-            <PlRow label={t('pl.transport')} value={pl.transport} negative indent />
-            {pl.expenseByCategory.map(([c, v]) => (
-              <PlRow key={c} label={c} value={v} negative indent />
+      <ReportHeader title={t('reports.balanceSheet')} description={t('reports.bsDesc')} />
+      <AccountingGate>
+        <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          <span>{t('reports.asOf', { date: formatDate(TODAY) })}</span>
+          <Pill tone={balanced ? 'success' : 'destructive'}>
+            {balanced ? <CheckCircle2 className="size-3" /> : <TriangleAlert className="size-3" />}
+            {balanced ? t('reports.balanced') : t('reports.notBalanced')}
+          </Pill>
+        </div>
+        <KpiGrid>
+          <KpiCard label={t('reports.totalAssets')} value={<Money value={bs.totalAssets} />} icon={Scale} />
+          <KpiCard label={t('reports.totalLiabilities')} value={<Money value={bs.totalLiabilities} />} icon={Scale} tone="warning" />
+          <KpiCard label={t('reports.totalEquity')} value={<Money value={bs.totalEquity} />} icon={Scale} tone="success" />
+          <KpiCard label={t('reports.currentEarnings')} value={<Money value={bs.currentEarnings} />} icon={PieChart} tone="neutral" />
+        </KpiGrid>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <SectionCard title={t('reports.assets')}>
+            {bs.assets.map((a) => (
+              <StatementRow key={a.account.code} label={a.account.name} value={a.balance} muted />
             ))}
-            <PlRow label={t('pl.operating')} value={pl.operating} negative />
-          </div>
-          <div className={`rounded-md px-3 ${pl.netProfit < 0 ? 'bg-destructive/8' : 'bg-primary/8'}`}>
-            <PlRow label={t('pl.netProfit')} value={pl.netProfit} strong />
+            <StatementRow label={t('reports.totalAssets')} value={bs.totalAssets} strong />
+          </SectionCard>
+          <div className="flex flex-col gap-6">
+            <SectionCard title={t('reports.liabilities')}>
+              {bs.liabilities.map((a) => (
+                <StatementRow key={a.account.code} label={a.account.name} value={a.balance} muted />
+              ))}
+              <StatementRow label={t('reports.totalLiabilities')} value={bs.totalLiabilities} strong />
+            </SectionCard>
+            <SectionCard title={t('reports.equity')}>
+              {bs.equity.map((a) => (
+                <StatementRow key={a.account.code} label={a.account.name} value={a.balance} muted />
+              ))}
+              <StatementRow label={t('reports.currentEarnings')} value={bs.currentEarnings} muted />
+              <StatementRow label={t('reports.totalEquity')} value={bs.totalEquity} strong />
+            </SectionCard>
           </div>
         </div>
-      </SectionCard>
+      </AccountingGate>
     </>
   )
+}
+
+export function CashFlowView() {
+  const { t } = useApp()
+  const [period, setPeriod] = useState<Period>('thisMonth')
+  const cf = useMemo(() => cashFlow(periodRange(period)), [period])
+
+  return (
+    <>
+      <ReportHeader title={t('reports.cashFlow')} description={t('reports.cfDesc')} period={period} onPeriod={setPeriod} />
+      <AccountingGate>
+        <KpiGrid>
+          <KpiCard label={t('reports.cashIn')} value={<Money value={cf.customerPayments} />} icon={Waves} tone="success" />
+          <KpiCard label={t('reports.cashOutSuppliers')} value={<Money value={cf.supplierPayments} />} icon={Waves} tone="warning" />
+          <KpiCard label={t('reports.cashOutExpenses')} value={<Money value={cf.expensesPaid} />} icon={Waves} tone="warning" />
+          <KpiCard label={t('reports.netCash')} value={<Money value={cf.net} />} icon={Scale} tone={cf.net < 0 ? 'destructive' : 'primary'} />
+        </KpiGrid>
+        <SectionCard title={t('reports.cashFlow')}>
+          <StatementRow label={t('reports.cashIn')} value={cf.customerPayments} muted />
+          <StatementRow label={t('reports.cashOutSuppliers')} value={cf.supplierPayments} muted />
+          <StatementRow label={t('reports.cashOutExpenses')} value={cf.expensesPaid} muted />
+          <StatementRow label={t('reports.netCash')} value={cf.net} strong />
+        </SectionCard>
+      </AccountingGate>
+    </>
+  )
+}
+
+interface LedgerRow {
+  key: string
+  date: string
+  entryId: string
+  reference: string
+  account: string
+  description: string
+  debit: number
+  credit: number
+  balance: number
+}
+
+export function LedgerView() {
+  const { t } = useApp()
+  const [accountName, setAccountName] = useState(() => typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("account") || "" : "")
+  const { data: business } = useSWR<{ id: string }>("/api/businesses/current", (url: string) => fetch(url).then((r) => r.json()))
+  const { data, error } = useSWR<{ rows: LedgerRow[]; accounts: string[] }>(
+    business?.id ? `/api/general-ledger?businessId=${encodeURIComponent(business.id)}${accountName ? `&account=${encodeURIComponent(accountName)}` : ""}` : null,
+    async (url: string) => { const response = await fetch(url); const body = await response.json(); if (!response.ok) throw new Error(body.error ?? "Unable to load general ledger"); return body },
+  )
+  const rows = data?.rows ?? []
+  const accounts = data?.accounts ?? []
+  const columns: Column<LedgerRow>[] = [
+    { key: "date", header: t("common.date"), cell: (r) => formatDate(r.date) },
+    { key: "entry", header: t("reports.entry"), cell: (r) => <IdCell>{r.entryId}</IdCell> },
+    { key: "ref", header: t("common.reference"), cell: (r) => <span className="font-mono text-xs">{r.reference}</span> },
+    { key: "account", header: t("reports.account"), cell: (r) => r.account },
+    { key: "desc", header: t("common.description"), cell: (r) => r.description },
+    { key: "debit", header: t("reports.debit"), align: "right", cell: (r) => r.debit ? <Money value={r.debit} /> : <span className="text-muted-foreground">—</span> },
+    { key: "credit", header: t("reports.credit"), align: "right", cell: (r) => r.credit ? <Money value={r.credit} /> : <span className="text-muted-foreground">—</span> },
+    { key: "balance", header: t("reports.balance"), align: "right", cell: (r) => <Money value={r.balance} className="font-semibold" /> },
+  ]
+  return <>
+    <PageHeader
+      breadcrumbs={[{ label: t("nav.reports"), href: "/reports" }, { label: t("reports.ledger") }]}
+      title={t("reports.ledger")}
+      description={t("reports.glDesc")}
+      actions={<div className="w-56"><SearchableSelect id="ledger-account-filter" value={accountName} onChange={(value) => setAccountName(String(value))} options={[{value:"",label:t("common.all")}, ...accounts.map((name) => ({value:name,label:name}))]} placeholder={t("common.all")} searchPlaceholder={t("common.search")} emptyText={t("common.noResults")} /></div>}
+    />
+    <AccountingGate>
+      {error ? <div role="alert" className="rounded-xl border border-destructive/30 bg-card p-6 text-sm text-destructive">{error.message}</div> :
+       !business || !data ? <div className="p-6 text-sm text-muted-foreground">{t("common.loading")}</div> :
+       rows.length === 0 ? <div className="rounded-xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">{t("reports.noMovement")}</div> :
+       <DataTable rows={rows} columns={columns} getRowId={(r) => r.key} searchText={(r) => `${r.entryId} ${r.reference} ${r.description} ${r.account}`} editable={false} deletable={false} pageSize={15} />}
+    </AccountingGate>
+  </>
 }

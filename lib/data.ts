@@ -41,6 +41,7 @@ export interface OrderItem {
   qty: number
   price: number
   discount: number
+  discountType?: 'amount' | 'percent'
   unitCost: number
 }
 
@@ -49,6 +50,7 @@ export interface Delivery {
   date: string
   method: DeliveryMethod
   recipient: string
+  driverName?: string
   address: string
   transportCost: number
 }
@@ -69,6 +71,8 @@ export interface PurchaseItem {
   productId: string
   qty: number
   price: number
+  discount?: number
+  discountType?: 'amount' | 'percent'
 }
 
 export interface Purchase {
@@ -79,6 +83,7 @@ export interface Purchase {
   payments: Payment[]
   dueDate: string | null
   notes: string
+  totalOverride?: number | string | null
 }
 
 export interface Replacement {
@@ -98,6 +103,7 @@ export interface Expense {
   amount: number
   account: string
   description: string
+  deletedAt?: string | null
 }
 
 export interface StockMovement {
@@ -510,8 +516,13 @@ export const supplierById = (id: string) => suppliers.find((s) => s.id === id)
 export const orderById = (id: string) => orders.find((o) => o.id === id)
 export const purchaseById = (id: string) => purchases.find((p) => p.id === id)
 
-export const lineSubtotal = (it: { qty: number; price: number; discount?: number }) =>
-  it.qty * it.price - (it.discount ?? 0)
+export const discountAmount = (base: number, discount: number, type: 'amount' | 'percent' = 'amount') =>
+  type === 'percent' ? base * Math.min(Math.max(discount, 0), 100) / 100 : Math.min(Math.max(discount, 0), base)
+
+export const lineSubtotal = (it: { qty: number; price: number; discount?: number; discountType?: 'amount' | 'percent' }) => {
+  const gross = it.qty * it.price
+  return Math.max(0, gross - discountAmount(gross, it.discount ?? 0, it.discountType ?? 'amount'))
+}
 
 export const orderTotal = (o: Order) => o.items.reduce((s, it) => s + lineSubtotal(it), 0)
 export const orderCogs = (o: Order) => o.items.reduce((s, it) => s + it.qty * it.unitCost, 0)
@@ -519,7 +530,11 @@ export const orderPaid = (o: Order) => o.payments.reduce((s, p) => s + p.amount,
 export const orderOutstanding = (o: Order) =>
   o.status === 'cancelled' ? 0 : Math.max(orderTotal(o) - orderPaid(o), 0)
 
-export const purchaseTotal = (p: Purchase) => p.items.reduce((s, it) => s + it.qty * it.price, 0)
+export const purchaseTotal = (p: Purchase) => p.totalOverride != null ? Number(p.totalOverride) : p.items.reduce((sum, item) => {
+  const gross = item.qty * item.price
+  const discount = item.discountType === 'percent' ? gross * Number(item.discount ?? 0) / 100 : Number(item.discount ?? 0)
+  return sum + Math.ceil(Math.max(0, gross - discount) - 1e-9)
+}, 0)
 export const purchasePaid = (p: Purchase) => p.payments.reduce((s, x) => s + x.amount, 0)
 export const purchaseOutstanding = (p: Purchase) => Math.max(purchaseTotal(p) - purchasePaid(p), 0)
 
@@ -573,25 +588,3 @@ export function periodRange(period: Period): [string, string] {
 }
 
 export const inRange = (date: string, [from, to]: [string, string]) => date >= from && date <= to
-
-export function profitAndLoss(range: [string, string]) {
-  const periodOrders = activeOrders().filter((o) => inRange(o.date, range))
-  const revenue = periodOrders.reduce((s, o) => s + orderTotal(o), 0)
-  const cogs = periodOrders.reduce((s, o) => s + orderCogs(o), 0)
-  const transport = periodOrders.reduce((s, o) => s + (o.delivery?.transportCost ?? 0), 0)
-  const byCategory = new Map<string, number>()
-  for (const e of expenses.filter((e) => inRange(e.date, range))) {
-    byCategory.set(e.category, (byCategory.get(e.category) ?? 0) + e.amount)
-  }
-  const operating = [...byCategory.values()].reduce((s, v) => s + v, 0) + transport
-  const grossProfit = revenue - cogs
-  return {
-    revenue,
-    cogs,
-    grossProfit,
-    transport,
-    expenseByCategory: [...byCategory.entries()].sort((a, b) => b[1] - a[1]),
-    operating,
-    netProfit: grossProfit - operating,
-  }
-}

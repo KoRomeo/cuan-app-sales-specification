@@ -29,18 +29,18 @@
   --color-warning: var(--warning);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --color-foreground: var(--foreground);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
   --color-background: var(--background);
+  --color-foreground: var(--foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -52,8 +52,8 @@
 
 :root {
   color-scheme: light;
-  --radius: 0.625rem;
-  --background: oklch(0.982 0.004 255);
+  --radius: 0.375rem;
+  --background: oklch(1 0 0);
   --foreground: oklch(0.22 0.04 262);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.22 0.04 262);
@@ -103,7 +103,7 @@
   --secondary-foreground: oklch(0.92 0.01 258);
   --muted: oklch(0.24 0.032 264);
   --muted-foreground: oklch(0.68 0.025 260);
-  --accent: oklch(0.26 0.045 264);
+  --accent: oklch(0.26 0.045 258);
   --accent-foreground: oklch(0.95 0.008 258);
   --destructive: oklch(0.66 0.2 25);
   --success: oklch(0.7 0.14 155);
@@ -127,6 +127,34 @@
   --sidebar-ring: oklch(0.66 0.17 258);
 }
 
+.auth-light {
+  --sidebar-foreground: var(--foreground);
+  --sidebar-muted: var(--muted-foreground);
+  --sidebar-primary: var(--primary);
+}
+
+.app-nav-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--sidebar-muted) 45%, transparent) transparent;
+}
+
+.app-nav-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.app-nav-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-nav-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--sidebar-muted) 45%, transparent);
+}
+
+.app-nav-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--sidebar-primary);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -136,16 +164,466 @@
   }
 }
 
+.cuan-loading-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  transform: none !important;
+  background: rgb(255 255 255 / 5%);
+  -webkit-backdrop-filter: blur(1px);
+  backdrop-filter: blur(1px);
+  animation: cuan-overlay-in 180ms ease-out both;
+  pointer-events: none;
+}
+
+.cuan-loading-orbit {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  animation: cuan-orbit-spin 1.1s linear infinite;
+}
+
+.cuan-loading-orbit__ring {
+  position: absolute;
+  inset: 3px;
+  border: 1.5px solid rgb(255 255 255 / 24%);
+  border-top-color: rgb(255 255 255 / 95%);
+  border-right-color: rgb(255 255 255 / 62%);
+  border-radius: 50%;
+  filter: drop-shadow(0 0 5px rgb(255 255 255 / 20%));
+}
+
+.cuan-loading-orbit__dot {
+  position: absolute;
+  top: 0;
+  left: 21px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 9px rgb(255 255 255 / 70%);
+}
+
+.cuan-loading-orbit__core {
+  position: absolute;
+  inset: 17px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 78%);
+  box-shadow: 0 0 12px rgb(255 255 255 / 30%);
+  animation: cuan-core-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes cuan-orbit-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes cuan-core-pulse {
+  0%, 100% { transform: scale(.8); opacity: .65; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+
+@keyframes cuan-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cuan-loading-orbit,
+  .cuan-loading-orbit__core,
+  .cuan-loading-overlay {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@page {
+  size: A6 portrait;
+  margin: 0;
+}
+
+@page cuan-a6 { size: 105mm 148mm portrait; margin: 0; }
+@page cuan-a4 { size: 210mm 297mm portrait; margin: 0; }
+
+.document-a6 { page: cuan-a6; width: 105mm; min-height: 148mm; padding: 5mm; box-sizing: border-box; }
+.document-a4 { page: cuan-a4; width: 210mm; min-height: 297mm; padding: 12mm; box-sizing: border-box; }
+
 @media print {
-  body * {
-    visibility: hidden;
+  html, body { width: auto !important; min-width: 0 !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
+  body * { visibility: hidden !important; }
+  [role="dialog"], [data-radix-portal], [data-slot="dialog-overlay"], [data-slot="dialog-content"] {
+    position: static !important; display: contents !important; transform: none !important; width: auto !important; height: auto !important; max-width: none !important; max-height: none !important; overflow: visible !important; border: 0 !important; box-shadow: none !important; background: transparent !important;
   }
-  .print-area,
-  .print-area * {
-    visibility: visible;
+  .print-area, .print-area * { visibility: visible !important; }
+  .print-area { position: absolute !important; top: 0 !important; left: 0 !important; margin: 0 !important; overflow: visible !important; background: #fff !important; color: #000 !important; box-shadow: none !important; break-after: avoid !important; break-inside: avoid !important; }
+  .print-area.document-a6 { width: 105mm !important; min-height: 148mm !important; padding: 5mm !important; font-size: 7pt !important; line-height: 1.15 !important; }
+  .print-area.document-a4 { width: 210mm !important; min-height: 297mm !important; padding: 12mm !important; font-size: 9pt !important; line-height: 1.25 !important; }
+  .print-area table { width: 100% !important; margin-top: 3mm !important; table-layout: fixed !important; }
+  .print-area th, .print-area td { padding: 1mm !important; line-height: 1.15 !important; }
+  .print-area.document-a6 table { font-size: 6.5pt !important; }
+  .print-area.document-a6 tbody tr { height: 6mm !important; }
+  .print-area.document-a4 table { font-size: 8pt !important; }
+  .print-area.document-a4 tbody tr { height: 8mm !important; }
+  .print-area section, .print-area footer { break-inside: avoid !important; }
+}
+
+/* Keep the loading indicator visible on both light and dark pages. */
+.cuan-loading-orbit__ring {
+  border-color: color-mix(in oklch, var(--foreground) 22%, transparent);
+  border-top-color: var(--primary);
+  border-right-color: color-mix(in oklch, var(--primary) 62%, transparent);
+  filter: drop-shadow(0 0 5px color-mix(in oklch, var(--primary) 20%, transparent));
+}
+.cuan-loading-orbit__dot {
+  background: var(--primary);
+  box-shadow: 0 0 9px color-mix(in oklch, var(--primary) 48%, transparent);
+}
+.cuan-loading-orbit__core {
+  background: var(--primary);
+  box-shadow: 0 0 12px color-mix(in oklch, var(--primary) 30%, transparent);
+}
+
+/* High-contrast loading mark: the overlay stays subtle, but the animation must be visible. */
+.cuan-loading-orbit {
+  width: 56px;
+  height: 56px;
+  filter: drop-shadow(0 2px 12px rgb(15 23 42 / 18%));
+}
+.cuan-loading-orbit__ring {
+  inset: 2px;
+  border-width: 3px;
+  border-color: color-mix(in oklch, var(--primary) 22%, transparent);
+  border-top-color: var(--primary);
+  border-right-color: var(--primary);
+}
+.cuan-loading-orbit__dot {
+  left: 25px;
+  width: 7px;
+  height: 7px;
+  background: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 16%, transparent), 0 0 12px color-mix(in oklch, var(--primary) 45%, transparent);
+}
+.cuan-loading-orbit__core {
+  inset: 20px;
+  background: var(--primary);
+  box-shadow: 0 0 0 5px color-mix(in oklch, var(--primary) 12%, transparent);
+}
+
+/* Keep the orbiting dot visibly animated even if the ring's rotation is hard to perceive. */
+.cuan-loading-orbit {
+  transform-origin: center;
+  will-change: transform;
+}
+.cuan-loading-orbit__dot {
+  animation: cuan-loading-dot-pulse 900ms ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+@keyframes cuan-loading-dot-pulse {
+  0%, 100% { transform: scale(0.82); opacity: 0.78; }
+  50% { transform: scale(1.18); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cuan-loading-orbit__dot {
+    animation-duration: 1.8s;
   }
-  .print-area {
-    position: absolute;
-    inset: 0;
+}
+
+/* Consistent, light dropdown chevrons and comfortable native-select spacing across the app. */
+.lucide-chevron-down {
+  stroke-width: 1.5;
+}
+select:not([multiple]) {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.25rem !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 0.875rem;
+}
+
+
+/* Data values stay on a single line; scroll containers handle wider tables. */
+table:not(.invoice-print-table) {
+  width: max-content;
+  min-width: 100%;
+}
+table:not(.invoice-print-table) th,
+table:not(.invoice-print-table) td {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+table:not(.invoice-print-table) td p,
+table:not(.invoice-print-table) td span,
+table:not(.invoice-print-table) td a {
+  white-space: nowrap !important;
+  word-break: normal !important;
+}
+
+
+/* Light-mode depth system: soft, wide ambient shadows and a subtle gradient edge. */
+:root:not(.dark) [data-slot="card"],
+:root:not(.dark) .app-card {
+  border: 1px solid transparent !important;
+  border-color: transparent !important;
+  background:
+    linear-gradient(var(--card), var(--card)) padding-box,
+    linear-gradient(135deg, rgb(74 125 225 / 58%), rgb(255 255 255 / 92%) 42%, rgb(54 99 190 / 46%) 100%) border-box !important;
+  outline: none !important;
+  box-shadow:
+    0 28px 76px -20px rgb(22 43 82 / 27%),
+    0 14px 36px -14px rgb(22 43 82 / 18%),
+    0 4px 14px -6px rgb(22 43 82 / 11%) !important;
+}
+:root:not(.dark) [data-slot="card"]:hover,
+:root:not(.dark) .app-card:hover {
+  box-shadow:
+    0 34px 88px -18px rgb(22 43 82 / 30%),
+    0 18px 42px -14px rgb(22 43 82 / 20%),
+    0 6px 18px -6px rgb(22 43 82 / 12%) !important;
+}
+
+/* White canvas: richer, asymmetrical blue atmosphere with fine organic grain. */
+.app-shell-surface {
+  position: relative;
+  isolation: isolate;
+  min-height: 100dvh;
+  background-color: var(--background);
+  background-image:
+    radial-gradient(ellipse 48rem 34rem at 100% 0%, rgb(35 83 180 / 24%), transparent 72%),
+    radial-gradient(ellipse 54rem 42rem at 0% 100%, rgb(30 70 160 / 21%), transparent 74%),
+    radial-gradient(ellipse 30rem 24rem at 82% 9%, rgb(80 125 215 / 12%), transparent 75%),
+    conic-gradient(from 218deg at 92% 4%, transparent 0deg, rgb(58 105 190 / 8%) 48deg, transparent 112deg);
+  background-attachment: fixed;
+}
+
+/* Fine monochrome noise keeps the gradients tactile, not flat or plasticky. */
+.app-shell-surface::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.19;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  mix-blend-mode: soft-light;
+}
+/* Do not assign positioning to app-shell children here.
+   Sidebar renders as a direct child and must retain position: fixed on desktop. */
+
+/* Night mode: deeper blue glow, organic light falloff, and restrained grain. */
+.dark .app-shell-surface,
+.app-shell-surface.dark {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--background);
+  background-image:
+    radial-gradient(ellipse 52rem 38rem at 100% 0%, rgb(40 91 190 / 31%), transparent 72%),
+    radial-gradient(ellipse 58rem 46rem at 0% 100%, rgb(32 76 170 / 27%), transparent 74%),
+    radial-gradient(ellipse 34rem 28rem at 78% 8%, rgb(68 112 205 / 17%), transparent 76%),
+    conic-gradient(from 220deg at 92% 4%, transparent 0deg, rgb(58 105 205 / 12%) 52deg, transparent 116deg);
+  background-attachment: fixed;
+}
+.dark .app-shell-surface::before,
+.app-shell-surface.dark::before {
+  opacity: 0.23;
+  mix-blend-mode: soft-light;
+}
+
+/* Gradient edge treatment for cards in Night Mode too; never a flat grey outline. */
+.dark [data-slot="card"],
+.dark .app-card {
+  border: 1px solid transparent !important;
+  border-color: transparent !important;
+  background:
+    linear-gradient(var(--card), var(--card)) padding-box,
+    linear-gradient(135deg, rgb(91 143 245 / 42%), rgb(91 143 245 / 5%) 48%, rgb(58 105 205 / 34%)) border-box !important;
+  box-shadow:
+    0 24px 64px -22px rgb(0 0 0 / 46%),
+    0 10px 28px -12px rgb(15 35 80 / 32%) !important;
+}
+
+
+/* Global app atmosphere: attach to BODY so the effect is visible on every route.
+   The earlier .app-shell-surface rules were dormant because no rendered element used that class. */
+html,
+body {
+  min-height: 100%;
+}
+body {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--background) !important;
+  background-image: none !important;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: -12vh -8vw;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 72vw 58vh at 100% 0%, rgb(34 91 205 / 34%), transparent 70%),
+    radial-gradient(ellipse 66vw 62vh at 0% 100%, rgb(35 82 190 / 30%), transparent 72%),
+    radial-gradient(ellipse 42vw 36vh at 83% 8%, rgb(83 139 239 / 22%), transparent 74%),
+    conic-gradient(from 218deg at 96% 0%, transparent 0deg, rgb(59 115 220 / 15%) 38deg, transparent 104deg),
+    var(--background);
+  filter: blur(2px);
+  transform: translateZ(0);
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.17;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.76' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23grain)' opacity='.34'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  mix-blend-mode: soft-light;
+}
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Dark mode gets a more visible, asymmetrical blue bloom with a soft falloff. */
+.dark body::before {
+  background:
+    radial-gradient(ellipse 78vw 64vh at 100% 0%, rgb(39 105 232 / 43%), transparent 69%),
+    radial-gradient(ellipse 72vw 68vh at 0% 100%, rgb(35 82 196 / 38%), transparent 71%),
+    radial-gradient(ellipse 46vw 40vh at 82% 8%, rgb(91 147 246 / 27%), transparent 74%),
+    conic-gradient(from 220deg at 98% 0%, transparent 0deg, rgb(63 126 238 / 19%) 42deg, transparent 112deg),
+    var(--background);
+}
+.dark body::after {
+  opacity: 0.22;
+  mix-blend-mode: soft-light;
+}
+
+/* Remove card outlines rather than replacing them with another visible border.
+   Depth comes from a broad, soft shadow instead. */
+[data-slot="card"],
+.app-card,
+.dark [data-slot="card"],
+.dark .app-card {
+  border-color: transparent !important;
+  outline: 0 !important;
+}
+:root:not(.dark) [data-slot="card"],
+:root:not(.dark) .app-card {
+  box-shadow: 0 22px 58px -24px rgb(24 48 92 / 30%), 0 8px 24px -12px rgb(24 48 92 / 18%) !important;
+}
+.dark [data-slot="card"],
+.dark .app-card {
+  box-shadow: 0 26px 68px -24px rgb(0 0 0 / 62%), 0 12px 32px -14px rgb(22 64 145 / 42%) !important;
+}
+
+/* FINAL GLOBAL CARD SYSTEM
+   Every shared Card floats above the page: no grey outline, only a broad ambient shadow. */
+:root {
+  --app-card-shadow:
+    0 26px 64px -18px rgb(25 48 91 / 24%),
+    0 12px 30px -10px rgb(25 48 91 / 15%),
+    0 3px 10px rgb(25 48 91 / 7%);
+  --app-card-shadow-hover:
+    0 34px 78px -16px rgb(25 48 91 / 29%),
+    0 16px 38px -10px rgb(25 48 91 / 18%),
+    0 5px 14px rgb(25 48 91 / 9%);
+}
+
+.dark {
+  --app-card-shadow:
+    0 30px 72px -18px rgb(0 0 0 / 58%),
+    0 14px 34px -10px rgb(0 0 0 / 38%),
+    0 0 26px -12px rgb(50 104 210 / 18%);
+  --app-card-shadow-hover:
+    0 38px 88px -16px rgb(0 0 0 / 66%),
+    0 18px 42px -10px rgb(0 0 0 / 44%),
+    0 0 32px -10px rgb(57 116 230 / 24%);
+}
+
+:where([data-slot="card"], .app-card) {
+  border: 0 !important;
+  border-color: transparent !important;
+  outline: 0 !important;
+  background: var(--card) !important;
+  background-image: none !important;
+  box-shadow: var(--app-card-shadow) !important;
+  transition: box-shadow 180ms ease, transform 180ms ease;
+}
+
+:where([data-slot="card"], .app-card):hover {
+  box-shadow: var(--app-card-shadow-hover) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where([data-slot="card"], .app-card) {
+    transition: none;
   }
+}
+
+/* Night mode is intentionally flat: keep the canvas and cards free of gradients. */
+.dark .app-shell-surface,
+.app-shell-surface.dark {
+  background-color: var(--background) !important;
+  background-image: none !important;
+}
+.dark .app-shell-surface::before,
+.app-shell-surface.dark::before {
+  content: none !important;
+  display: none !important;
+}
+.dark [data-slot="card"],
+.dark .app-card {
+  border: 1px solid var(--border) !important;
+  background: var(--card) !important;
+  box-shadow: 0 12px 32px -20px rgb(0 0 0 / 48%) !important;
+}
+.dark [data-slot="card"]:hover,
+.dark .app-card:hover {
+  background: var(--card) !important;
+}
+
+
+/* Simplified global loading indicator. */
+.cuan-loading-overlay {
+  background: color-mix(in oklch, var(--background) 24%, transparent);
+  -webkit-backdrop-filter: blur(1px);
+  backdrop-filter: blur(1px);
+  animation: cuan-overlay-in 140ms ease-out both;
+  pointer-events: none;
+}
+.cuan-loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border: 2px solid color-mix(in oklch, var(--primary) 20%, transparent);
+  border-top-color: var(--primary);
+  border-radius: 9999px;
+  animation: cuan-simple-spin 700ms linear infinite;
+}
+@keyframes cuan-simple-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .cuan-loading-spinner { animation-duration: 1.8s; }
+}
+
+/* Dialogs share consistent breathing room and remain usable on short screens. */
+[data-slot="dialog-content"] {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+[data-slot="dialog-header"] { gap: 0.75rem; }
+[data-slot="dialog-footer"] { gap: 0.625rem; }
+@media (max-width: 639px) {
+  [data-slot="dialog-content"] { padding: 1.125rem; }
+  [data-slot="dialog-footer"] { margin-inline: -1.125rem; margin-bottom: -1.125rem; padding: 1rem 1.125rem; }
 }
