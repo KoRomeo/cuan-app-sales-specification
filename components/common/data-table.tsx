@@ -490,6 +490,13 @@ export function DataTable<T>({
                                     : undefined}
                                 disabled={a.disabled}
                                 onClick={() => {
+                                  if (a.label.toLowerCase() === 'select' || a.label.toLowerCase() === 'pilih') {
+                                    if (selectable) {
+                                      setSelectionMode(true)
+                                      const id = getRowId(row)
+                                      if (!selectedRowIds.includes(id)) onSelectedRowIdsChange?.([...selectedRowIds, id])
+                                    }
+                                  }
                                   if (a.onSelect) a.onSelect()
                                   else if (a.href) router.push(a.href)
                                 }}
