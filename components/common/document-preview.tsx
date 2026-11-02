@@ -52,7 +52,8 @@ export function DocumentPreview({
             <label htmlFor="document-paper-size" className="text-xs font-medium text-muted-foreground">Ukuran kertas</label>
             <select id="document-paper-size" value={paperSize} onChange={(event) => setPaperSize(event.target.value as PaperSize)} className="h-9 rounded-md border bg-background px-3 text-sm">
               <option value="A6">A6 · 105 × 148 mm</option>
-              <option value="A4">A4 · 210 × 297 mm</option>\n              {isInvoice && <option value="NCR">Continuous Form NCR · 9.5 × 5.5 in</option>}
+              <option value="A4">A4 · 210 × 297 mm</option>
+              {isInvoice && <option value="NCR">Continuous Form NCR · 9.5 × 5.5 in</option>}
             </select>
             <Button size="sm" variant="outline" onClick={() => window.print()}>
               <Printer />
@@ -191,7 +192,9 @@ export function DocumentPreview({
               <div><p>Hormat kami,</p><div className="mt-14 border-b border-black" /><p className="mt-1">Pengirim</p></div>
             </footer>
             <p className="mt-4 border-t border-black pt-2 text-center text-[7pt] tracking-wide">{isInvoice ? 'Terima kasih atas kepercayaan Anda.' : 'Mohon periksa jumlah dan kondisi barang saat diterima.'}</p>
-                        </>\n            )}\n          </article>
+                        </>
+            )}
+          </article>
         </div>
       </DialogContent>
     </Dialog>
