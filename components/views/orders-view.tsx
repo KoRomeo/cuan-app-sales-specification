@@ -161,8 +161,8 @@ export function OrdersView() {
       const currentLabel = o.status === 'requested'
         ? (locale === 'id' ? 'Sudah dipesan' : 'Order placed')
         : o.status === 'ready'
-          ? (inTransit ? (t('locale') === 'id' ? 'Dalam perjalanan' : 'In transit') : (t('locale') === 'id' ? 'Siap diantar' : 'Ready for delivery'))
-          : o.status === 'delivered' ? (t('locale') === 'id' ? 'Terkirim' : 'Delivered') : t('status.cancelled')
+          ? (inTransit ? (locale === 'id' ? 'Dalam perjalanan' : 'In transit') : (locale === 'id' ? 'Siap diantar' : 'Ready for delivery'))
+          : o.status === 'delivered' ? (locale === 'id' ? 'Terkirim' : 'Delivered') : t('status.cancelled')
       return <StatusDropdown value={o.status} options={[
         { value: 'requested', label: locale === 'id' ? 'Sudah dipesan' : 'Order placed', tone: 'warning', disabled: true },
         { value: 'ready', label: inTransit ? (locale === 'id' ? 'Dalam perjalanan' : 'In transit') : (locale === 'id' ? 'Siap diantar' : 'Ready for delivery'), tone: inTransit ? 'primary' : 'warning', disabled: o.status !== 'requested' },
