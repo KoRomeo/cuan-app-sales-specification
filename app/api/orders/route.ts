@@ -126,7 +126,7 @@ export async function PATCH(request: NextRequest) {
       if (lineItems !== undefined) { await tx.delete(orderItems).where(eq(orderItems.orderId, id)); await tx.insert(orderItems).values(lineItems.map((item: Item) => ({ id: item.id, orderId: id, productId: item.productId, qty: Number(item.qty), price: String(item.price), discount: String(item.discount ?? 0), discountType: item.discountType ?? "amount", unitCost: String(item.unitCost) }))) }
       if (next === "delivered") {
         const [delivery] = await tx.select({ id: deliveries.id }).from(deliveries)
-          .where(and(eq(deliveries.orderId, id), eq(deliveries.businessId, businessId))).limit(1)
+          .where(eq(deliveries.orderId, id)).limit(1)
         if (!delivery) throw new Error("DELIVERY_REQUIRED")
       }
       if (lineItems !== undefined) throw new Error("ORDER_ITEMS_IMMUTABLE")
