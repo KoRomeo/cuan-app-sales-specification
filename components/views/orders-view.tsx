@@ -34,7 +34,7 @@ const fetcher = async (url: string) => {
   if (result === null) throw new Error('The server returned an invalid response. Please try again.')
   return result
 }
-type PersistedOrder = { id: string; date: string; customerId: string; status: Order['status']; dueDate: string | null; notes: string | null; items: Array<{ productId: string; qty: number; price: string | number; discount?: string | number; discountType?: 'amount' | 'percent'; unitCost: string | number }> }
+type PersistedOrder = { id: string; date: string; customerId: string; status: Order['status']; deliveryId?: string | null; deliveryDate?: string | null; dueDate: string | null; notes: string | null; items: Array<{ productId: string; qty: number; price: string | number; discount?: string | number; discountType?: 'amount' | 'percent'; unitCost: string | number }> }
 type PersistedPayment = { id: string; date: string; amount: string | number; account: string; orderId: string | null }
 type OrderReturnRow = { orderId: string; items: Array<{ productId: string; qty: number }> }
 type PersistedParty = { id: string; name: string; phone?: string | null; address?: string | null }
@@ -46,7 +46,7 @@ const hasNegativeImpact = (o: Order, productStock: Map<string, number>) =>
   o.status !== 'cancelled' && o.items.some((it) => (productStock.get(it.productId) ?? 0) < 0)
 
 export function OrdersView() {
-  const { t } = useApp()
+  const { t, locale } = useApp()
   const router = useRouter()
   const { mutate: globalMutate } = useSWRConfig()
   const [deleteTarget, setDeleteTarget] = useState<PersistedOrder | null>(null)
@@ -156,7 +156,20 @@ export function OrdersView() {
     },
     { key: 'date', header: t('common.date'), cell: (o) => <span className="font-mono text-xs text-muted-foreground">{formatDate(o.date)}</span> },
     { key: 'customer', header: t('common.customer'), className: 'min-w-[180px]', cell: (o) => <span className="block whitespace-nowrap font-medium" title={customerByIdMap.get(o.customerId)?.name}>{customerByIdMap.get(o.customerId)?.name}</span> },
-    { key: 'status', header: t('common.status'), sortValue: (o) => o.status, className: 'min-w-[170px] text-right', cell: (o) => <StatusDropdown value={o.status} options={[{ value: 'requested', label: t('status.requested'), tone: 'warning', disabled: o.status !== 'requested' }, { value: 'ready', label: t('status.ready'), tone: 'primary', disabled: o.status !== 'requested' }, { value: 'delivered', label: t('status.delivered'), tone: 'success', disabled: true }, { value: 'cancelled', label: t('status.cancelled'), tone: 'neutral', disabled: o.status === 'delivered' || o.status === 'cancelled' }]} onChange={(status) => changeOrderStatus(o, status)} disabled={o.status === 'delivered' || o.status === 'cancelled'} /> },
+    { key: 'status', header: locale === 'id' ? 'Status pengiriman' : 'Delivery status', sortValue: (o) => o.status === 'ready' && o.deliveryId ? 'in_transit' : o.status, className: 'min-w-[190px] text-right', cell: (o) => {
+      const inTransit = o.status === 'ready' && Boolean(o.deliveryId)
+      const currentLabel = o.status === 'requested'
+        ? (t('locale') === 'id' ? 'Sudah dipesan' : 'Order placed')
+        : o.status === 'ready'
+          ? (inTransit ? (t('locale') === 'id' ? 'Dalam perjalanan' : 'In transit') : (t('locale') === 'id' ? 'Siap diantar' : 'Ready for delivery'))
+          : o.status === 'delivered' ? (t('locale') === 'id' ? 'Terkirim' : 'Delivered') : t('status.cancelled')
+      return <StatusDropdown value={o.status} options={[
+        { value: 'requested', label: currentLabel, tone: 'warning', disabled: true },
+        { value: 'ready', label: currentLabel === (t('locale') === 'id' ? 'Sudah dipesan' : 'Order placed') ? (t('locale') === 'id' ? 'Siap diantar' : 'Ready for delivery') : currentLabel, tone: inTransit ? 'primary' : 'warning', disabled: o.status !== 'requested' },
+        { value: 'delivered', label: t('status.delivered'), tone: 'success', disabled: !o.deliveryId || o.status !== 'ready' },
+        { value: 'cancelled', label: t('status.cancelled'), tone: 'neutral', disabled: o.status === 'delivered' || o.status === 'cancelled' || Boolean(o.deliveryId) },
+      ]} onChange={(status) => changeOrderStatus(o, status)} disabled={o.status === 'delivered' || o.status === 'cancelled'} />
+    } },
     { key: 'returnStatus', header: t('orders.returnStatus'), sortValue: (o) => returnStatusByOrder.get(o.id) ?? 'none', cell: (o) => { const status = returnStatusByOrder.get(o.id); return status === 'full' ? <Pill tone="destructive">{t('orders.returnStatusFull')}</Pill> : status === 'partial' ? <Pill tone="warning">{t('orders.returnStatusPartial')}</Pill> : <span className="text-muted-foreground">{t('orders.returnStatusNone')}</span> } },
     { key: 'payment', header: t('orders.paymentStatus'), sortValue: (o) => (o.status === 'cancelled' ? null : orderPaymentStatus(o)), cell: (o) => (o.status === 'cancelled' ? <span className="text-muted-foreground">—</span> : <PaymentStatusBadge status={orderPaymentStatus(o)} />) },
     { key: 'total', header: t('common.total'), align: 'right', cell: (o) => <Money value={orderTotal(o)} className={o.status === 'cancelled' ? 'text-muted-foreground line-through' : ''} /> },
