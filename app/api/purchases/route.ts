@@ -17,6 +17,7 @@ import {
 import { headers } from "next/headers"
 import { generateEntityId } from "@/lib/db/ids"
 import { writeAudit } from "@/lib/audit"
+import { calculatePurchaseLineTotals } from "@/lib/purchase-calculations"
 
 type PurchaseInputItem = {
   id: string
@@ -173,8 +174,7 @@ export async function POST(request: NextRequest) {
       }).from(products).where(and(eq(products.businessId, businessId), inArray(products.id, productIds)))
       if (foundProducts.length !== productIds.length) throw new Error("PRODUCT_NOT_FOUND")
 
-      const lineTotal = (item: PurchaseInputItem) => Math.ceil(Math.max(0, Number(item.qty) * Number(item.unitCost) - purchaseLineDiscount(item)) - 1e-9)
-      const total = items.reduce((sum, item) => sum + lineTotal(item), 0)
+      const { lineTotals, total } = calculatePurchaseLineTotals(items)
       if (paidAmount > total) throw new Error("PAYMENT_EXCEEDS_TOTAL")
 
       await tx.insert(purchases).values({
@@ -207,10 +207,10 @@ export async function POST(request: NextRequest) {
       }
 
       const quantities = new Map<string, { qty: number; totalCost: number }>()
-      for (const item of items) {
+      for (const [index, item] of items.entries()) {
         const current = quantities.get(item.productId) ?? { qty: 0, totalCost: 0 }
         current.qty += Number(item.qty)
-        current.totalCost += lineTotal(item)
+        current.totalCost += lineTotals[index]
         quantities.set(item.productId, current)
       }
 
