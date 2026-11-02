@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Printer } from 'lucide-react'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,14 @@ export function DocumentPreview({
   bankAccounts?: Array<{ name: string; accountNumber: string | null }>
 }) {
   const { t, features } = useApp()
-  const [paperSize, setPaperSize] = useState<PaperSize>('A6')
+  const [paperSize, setPaperSize] = useState<PaperSize>(() => {
+    if (typeof window === 'undefined') return 'A6'
+    const saved = window.localStorage.getItem('cuanapp.document-paper-size')
+    return saved === 'A4' || saved === 'NCR' || saved === 'A6' ? saved : 'A6'
+  })
+  useEffect(() => {
+    window.localStorage.setItem('cuanapp.document-paper-size', paperSize)
+  }, [paperSize])
   const customer = customerOverride ?? customerById(order.customerId)
   const total = orderTotal(order)
   const paid = orderPaid(order)
@@ -53,7 +60,7 @@ export function DocumentPreview({
             <select id="document-paper-size" value={paperSize} onChange={(event) => setPaperSize(event.target.value as PaperSize)} className="h-9 rounded-md border bg-background px-3 text-sm">
               <option value="A6">A6 · 105 × 148 mm</option>
               <option value="A4">A4 · 210 × 297 mm</option>
-              {isInvoice && <option value="NCR">Continuous Form NCR · 9.5 × 5.5 in</option>}
+              <option value="NCR">Continuous Form NCR · 9.5 × 5.5 in</option>
             </select>
             <Button size="sm" variant="outline" onClick={() => window.print()}>
               <Printer />
@@ -64,11 +71,19 @@ export function DocumentPreview({
 
         <div className="overflow-auto bg-muted/30 p-4 md:p-6 print:overflow-visible print:bg-white print:p-0">
           <article className={`print-area ${paperClass} mx-auto bg-white text-black shadow-sm print:shadow-none`}>
-            {isInvoice && paperSize === 'NCR' ? (
+            {paperSize === 'NCR' ? (
               <>
                 <style>{`
                   .document-ncr { width: 9.5in; min-height: 5.5in; height: 5.5in; padding: .28in .35in; box-sizing: border-box; display: flex; flex-direction: column; font-family: "Courier New", monospace; font-size: 9pt; line-height: 1.25; }
                   .document-ncr.continuous-placeholder { height: auto; }
+                  .continuous-delivery { width:100%; min-height:5.5in; height:5.5in; box-sizing:border-box; display:flex; flex-direction:column; font-family:'Courier New',monospace; font-size:9pt; line-height:1.25; }
+                  .continuous-delivery header { display:flex; flex-direction:column; align-items:flex-end; margin-bottom:14px; }
+                  .continuous-delivery header h1 { font-size:18pt; font-weight:bold; }
+                  .continuous-delivery table { width:100%; border-collapse:collapse; border-block:1px solid black; }
+                  .continuous-delivery th { border-bottom:1px solid black; padding:5px 3px; }
+                  .continuous-delivery td { padding:3px; }
+                  .continuous-delivery footer { margin-top:auto; padding-top:14px; display:grid; grid-template-columns:1fr 1.1fr 1fr; gap:12px; text-align:center; }
+                  .continuous-delivery-signature { width:85%; margin:48px auto 0; border-bottom:1px solid black; }
                   .continuous-invoice { width: 100%; min-height: 5.5in; height: 5.5in; box-sizing: border-box; display: flex; flex-direction: column; background: white; color: black; font-family: "Courier New", monospace; font-size: 9pt; line-height: 1.25; }
                   .continuous-invoice-expanded { height: auto; min-height: var(--invoice-height); }
                   .continuous-invoice-header { display:flex; justify-content:space-between; gap:20px; margin-bottom:14px; }
@@ -95,10 +110,11 @@ export function DocumentPreview({
                     .print-area.document-ncr, .print-area.document-ncr * { visibility:visible !important; }
                     .print-area.document-ncr { position:absolute; top:0; left:0; width:9.5in; min-height:5.5in; height:5.5in; margin:0; padding:.28in .35in; box-shadow:none; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
                     .print-area.document-ncr .continuous-invoice-expanded { position:relative; height:auto; min-height:var(--invoice-height); break-inside:avoid; page-break-inside:avoid; }
+                    .continuous-delivery { height:5.5in; min-height:5.5in; }
                     .continuous-invoice-table tr { break-inside:avoid; page-break-inside:avoid; }
                   }
                 `}</style>
-                <ContinuousInvoice order={order} customer={customer} productNames={productNames} />
+                {isInvoice ? <ContinuousInvoice order={order} customer={customer} productNames={productNames} /> : <article className="continuous-delivery"><header><strong>No. Surat Jalan: {docNo}</strong><h1>SURAT JALAN</h1><p>Pontianak, {formatDate(order.delivery?.date ?? order.date)}</p><p>Kepada: {order.delivery?.recipient || customer?.name || '—'}</p><p>{order.delivery?.address || customer?.address || '—'}</p></header><table><thead><tr><th>No</th><th>Nama Barang</th><th>Kuantitas</th><th>Satuan</th></tr></thead><tbody>{order.items.map((item,index)=><tr key={`${item.productId}-${index}`}><td>{index+1}</td><td>{productNames?.[item.productId] ?? productById(item.productId)?.name ?? item.productId}</td><td>{item.qty}</td><td>—</td></tr>)}</tbody></table><footer><div>Tanda Terima,<div className="continuous-delivery-signature"/></div><div>Mohon periksa jumlah dan kondisi barang saat diterima.</div><div>Hormat kami,<div className="continuous-delivery-signature"/></div></footer></article>}
               </>
             ) : (
               <>
