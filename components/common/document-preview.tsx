@@ -77,6 +77,7 @@ export function DocumentPreview({
                   .document-ncr { width: 9.5in; min-height: 5.5in; height: 5.5in; padding: .28in .35in; box-sizing: border-box; display: flex; flex-direction: column; font-family: "Courier New", monospace; font-size: 9pt; line-height: 1.25; }
                   .document-ncr.continuous-placeholder { height: auto; }
                   .continuous-delivery { width:100%; min-height:5.5in; height:5.5in; box-sizing:border-box; display:flex; flex-direction:column; font-family:'Courier New',monospace; font-size:9pt; line-height:1.25; }
+                  .continuous-delivery-expanded { height:auto; min-height:var(--delivery-height); }
                   .continuous-delivery header { display:flex; flex-direction:column; align-items:flex-end; margin-bottom:14px; }
                   .continuous-delivery header h1 { font-size:18pt; font-weight:bold; }
                   .continuous-delivery table { width:100%; border-collapse:collapse; border-block:1px solid black; }
@@ -111,10 +112,11 @@ export function DocumentPreview({
                     .print-area.document-ncr { position:absolute; top:0; left:0; width:9.5in; min-height:5.5in; height:5.5in; margin:0; padding:.28in .35in; box-shadow:none; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
                     .print-area.document-ncr .continuous-invoice-expanded { position:relative; height:auto; min-height:var(--invoice-height); break-inside:avoid; page-break-inside:avoid; }
                     .continuous-delivery { height:5.5in; min-height:5.5in; }
+                    .continuous-delivery-expanded { height:auto; min-height:var(--delivery-height); break-inside:avoid; page-break-inside:avoid; }
                     .continuous-invoice-table tr { break-inside:avoid; page-break-inside:avoid; }
                   }
                 `}</style>
-                {isInvoice ? <ContinuousInvoice order={order} customer={customer} productNames={productNames} /> : <article className="continuous-delivery"><header><strong>No. Surat Jalan: {docNo}</strong><h1>SURAT JALAN</h1><p>Pontianak, {formatDate(order.delivery?.date ?? order.date)}</p><p>Kepada: {order.delivery?.recipient || customer?.name || '—'}</p><p>{order.delivery?.address || customer?.address || '—'}</p></header><table><thead><tr><th>No</th><th>Nama Barang</th><th>Kuantitas</th><th>Satuan</th></tr></thead><tbody>{order.items.map((item,index)=><tr key={`${item.productId}-${index}`}><td>{index+1}</td><td>{productNames?.[item.productId] ?? productById(item.productId)?.name ?? item.productId}</td><td>{item.qty}</td><td>—</td></tr>)}</tbody></table><footer><div>Tanda Terima,<div className="continuous-delivery-signature"/></div><div>Mohon periksa jumlah dan kondisi barang saat diterima.</div><div>Hormat kami,<div className="continuous-delivery-signature"/></div></footer></article>}
+                {isInvoice ? <ContinuousInvoice order={order} customer={customer} productNames={productNames} /> : <article className={`continuous-delivery ${order.items.length > 10 ? 'continuous-delivery-expanded' : ''}`} style={{ '--delivery-height': `${5.5 + Math.max(0, order.items.length - 10) * 0.25}in` } as React.CSSProperties}><header><strong>No. Surat Jalan: {docNo}</strong><h1>SURAT JALAN</h1><p>Pontianak, {formatDate(order.delivery?.date ?? order.date)}</p><p>Kepada: {order.delivery?.recipient || customer?.name || '—'}</p><p>{order.delivery?.address || customer?.address || '—'}</p></header><table><thead><tr><th>No</th><th>Nama Barang</th><th>Kuantitas</th><th>Satuan</th></tr></thead><tbody>{order.items.map((item,index)=><tr key={`${item.productId}-${index}`}><td>{index+1}</td><td>{productNames?.[item.productId] ?? productById(item.productId)?.name ?? item.productId}</td><td>{item.qty}</td><td>—</td></tr>)}</tbody></table><footer><div>Tanda Terima,<div className="continuous-delivery-signature"/></div><div>Mohon periksa jumlah dan kondisi barang saat diterima.</div><div>Hormat kami,<div className="continuous-delivery-signature"/></div></footer></article>}
               </>
             ) : (
               <>
