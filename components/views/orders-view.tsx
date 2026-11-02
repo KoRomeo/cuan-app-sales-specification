@@ -159,7 +159,7 @@ export function OrdersView() {
     { key: 'status', header: locale === 'id' ? 'Status pengiriman' : 'Delivery status', sortValue: (o) => o.status === 'ready' && o.deliveryId ? 'in_transit' : o.status, className: 'min-w-[190px] text-right', cell: (o) => {
       const inTransit = o.status === 'ready' && Boolean(o.deliveryId)
       const currentLabel = o.status === 'requested'
-        ? (t('locale') === 'id' ? 'Sudah dipesan' : 'Order placed')
+        ? (locale === 'id' ? 'Sudah dipesan' : 'Order placed')
         : o.status === 'ready'
           ? (inTransit ? (t('locale') === 'id' ? 'Dalam perjalanan' : 'In transit') : (t('locale') === 'id' ? 'Siap diantar' : 'Ready for delivery'))
           : o.status === 'delivered' ? (t('locale') === 'id' ? 'Terkirim' : 'Delivered') : t('status.cancelled')
