@@ -159,11 +159,6 @@ export function OrdersView() {
     { key: 'customer', header: t('common.customer'), className: 'min-w-[180px]', cell: (o) => <span className="block whitespace-nowrap font-medium" title={customerByIdMap.get(o.customerId)?.name}>{customerByIdMap.get(o.customerId)?.name}</span> },
     { key: 'status', header: locale === 'id' ? 'Status pengiriman' : 'Delivery status', sortValue: (o) => o.status === 'ready' && deliveryIdsByOrder.get(o.id) ? 'in_transit' : o.status, className: 'min-w-[190px] text-right', cell: (o) => {
       const inTransit = o.status === 'ready' && Boolean(deliveryIdsByOrder.get(o.id))
-      const currentLabel = o.status === 'requested'
-        ? (locale === 'id' ? 'Sudah dipesan' : 'Order placed')
-        : o.status === 'ready'
-          ? (inTransit ? (locale === 'id' ? 'Dalam perjalanan' : 'In transit') : (locale === 'id' ? 'Siap diantar' : 'Ready for delivery'))
-          : o.status === 'delivered' ? (locale === 'id' ? 'Terkirim' : 'Delivered') : t('status.cancelled')
       return <StatusDropdown value={o.status} options={[
         { value: 'requested', label: locale === 'id' ? 'Sudah dipesan' : 'Order placed', tone: 'warning', disabled: true },
         { value: 'ready', label: inTransit ? (locale === 'id' ? 'Dalam perjalanan' : 'In transit') : (locale === 'id' ? 'Siap diantar' : 'Ready for delivery'), tone: inTransit ? 'primary' : 'warning', disabled: o.status !== 'requested' },
