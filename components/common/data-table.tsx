@@ -472,7 +472,7 @@ export function DataTable<T>({
                               {t('common.edit')}
                             </DropdownMenuItem>
                           )}
-                          {selectable && <DropdownMenuItem onClick={() => setSelectionMode((current) => !current)} className="cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"><CheckSquare className="size-4" />{selectionMode ? t('common.hideSelection') : t('common.select')}</DropdownMenuItem>}
+                          {selectable && <DropdownMenuItem onClick={() => { if (!selectionMode) { setSelectionMode(true); const id = getRowId(row); if (!selectedRowIds.includes(id)) onSelectedRowIdsChange?.([...selectedRowIds, id]) } else { const id = getRowId(row); onSelectedRowIdsChange?.(selectedRowIds.filter((selectedId) => selectedId !== id)) } }} className="cursor-pointer transition-colors hover:bg-blue-50 hover:text-blue-700 focus:bg-blue-50 focus:text-blue-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"><CheckSquare className="size-4" />{selectionMode ? (selectedRowIds.includes(getRowId(row)) ? t('common.deselect') : t('common.select')) : t('common.select')}</DropdownMenuItem>}
                           {extra.length > 0 && (href || editable || selectable) && <DropdownMenuSeparator />}
                           {extra.map((a) => {
                             const kind = actionKind(a.label)
