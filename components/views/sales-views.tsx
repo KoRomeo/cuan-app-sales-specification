@@ -355,7 +355,7 @@ export function InvoicesView() {
         </KpiGrid>
         <DataTable rows={invoices} columns={columns} getRowId={(o) => o.id}
           selectable selectedRowIds={selectedInvoiceIds} onSelectedRowIdsChange={setSelectedInvoiceIds}
-          toolbarExtra={<button type="button" disabled={selectedInvoiceIds.length === 0} onClick={() => window.print()} className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm transition-colors hover:bg-blue-50 hover:text-blue-700 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-blue-950/40"><Printer className="size-4" />Print selected ({selectedInvoiceIds.length})</button>} searchText={(o) => `${o.id} ${customerMap.get(o.customerId)?.name ?? ''}`}
+          toolbarExtra={<button type="button" disabled={selectedInvoiceIds.length === 0} onClick={() => { const first = invoices.find((invoice) => selectedInvoiceIds.includes(invoice.id)); if (first) setPreview(first) }} className="inline-flex h-8 items-center gap-2 rounded-md border px-3 text-sm transition-colors hover:bg-blue-50 hover:text-blue-700 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-blue-950/40"><Printer className="size-4" />Preview selected ({selectedInvoiceIds.length})</button>} searchText={(o) => `${o.id} ${customerMap.get(o.customerId)?.name ?? ''}`}
           filters={[
             { value: 'all', label: t('common.all'), predicate: () => true },
             { value: 'unpaid', label: t('pay.unpaid'), predicate: (o) => orderPaymentStatus(o) === 'unpaid' },
@@ -407,6 +407,7 @@ type DeliveryOrderOption = { id: string; status: string; customerId: string; dat
 export function DeliveriesView() {
   const { t, locale } = useApp()
   const [selectedDeliveryIds, setSelectedDeliveryIds] = useState<string[]>([])
+  const [deliveryPreview, setDeliveryPreview] = useState<Order | null>(null)
   const [open, setOpen] = useState(false)
   const [deliveryUpdating, setDeliveryUpdating] = useState<string | null>(null)
   const { data: business } = useSWR<{ id: string }>('/api/businesses/current', customersFetcher)
@@ -473,12 +474,13 @@ export function DeliveriesView() {
             { value: 'pickup', label: t('method.pickup'), predicate: (d) => d.method === 'pickup' },
           ]}
           rowHref={(d) => `/orders/${d.orders[0]?.id ?? ''}`}
-          contextActions={(d) => [{ label: 'Delivery Note', icon: Printer, onSelect: () => { const orderId = d.orders[0]?.id; if (orderId) window.location.href = `/orders/${encodeURIComponent(orderId)}` } }]}
-          toolbarExtra={<button type="button" disabled={selectedDeliveryIds.length !== 1} onClick={() => { const selected = delivered.find((delivery) => delivery.id === selectedDeliveryIds[0]); const orderId = selected?.orders[0]?.id; if (orderId) window.location.href = `/orders/${encodeURIComponent(orderId)}` }} className="inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors hover:bg-blue-50 hover:text-blue-700 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-blue-950/40"><Printer className="size-3.5" />Print Delivery Note</button>}
+          contextActions={(d) => [{ label: 'Delivery Note', icon: Printer, onSelect: () => { const order = orderRows?.find((candidate) => candidate.id === d.orders[0]?.id) as (DeliveryOrderOption & Partial<Order>) | undefined; if (order && Array.isArray(order.items)) setDeliveryPreview(order as Order) } }]}
+          toolbarExtra={<button type="button" disabled={selectedDeliveryIds.length === 0} onClick={() => { const selected = delivered.find((delivery) => selectedDeliveryIds.includes(delivery.id)); const order = orderRows?.find((candidate) => candidate.id === selected?.orders[0]?.id) as (DeliveryOrderOption & Partial<Order>) | undefined; if (order && Array.isArray(order.items)) setDeliveryPreview(order as Order) }} className="inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors hover:bg-blue-50 hover:text-blue-700 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-blue-950/40"><Printer className="size-3.5" />Preview selected ({selectedDeliveryIds.length})</button>}
            addLabel={locale === 'id' ? 'Pengiriman Baru' : 'New Delivery'}
           onAdd={() => setOpen(true)}
         />
       )}
+      {deliveryPreview && <DocumentPreview order={deliveryPreview} kind="delivery" open onOpenChange={(value) => !value && setDeliveryPreview(null)} />}
       <FormDialog
         key={open ? 'new-delivery-open' : 'new-delivery-closed'}
         open={open}
