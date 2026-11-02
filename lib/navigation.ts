@@ -6,12 +6,14 @@ import {
   FileText,
   HandCoins,
   History,
+  Landmark,
   LayoutDashboard,
   type LucideIcon,
   Package,
   PieChart,
   Receipt,
   RotateCcw,
+  Scale,
   Settings,
   ShoppingBag,
   ShoppingCart,
@@ -54,6 +56,7 @@ export const navigation: NavSection[] = [
     items: [
       { href: '/purchases', label: 'nav.purchases', icon: ShoppingBag, feature: 'purchasing' },
       { href: '/suppliers', label: 'nav.suppliers', icon: Building2, feature: 'purchasing' },
+      { href: '/purchase-documents', label: 'nav.invoiceScanner', icon: FileText, feature: 'purchasing' },
     ],
   },
   {
@@ -62,6 +65,7 @@ export const navigation: NavSection[] = [
       { href: '/products', label: 'nav.products', icon: Package, feature: 'inventory' },
       { href: '/stock', label: 'nav.stock', icon: Boxes, feature: 'inventory' },
       { href: '/stock-movements', label: 'nav.stockMovements', icon: ArrowLeftRight, feature: 'inventory' },
+      { href: '/units', label: 'nav.units', icon: Scale, feature: 'inventory' },
     ],
   },
   {
@@ -69,6 +73,7 @@ export const navigation: NavSection[] = [
     items: [
       { href: '/receivables', label: 'nav.receivables', icon: HandCoins, feature: 'customerCredit' },
       { href: '/payables', label: 'nav.payables', icon: Wallet, feature: 'supplierCredit' },
+      { href: '/financial-accounts', label: 'reports.cash', icon: Landmark },
       { href: '/expenses', label: 'nav.expenses', icon: Receipt },
       { href: '/profit-loss', label: 'nav.profitLoss', icon: PieChart },
     ],
