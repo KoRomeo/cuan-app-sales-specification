@@ -27,7 +27,6 @@ type PurchaseInputItem = {
   discount?: number
   discountType?: 'amount' | 'percent'
 }
-function purchaseLineDiscount(item: PurchaseInputItem) { const gross=Number(item.qty)*Number(item.unitCost), value=Number(item.discount??0); return item.discountType==='percent'?gross*value/100:value }
 
 async function access(businessId: string) {
   const session = await auth.api.getSession({ headers: await headers() })
