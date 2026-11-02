@@ -3,6 +3,7 @@ import { and, eq, inArray } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { generateEntityId } from "@/lib/db/ids"
 import { writeAudit } from "@/lib/audit"
+import { calculatePurchaseLineTotals } from "@/lib/purchase-calculations"
 import { requireBusinessAccess } from "@/lib/api-auth"
 import { purchaseDocuments, purchases, purchaseItems, suppliers, products, stockMovements, journalEntries, journalEntryLines, payments, financialAccounts } from "@/lib/db/schema"
 
