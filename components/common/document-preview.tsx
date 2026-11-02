@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { customerById, lineSubtotal, type Order, orderPaid, orderTotal, productById } from '@/lib/data'
 import { formatDate, formatIDR } from '@/lib/format'
+import { ContinuousInvoice } from '@/components/common/continuous-invoice'
 
-type PaperSize = 'A6' | 'A4'
+type PaperSize = 'A6' | 'A4' | 'NCR'
 
 export function DocumentPreview({
   order,
@@ -36,7 +37,7 @@ export function DocumentPreview({
   const docNo = isInvoice ? order.id : (order.delivery?.id ?? '—')
   const tax = features.tax ? Math.round(total * 0.11) : 0
   const rows = Math.max(paperSize === 'A4' ? 15 : 8, order.items.length)
-  const paperClass = paperSize === 'A4' ? 'document-a4' : 'document-a6'
+  const paperClass = paperSize === 'NCR' ? 'document-ncr' : paperSize === 'A4' ? 'document-a4' : 'document-a6'
   const heading = isInvoice ? 'FAKTUR / INVOICE' : 'SURAT JALAN'
 
   return (
@@ -51,7 +52,7 @@ export function DocumentPreview({
             <label htmlFor="document-paper-size" className="text-xs font-medium text-muted-foreground">Ukuran kertas</label>
             <select id="document-paper-size" value={paperSize} onChange={(event) => setPaperSize(event.target.value as PaperSize)} className="h-9 rounded-md border bg-background px-3 text-sm">
               <option value="A6">A6 · 105 × 148 mm</option>
-              <option value="A4">A4 · 210 × 297 mm</option>
+              <option value="A4">A4 · 210 × 297 mm</option>\n              {isInvoice && <option value="NCR">Continuous Form NCR · 9.5 × 5.5 in</option>}
             </select>
             <Button size="sm" variant="outline" onClick={() => window.print()}>
               <Printer />
@@ -62,6 +63,44 @@ export function DocumentPreview({
 
         <div className="overflow-auto bg-muted/30 p-4 md:p-6 print:overflow-visible print:bg-white print:p-0">
           <article className={`print-area ${paperClass} mx-auto bg-white text-black shadow-sm print:shadow-none`}>
+            {isInvoice && paperSize === 'NCR' ? (
+              <>
+                <style>{`
+                  .document-ncr { width: 9.5in; min-height: 5.5in; height: 5.5in; padding: .28in .35in; box-sizing: border-box; display: flex; flex-direction: column; font-family: "Courier New", monospace; font-size: 9pt; line-height: 1.25; }
+                  .document-ncr.continuous-placeholder { height: auto; }
+                  .continuous-invoice { width: 100%; min-height: 5.5in; height: 5.5in; box-sizing: border-box; display: flex; flex-direction: column; background: white; color: black; font-family: "Courier New", monospace; font-size: 9pt; line-height: 1.25; }
+                  .continuous-invoice-expanded { height: auto; min-height: var(--invoice-height); }
+                  .continuous-invoice-header { display:flex; justify-content:space-between; gap:20px; margin-bottom:14px; }
+                  .continuous-invoice-meta { min-width:40%; line-height:1.8; }
+                  .continuous-invoice-recipient { text-align:right; }
+                  .continuous-invoice-recipient h1 { font-size:18pt; font-weight:bold; margin:0 0 8px; }
+                  .continuous-invoice-recipient p { margin:2px 0; }
+                  .continuous-invoice-table { width:100%; border-collapse:collapse; table-layout:fixed; border-top:1px solid black; border-bottom:1px solid black; }
+                  .continuous-invoice-table th { border-bottom:1px solid black; padding:5px 3px; text-align:center; font-weight:bold; }
+                  .continuous-invoice-table td { padding:3px; vertical-align:top; }
+                  .continuous-invoice-table .center { text-align:center; }
+                  .continuous-invoice-table .right { text-align:right; }
+                  .continuous-invoice-footer { margin-top:auto; padding-top:12px; display:grid; grid-template-columns:1fr 1.1fr 1.25fr; gap:12px; align-items:start; }
+                  .continuous-invoice-receipt,.continuous-invoice-company { text-align:center; }
+                  .continuous-invoice-signature { width:85%; margin:48px auto 0; border-bottom:1px solid black; }
+                  .continuous-invoice-terms { border:1px solid black; padding:8px; text-align:center; font-size:8pt; }
+                  .continuous-invoice-summary > div:not(.continuous-invoice-total):not(.continuous-invoice-company) { display:flex; justify-content:space-between; gap:8px; padding:2px 0; }
+                  .continuous-invoice-total { display:flex; justify-content:space-between; margin-top:5px; padding:5px 0; border-top:3px double black; border-bottom:3px double black; }
+                  .continuous-invoice-company { margin-top:12px; }
+                  @media print {
+                    @page { size: 9.5in 5.5in; margin:0; }
+                    html, body { margin:0 !important; padding:0 !important; background:white !important; }
+                    body * { visibility:hidden !important; }
+                    .print-area.document-ncr, .print-area.document-ncr * { visibility:visible !important; }
+                    .print-area.document-ncr { position:absolute; top:0; left:0; width:9.5in; min-height:5.5in; height:5.5in; margin:0; padding:.28in .35in; box-shadow:none; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+                    .print-area.document-ncr .continuous-invoice-expanded { position:relative; height:auto; min-height:var(--invoice-height); break-inside:avoid; page-break-inside:avoid; }
+                    .continuous-invoice-table tr { break-inside:avoid; page-break-inside:avoid; }
+                  }
+                `}</style>
+                <ContinuousInvoice order={order} customer={customer} productNames={productNames} />
+              </>
+            ) : (
+              <>
             <header className="grid grid-cols-[1fr_auto] items-start gap-4 border-b-2 border-black pb-3">
               <div>
                 <p className="text-[8pt] font-semibold uppercase tracking-[0.2em]">Dokumen transaksi</p>
@@ -152,7 +191,7 @@ export function DocumentPreview({
               <div><p>Hormat kami,</p><div className="mt-14 border-b border-black" /><p className="mt-1">Pengirim</p></div>
             </footer>
             <p className="mt-4 border-t border-black pt-2 text-center text-[7pt] tracking-wide">{isInvoice ? 'Terima kasih atas kepercayaan Anda.' : 'Mohon periksa jumlah dan kondisi barang saat diterima.'}</p>
-          </article>
+                        </>\n            )}\n          </article>
         </div>
       </DialogContent>
     </Dialog>
