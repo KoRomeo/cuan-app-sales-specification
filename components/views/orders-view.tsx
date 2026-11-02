@@ -164,8 +164,8 @@ export function OrdersView() {
           ? (inTransit ? (t('locale') === 'id' ? 'Dalam perjalanan' : 'In transit') : (t('locale') === 'id' ? 'Siap diantar' : 'Ready for delivery'))
           : o.status === 'delivered' ? (t('locale') === 'id' ? 'Terkirim' : 'Delivered') : t('status.cancelled')
       return <StatusDropdown value={o.status} options={[
-        { value: 'requested', label: currentLabel, tone: 'warning', disabled: true },
-        { value: 'ready', label: currentLabel === (t('locale') === 'id' ? 'Sudah dipesan' : 'Order placed') ? (t('locale') === 'id' ? 'Siap diantar' : 'Ready for delivery') : currentLabel, tone: inTransit ? 'primary' : 'warning', disabled: o.status !== 'requested' },
+        { value: 'requested', label: locale === 'id' ? 'Sudah dipesan' : 'Order placed', tone: 'warning', disabled: true },
+        { value: 'ready', label: inTransit ? (locale === 'id' ? 'Dalam perjalanan' : 'In transit') : (locale === 'id' ? 'Siap diantar' : 'Ready for delivery'), tone: inTransit ? 'primary' : 'warning', disabled: o.status !== 'requested' },
         { value: 'delivered', label: t('status.delivered'), tone: 'success', disabled: !o.deliveryId || o.status !== 'ready' },
         { value: 'cancelled', label: t('status.cancelled'), tone: 'neutral', disabled: o.status === 'delivered' || o.status === 'cancelled' || Boolean(o.deliveryId) },
       ]} onChange={(status) => changeOrderStatus(o, status)} disabled={o.status === 'delivered' || o.status === 'cancelled'} />
