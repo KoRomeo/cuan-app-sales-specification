@@ -119,12 +119,16 @@ export async function PATCH(request: NextRequest) {
       if (current.status === "delivered") throw new Error("DELIVERED_IMMUTABLE")
       if (current.status === "cancelled") throw new Error("INVALID_STATUS")
       const next = (status ?? current.status) as Status
-      const transitions: Record<Status, Status[]> = { requested: ["requested", "ready", "cancelled"], ready: ["ready", "cancelled"], delivered: ["delivered"], cancelled: ["cancelled"] }
+      const transitions: Record<Status, Status[]> = { requested: ["requested", "ready", "cancelled"], ready: ["ready", "delivered", "cancelled"], delivered: ["delivered"], cancelled: ["cancelled"] }
       if (!transitions[current.status].includes(next)) throw new Error("INVALID_STATUS")
       const existingItems = await tx.select().from(orderItems).where(eq(orderItems.orderId, id))
       if (customerId !== undefined) await verify(tx, businessId, customerId, lineItems ?? existingItems as Item[])
       if (lineItems !== undefined) { await tx.delete(orderItems).where(eq(orderItems.orderId, id)); await tx.insert(orderItems).values(lineItems.map((item: Item) => ({ id: item.id, orderId: id, productId: item.productId, qty: Number(item.qty), price: String(item.price), discount: String(item.discount ?? 0), discountType: item.discountType ?? "amount", unitCost: String(item.unitCost) }))) }
-      if (next === "delivered") throw new Error("DELIVERY_REQUIRED")
+      if (next === "delivered") {
+        const [delivery] = await tx.select({ id: deliveries.id }).from(deliveries)
+          .where(and(eq(deliveries.orderId, id), eq(deliveries.businessId, businessId))).limit(1)
+        if (!delivery) throw new Error("DELIVERY_REQUIRED")
+      }
       if (lineItems !== undefined) throw new Error("ORDER_ITEMS_IMMUTABLE")
       if (next === "cancelled") {
         const linkedPayments = await tx.select({ id: payments.id }).from(payments).where(and(eq(payments.businessId, businessId), eq(payments.orderId, id))).limit(1)
