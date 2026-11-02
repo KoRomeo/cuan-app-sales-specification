@@ -128,6 +128,7 @@ export function OrdersView() {
   if (error) return <p role="alert" className="text-sm text-destructive">{error.message}</p>
   if (!business || !persistedOrders || !payments || !customers || !products || !returnRows) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
   const orderRows = persistedOrders.map((order) => mapOrder(order, payments))
+  const deliveryIdsByOrder = new Map(persistedOrders.map((order) => [order.id, order.deliveryId ?? null]))
   const customerByIdMap = new Map(customers.map((customer) => [customer.id, customer]))
   const productByIdMap = new Map(products.map((product) => [product.id, product]))
   const productStock = new Map(products.map((product) => [product.id, product.stock ?? 0]))
@@ -156,8 +157,8 @@ export function OrdersView() {
     },
     { key: 'date', header: t('common.date'), cell: (o) => <span className="font-mono text-xs text-muted-foreground">{formatDate(o.date)}</span> },
     { key: 'customer', header: t('common.customer'), className: 'min-w-[180px]', cell: (o) => <span className="block whitespace-nowrap font-medium" title={customerByIdMap.get(o.customerId)?.name}>{customerByIdMap.get(o.customerId)?.name}</span> },
-    { key: 'status', header: locale === 'id' ? 'Status pengiriman' : 'Delivery status', sortValue: (o) => o.status === 'ready' && o.deliveryId ? 'in_transit' : o.status, className: 'min-w-[190px] text-right', cell: (o) => {
-      const inTransit = o.status === 'ready' && Boolean(o.deliveryId)
+    { key: 'status', header: locale === 'id' ? 'Status pengiriman' : 'Delivery status', sortValue: (o) => o.status === 'ready' && deliveryIdsByOrder.get(o.id) ? 'in_transit' : o.status, className: 'min-w-[190px] text-right', cell: (o) => {
+      const inTransit = o.status === 'ready' && Boolean(deliveryIdsByOrder.get(o.id))
       const currentLabel = o.status === 'requested'
         ? (locale === 'id' ? 'Sudah dipesan' : 'Order placed')
         : o.status === 'ready'
@@ -166,8 +167,8 @@ export function OrdersView() {
       return <StatusDropdown value={o.status} options={[
         { value: 'requested', label: locale === 'id' ? 'Sudah dipesan' : 'Order placed', tone: 'warning', disabled: true },
         { value: 'ready', label: inTransit ? (locale === 'id' ? 'Dalam perjalanan' : 'In transit') : (locale === 'id' ? 'Siap diantar' : 'Ready for delivery'), tone: inTransit ? 'primary' : 'warning', disabled: o.status !== 'requested' },
-        { value: 'delivered', label: t('status.delivered'), tone: 'success', disabled: !o.deliveryId || o.status !== 'ready' },
-        { value: 'cancelled', label: t('status.cancelled'), tone: 'neutral', disabled: o.status === 'delivered' || o.status === 'cancelled' || Boolean(o.deliveryId) },
+        { value: 'delivered', label: t('status.delivered'), tone: 'success', disabled: !deliveryIdsByOrder.get(o.id) || o.status !== 'ready' },
+        { value: 'cancelled', label: t('status.cancelled'), tone: 'neutral', disabled: o.status === 'delivered' || o.status === 'cancelled' || Boolean(deliveryIdsByOrder.get(o.id)) },
       ]} onChange={(status) => changeOrderStatus(o, status)} disabled={o.status === 'delivered' || o.status === 'cancelled'} />
     } },
     { key: 'returnStatus', header: t('orders.returnStatus'), sortValue: (o) => returnStatusByOrder.get(o.id) ?? 'none', cell: (o) => { const status = returnStatusByOrder.get(o.id); return status === 'full' ? <Pill tone="destructive">{t('orders.returnStatusFull')}</Pill> : status === 'partial' ? <Pill tone="warning">{t('orders.returnStatusPartial')}</Pill> : <span className="text-muted-foreground">{t('orders.returnStatusNone')}</span> } },
