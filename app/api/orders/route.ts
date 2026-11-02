@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
-import { businessMembers, customers, financialAccounts, journalEntries, journalEntryLines, orderItems, orders, payments, products, stockMovements } from "@/lib/db/schema"
+import { businessMembers, customers, financialAccounts, journalEntries, journalEntryLines, orderItems, orders, payments, products, stockMovements, deliveries } from "@/lib/db/schema"
 import { headers } from "next/headers"
 import { generateEntityId } from "@/lib/db/ids"
 import { writeAudit } from "@/lib/audit"
@@ -52,7 +52,11 @@ export async function GET(request: NextRequest) {
     const allowed = await access(businessId); if (!allowed.ok) return NextResponse.json({ error: allowed.error }, { status: allowed.status })
     const rows = await db.select().from(orders).where(eq(orders.businessId, businessId))
     const lineRows = rows.length ? await db.select().from(orderItems).where(inArray(orderItems.orderId, rows.map((row) => row.id))) : []
-    return NextResponse.json(rows.map((row) => ({ ...row, items: lineRows.filter((line) => line.orderId === row.id) })))
+    const deliveryRows = rows.length ? await db.select({ orderId: deliveries.orderId, deliveryId: deliveries.id, deliveryDate: deliveries.date }).from(deliveries).where(inArray(deliveries.orderId, rows.map((row) => row.id))) : []
+    return NextResponse.json(rows.map((row) => {
+      const delivery = deliveryRows.find((item) => item.orderId === row.id)
+      return { ...row, deliveryId: delivery?.deliveryId ?? null, deliveryDate: delivery?.deliveryDate ?? null, items: lineRows.filter((line) => line.orderId === row.id) }
+    }))
   } catch (error) { return fail(error) }
 }
 
