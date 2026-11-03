@@ -720,3 +720,10 @@ body > * {
   border: 0 !important;
   box-shadow: var(--app-card-shadow) !important;
 }
+
+
+/* Dark navy icon rail, with a clean white logo and high-contrast navigation icons. */
+.app-sidebar-rail {
+  background: #172d55;
+  color: #fff;
+}

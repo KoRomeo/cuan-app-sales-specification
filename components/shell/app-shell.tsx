@@ -6,15 +6,14 @@ import { Topbar } from '@/components/shell/topbar'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
 
   return (
     <div className="app-shell-surface min-h-dvh">
-      <Sidebar open={open} onClose={() => setOpen(false)} collapsed={collapsed} onToggleCollapsed={() => setCollapsed((value) => !value)} />
-      <div className={`flex min-h-dvh flex-col transition-[padding] duration-200 ${collapsed ? "lg:pl-[6.5rem]" : "lg:pl-64"}`}>
+      <Sidebar open={open} onClose={() => setOpen(false)} collapsed onToggleCollapsed={() => undefined} />
+      <div className="flex min-h-dvh flex-col transition-[padding] duration-200 lg:pl-[6.5rem]">
         <Topbar onMenu={() => setOpen(true)} />
         <main className="flex-1 px-4 py-6 md:px-6 md:py-7">
-          <div className={`mx-auto w-full ${collapsed ? "max-w-none" : "max-w-screen-2xl"}`}>{children}</div>
+          <div className="mx-auto w-full max-w-none">{children}</div>
         </main>
       </div>
     </div>
