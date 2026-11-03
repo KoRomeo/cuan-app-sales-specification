@@ -727,3 +727,24 @@ body > * {
   background: #172d55;
   color: #fff;
 }
+
+
+/* Joined navigation dock: the category list is an extension of the icon rail,
+   not a floating panel separated by a gutter. */
+.app-sidebar-dock {
+  isolation: isolate;
+}
+.app-sidebar-rail {
+  background: #172d55;
+  color: #fff;
+  border-radius: 0.75rem 0 0 0.75rem;
+}
+.app-sidebar-subnav {
+  border-radius: 0 0.75rem 0.75rem 0;
+  box-shadow: inset 1px 0 0 rgb(15 23 42 / 5%);
+}
+@media (max-width: 1023px) {
+  .app-sidebar-dock {
+    max-height: calc(100dvh - 1.5rem);
+  }
+}
