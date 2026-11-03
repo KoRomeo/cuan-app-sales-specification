@@ -42,11 +42,11 @@ export function KpiCard({
   )
 
   const className =
-    'group relative flex flex-col rounded-md border bg-card p-4 shadow-xs transition-colors md:p-5'
+    'app-card group relative flex flex-col rounded-xl bg-card p-4 transition-shadow md:p-5'
 
   if (href) {
     return (
-      <Link href={href} className={cn(className, 'hover:border-primary/40')}>
+      <Link href={href} className={cn(className, 'hover:-translate-y-0.5')}>
         {body}
       </Link>
     )

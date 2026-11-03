@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { usePathname } from 'next/navigation'
 import {
-  BarChart3, Boxes, Building2, ChevronDown, FileText, History, LayoutDashboard,
+  BarChart3, Boxes, Building2, FileText, History, LayoutDashboard,
   PanelLeftClose, PanelLeftOpen, Package, Settings, ShoppingBag, ShoppingCart,
   Wallet, X,
 } from 'lucide-react'
@@ -55,11 +55,11 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
     <>
       <div aria-hidden="true" onClick={onClose} className={cn('fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity lg:hidden', open ? 'opacity-100' : 'pointer-events-none opacity-0')} />
       <aside className={cn(
-        'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[10px_0_36px_-18px_rgba(15,23,42,0.32)] transition-[width,transform] duration-200 lg:translate-x-0',
-        collapsed ? 'w-60 lg:w-[4.25rem]' : 'w-60',
+        'fixed inset-y-3 left-3 z-50 flex flex-col overflow-hidden rounded-xl bg-sidebar text-sidebar-foreground shadow-[0_18px_48px_-22px_rgba(15,23,42,0.28),0_5px_16px_-8px_rgba(15,23,42,0.12)] transition-[width,transform] duration-200 lg:inset-y-4 lg:left-4 lg:translate-x-0',
+        collapsed ? 'w-60 lg:w-[4.5rem]' : 'w-56',
         open ? 'translate-x-0' : '-translate-x-full',
       )}>
-        <div className={cn('flex h-16 shrink-0 items-center border-b border-sidebar-border/70 px-3', collapsed ? 'justify-center lg:px-2' : 'justify-between px-5')}>
+        <div className={cn('flex h-16 shrink-0 items-center px-3', collapsed ? 'justify-center lg:px-2' : 'justify-between px-5')}>
           <Link href="/dashboard" onClick={onClose} aria-label="CuanApp Sales home" className={cn(collapsed && 'lg:hidden')}>
             <Logo />
           </Link>
@@ -105,13 +105,11 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
                   className={cn(
                     'group relative flex w-full items-center rounded-lg text-sm transition-all duration-150',
                     collapsed ? 'h-10 justify-center px-0' : 'gap-3 px-3 py-2',
-                    (hasActiveItem || activeCategory === section.label) ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/65 hover:text-sidebar-foreground',
+                    (hasActiveItem || activeCategory === section.label) ? 'bg-white text-[#172D55] shadow-[0_4px_12px_-5px_rgba(15,23,42,0.22)]' : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground',
                   )}
                 >
-                  {(hasActiveItem || activeCategory === section.label) && <span aria-hidden="true" className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-sidebar-primary" />}
-                  <Icon className={cn('size-[17px] shrink-0', hasActiveItem || activeCategory === section.label ? 'text-sidebar-primary' : 'text-sidebar-muted group-hover:text-sidebar-foreground')} />
+                  <Icon className={cn('size-[17px] shrink-0', hasActiveItem || activeCategory === section.label ? 'text-[#172D55]' : 'text-sidebar-muted group-hover:text-sidebar-foreground')} />
                   <span className={cn('min-w-0 flex-1 truncate text-left text-[12px] font-medium tracking-normal', collapsed && 'lg:hidden')}>{t(section.label)}</span>
-                  {!collapsed && !singlePageSection && <ChevronDown className={cn('size-3.5 text-sidebar-muted transition-transform', isExpanded && 'rotate-180')} />}
                 </button>
 
                 {!collapsed && !singlePageSection && isExpanded && (
@@ -125,10 +123,10 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
                           <li key={item.href} className="relative">
                             <span aria-hidden="true" className="absolute -left-3 top-1/2 h-px w-2.5 bg-sidebar-border/90" />
                             <Link href={item.href} onClick={onClose} aria-current={active ? 'page' : undefined} className={cn(
-                              'group flex min-h-9 items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-colors',
-                              active ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
+                              'group flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors',
+                              active ? 'bg-white font-medium text-[#172D55] shadow-[0_3px_10px_-5px_rgba(15,23,42,0.2)]' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
                             )}>
-                              <ItemIcon className={cn('size-3.5 shrink-0', active ? 'text-sidebar-primary' : 'text-sidebar-muted')} />
+                              <ItemIcon className={cn('size-3.5 shrink-0', active ? 'text-[#172D55]' : 'text-sidebar-muted')} />
                               <span className="truncate">{t(item.label)}</span>
                               {active && <span className="ml-auto size-1.5 shrink-0 rounded-full bg-sidebar-primary" />}
                             </Link>
@@ -143,7 +141,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
           })}
         </nav>
 
-        <div className={cn('shrink-0 border-t border-sidebar-border/70 p-3', collapsed ? 'flex justify-center' : '')}>
+        <div className={cn('shrink-0 p-3', collapsed ? 'flex justify-center' : '')}>
           <button type="button" onClick={() => { router.push('/settings'); onClose() }} title={t('nav.settings')} aria-label={t('nav.settings')} className={cn('group flex h-10 items-center rounded-lg text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-foreground', collapsed ? 'w-10 justify-center' : 'w-full gap-3 px-3')}>
             <Settings className="size-[17px] shrink-0 text-sidebar-muted group-hover:text-sidebar-foreground" />
             {!collapsed && <span className="text-[12px] font-medium">{t('nav.settings')}</span>}
@@ -156,7 +154,7 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
       {collapsed && activeCategory && (
         <>
           <button type="button" aria-label="Close category menu" className="fixed inset-0 z-[55] hidden bg-transparent lg:block" onClick={() => setActiveCategory(null)} />
-          <section className="fixed left-[4.5rem] top-[4.5rem] z-[60] hidden w-60 overflow-hidden rounded-xl border border-sidebar-border bg-popover p-2.5 text-popover-foreground shadow-[0_14px_38px_-12px_rgba(15,23,42,0.22),0_4px_12px_-4px_rgba(15,23,42,0.08)] lg:block" aria-label={t(activeCategory)}>
+          <section className="fixed left-[6.25rem] top-[4.5rem] z-[60] hidden w-60 overflow-hidden rounded-xl bg-popover p-2.5 text-popover-foreground shadow-[0_14px_38px_-12px_rgba(15,23,42,0.22),0_4px_12px_-4px_rgba(15,23,42,0.08)] lg:block" aria-label={t(activeCategory)}>
             <div className="flex items-center gap-2 border-b border-border/70 px-2 pb-2.5 pt-1">
               {(() => { const Icon = categoryIcons[activeCategory] ?? Building2; return <Icon className="size-4 text-primary" /> })()}
               <p className="text-[13px] font-medium tracking-normal">{t(activeCategory as Parameters<typeof t>[0])}</p>
@@ -167,8 +165,8 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
                 const ItemIcon = item.icon
                 return (
                   <li key={item.href}>
-                    <Link href={item.href} onClick={() => { setActiveCategory(null); onClose() }} aria-current={active ? 'page' : undefined} className={cn('flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors', active ? 'bg-accent font-medium text-accent-foreground' : 'text-foreground/75 hover:bg-accent/70 hover:text-foreground')}>
-                      <ItemIcon className={cn('size-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground')} />
+                    <Link href={item.href} onClick={() => { setActiveCategory(null); onClose() }} aria-current={active ? 'page' : undefined} className={cn('flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors', active ? 'bg-white font-medium text-[#172D55] shadow-[0_3px_10px_-5px_rgba(15,23,42,0.2)]' : 'text-foreground/75 hover:bg-accent/70 hover:text-foreground')}>
+                      <ItemIcon className={cn('size-4 shrink-0', active ? 'text-[#172D55]' : 'text-muted-foreground')} />
                       <span className="truncate">{t(item.label)}</span>
                       {active && <span className="ml-auto size-1.5 rounded-full bg-primary" />}
                     </Link>
