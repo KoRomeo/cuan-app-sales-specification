@@ -42,7 +42,7 @@ export function KpiCard({
   )
 
   const className =
-    'app-card group relative flex flex-col rounded-xl bg-card p-4 transition-shadow md:p-5'
+    'app-card group relative flex flex-col rounded-lg bg-card p-4 transition-shadow md:p-5'
 
   if (href) {
     return (

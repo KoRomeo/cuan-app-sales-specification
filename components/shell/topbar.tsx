@@ -41,7 +41,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
   ]
 
   return (
-    <header className="sticky top-4 z-30 mx-4 mt-4 flex h-16 items-center gap-3 rounded-xl bg-card px-4 shadow-[0_14px_34px_-20px_rgba(15,23,42,0.28),0_4px_12px_-6px_rgba(15,23,42,0.12)] backdrop-blur-xl md:mx-6 md:px-6">
+    <header className="sticky top-4 z-30 mx-4 mt-4 flex h-16 items-center gap-3 rounded-xl bg-card px-4 shadow-[0_10px_26px_-20px_rgba(15,23,42,0.22),0_3px_9px_-7px_rgba(15,23,42,0.12)] backdrop-blur-xl md:mx-6 md:px-6">
       <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenu} aria-label={t('top.menu')}>
         <Menu />
       </Button>
