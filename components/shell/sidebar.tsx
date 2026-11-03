@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   BarChart3, Building2, History, LayoutDashboard, Package, PanelLeftClose,
   Settings, ShoppingBag, ShoppingCart, Wallet,
@@ -24,10 +24,13 @@ const categoryIcons: Record<string, LucideIcon> = {
   'nav.settings': Settings,
 }
 
+const directPagePaths = new Set(['/dashboard', '/reports', '/history', '/settings'])
+
 function getActiveCategory(pathname: string) {
+  if (directPagePaths.has(pathname)) return null
   return navigation.find((section) =>
     section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)),
-  )?.label ?? 'nav.overview'
+  )?.label ?? null
 }
 
 type SidebarProps = {
@@ -38,6 +41,7 @@ type SidebarProps = {
 
 export function Sidebar({ open, onClose, onExpandedChange }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const { t, features } = useApp()
   const [activeCategory, setActiveCategory] = useState<string | null>(() => getActiveCategory(pathname))
   const expanded = Boolean(activeCategory)
@@ -70,10 +74,10 @@ export function Sidebar({ open, onClose, onExpandedChange }: SidebarProps) {
 
       <aside className={cn(
         'app-sidebar-dock fixed bottom-3 left-3 top-3 z-50 flex overflow-hidden rounded-xl shadow-[0_8px_32px_rgba(15,23,42,0.14)] transition-[width,transform] duration-200 ease-out lg:bottom-4 lg:left-4 lg:top-4',
-        expanded ? 'w-[min(20.25rem,calc(100vw-1.5rem))] lg:w-[20.25rem]' : 'w-[4.25rem]',
+        expanded ? 'w-[min(17.25rem,calc(100vw-1.5rem))] lg:w-[17.25rem]' : 'w-[3.75rem]',
         open ? 'translate-x-0' : '-translate-x-[150%] lg:translate-x-0',
       )}>
-        <div className="app-sidebar-rail relative z-10 flex w-[4.25rem] shrink-0 flex-col items-center py-3 text-white">
+        <div className="app-sidebar-rail relative z-10 flex w-[3.75rem] shrink-0 flex-col items-center py-3 text-white">
           <Link
             href="/dashboard"
             onClick={onClose}
@@ -95,12 +99,23 @@ export function Sidebar({ open, onClose, onExpandedChange }: SidebarProps) {
                   title={t(section.label)}
                   aria-label={t(section.label)}
                   aria-expanded={isActive}
-                  onClick={() => setActiveCategory((current) => current === section.label ? null : section.label)}
+                  onClick={() => {
+                    const directItem = section.items.length === 1 && directPagePaths.has(section.items[0].href)
+                    if (directItem) {
+                      setActiveCategory(null)
+                      router.push(section.items[0].href)
+                      onClose()
+                      return
+                    }
+                    setActiveCategory((current) => current === section.label ? null : section.label)
+                  }}
                   className={cn(
                     'flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors duration-150',
-                    isActive || hasCurrentPage
+                    hasCurrentPage
                       ? 'bg-white text-[#172D55]'
-                      : 'text-white/85 hover:bg-white/12 hover:text-white',
+                      : isActive
+                        ? 'bg-white/20 text-white'
+                        : 'text-white/85 hover:bg-white/12 hover:text-white',
                   )}
                 >
                   <Icon className="size-[18px]" strokeWidth={1.8} />
@@ -113,7 +128,7 @@ export function Sidebar({ open, onClose, onExpandedChange }: SidebarProps) {
         {selectedSection && (
           <section
             aria-label={t(activeCategory as Parameters<typeof t>[0])}
-            className="app-sidebar-subnav flex min-w-0 flex-1 flex-col bg-card px-5 pb-4 pt-4 text-card-foreground"
+            className="app-sidebar-subnav flex min-w-0 flex-1 flex-col bg-card px-4 pb-3 pt-3 text-card-foreground"
           >
             <div className="flex min-h-10 shrink-0 items-center justify-between gap-3 border-b border-border/70 pb-3">
               <div className="flex min-w-0 items-center gap-2.5">
@@ -151,7 +166,7 @@ export function Sidebar({ open, onClose, onExpandedChange }: SidebarProps) {
                         onClick={onClose}
                         aria-current={active ? 'page' : undefined}
                         className={cn(
-                          'flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-[13px] transition-colors',
+                          'flex min-h-9 items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors',
                           active
                             ? 'bg-muted font-medium text-foreground'
                             : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',

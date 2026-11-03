@@ -18,7 +18,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onClose={() => setOpen(false)}
         onExpandedChange={handleExpandedChange}
       />
-      <div className={`flex min-h-dvh flex-col transition-[padding] duration-200 ease-out ${navigationExpanded ? 'lg:pl-[21.25rem]' : 'lg:pl-[5.25rem]'}`}>
+      <div className={`flex min-h-dvh flex-col transition-[padding] duration-200 ease-out ${navigationExpanded ? 'lg:pl-[18.25rem]' : 'lg:pl-[4.75rem]'}`}>
         <Topbar onMenu={() => setOpen(true)} />
         <main className="min-w-0 flex-1 px-4 py-6 md:px-6 md:py-7">
           <div className="mx-auto w-full max-w-none">{children}</div>
