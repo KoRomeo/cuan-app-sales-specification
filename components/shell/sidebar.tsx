@@ -2,13 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { usePathname } from 'next/navigation'
-import {
-  BarChart3, Boxes, Building2, FileText, History, LayoutDashboard,
-  PanelLeftClose, PanelLeftOpen, Package, Settings, ShoppingBag, ShoppingCart,
-  Wallet, X,
-} from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { BarChart3, Building2, History, LayoutDashboard, Package, Settings, ShoppingBag, ShoppingCart, Wallet, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useApp } from '@/components/providers'
 import { Logo } from '@/components/shell/logo'
@@ -26,20 +21,18 @@ const categoryIcons: Record<string, LucideIcon> = {
   'nav.settings': Settings,
 }
 
-export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open: boolean; onClose: () => void; collapsed: boolean; onToggleCollapsed: () => void }) {
+function getActiveCategory(pathname: string) {
+  return navigation.find((section) => section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)))?.label ?? 'nav.overview'
+}
+
+export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void; collapsed: boolean; onToggleCollapsed: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
   const { t, features } = useApp()
-  const [expandedSections, setExpandedSections] = useState<string[]>(() => {
-    const active = navigation.find((section) => section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)))
-    return active ? [active.label] : ['nav.overview']
-  })
-  const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [activeCategory, setActiveCategory] = useState<string | null>(() => getActiveCategory(pathname))
 
   useEffect(() => {
-    const active = navigation.find((section) => section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)))
-    if (active) setExpandedSections((current) => current.includes(active.label) ? current : [...current, active.label])
-    setActiveCategory(null)
+    setActiveCategory(getActiveCategory(pathname))
   }, [pathname])
 
   const visibleSections = navigation.filter((section) => section.label !== 'nav.settings').map((section) => ({
@@ -47,135 +40,86 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open:
     items: section.items.filter((item) => !item.feature || features[item.feature]),
   })).filter((section) => section.items.length > 0)
 
-  const toggleSection = (label: string) => {
-    setExpandedSections((current) => current.includes(label) ? current.filter((item) => item !== label) : [...current, label])
-  }
+  const selectedSection = visibleSections.find((section) => section.label === activeCategory)
 
   return (
     <>
-      <div aria-hidden="true" onClick={onClose} className={cn('fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity lg:hidden', open ? 'opacity-100' : 'pointer-events-none opacity-0')} />
+      <button type="button" aria-label="Close navigation" onClick={onClose} className={cn('fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] transition-opacity lg:hidden', open ? 'opacity-100' : 'pointer-events-none opacity-0')} />
+
       <aside className={cn(
-        'fixed inset-y-3 left-3 z-50 flex flex-col overflow-hidden rounded-xl bg-sidebar text-sidebar-foreground shadow-[0_18px_48px_-22px_rgba(15,23,42,0.28),0_5px_16px_-8px_rgba(15,23,42,0.12)] transition-[width,transform] duration-200 lg:inset-y-4 lg:left-4 lg:translate-x-0',
-        collapsed ? 'w-60 lg:w-[4.5rem]' : 'w-56',
-        open ? 'translate-x-0' : '-translate-x-full',
+        'app-sidebar-rail fixed inset-y-3 left-3 z-50 flex w-[4.25rem] flex-col items-center overflow-hidden rounded-xl py-3 text-white shadow-[0_0_18px_rgba(15,23,42,0.12)] transition-transform duration-200 lg:inset-y-4 lg:left-4 lg:translate-x-0',
+        open ? 'translate-x-0' : '-translate-x-[150%]',
       )}>
-        <div className={cn('flex h-16 shrink-0 items-center px-3', collapsed ? 'justify-center lg:px-2' : 'justify-between px-5')}>
-          <Link href="/dashboard" onClick={onClose} aria-label="CuanApp Sales home" className={cn(collapsed && 'lg:hidden')}>
-            <Logo />
-          </Link>
-          <button type="button" onClick={onToggleCollapsed} className="hidden size-8 shrink-0 items-center justify-center rounded-lg text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground lg:flex" aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'} title={collapsed ? 'Expand navigation' : 'Collapse navigation'}>
-            {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
-          </button>
-          <button type="button" onClick={onClose} className="rounded-md p-1.5 text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground lg:hidden" aria-label="Close menu">
-            <X className="size-4" />
-          </button>
-        </div>
+        <Link href="/dashboard" onClick={onClose} aria-label="CuanApp dashboard" className="mb-6 flex size-10 shrink-0 items-center justify-center rounded-xl text-white transition-colors hover:bg-white/10">
+          <Logo className="[&>div:first-child]:size-9 [&>div:first-child]:rounded-lg [&>div:first-child]:bg-transparent [&>div:first-child]:shadow-none [&>div:last-child]:hidden [&_svg]:size-7 [&_svg]:text-white" />
+        </Link>
 
-        <nav aria-label="Main" className={cn('app-nav-scroll flex-1 overflow-y-auto overflow-x-hidden py-4', collapsed ? 'px-2' : 'px-3')}>
+        <nav aria-label="Main navigation" className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-y-auto px-2">
           {visibleSections.map((section) => {
-            const isExpanded = expandedSections.includes(section.label)
-            const hasActiveItem = section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
             const Icon = categoryIcons[section.label] ?? Building2
-            const singlePageSection = section.items.length === 1
+            const isActive = activeCategory === section.label
+            const hasCurrentPage = section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
             return (
-              <div key={section.label} className={cn('relative', collapsed ? 'mb-1.5' : 'mb-2')}>
-                {/* Compact mode: multi-page categories use a floating submenu; single-page categories navigate directly. */}
-                <button
-                  type="button"
-                  title={collapsed ? t(section.label) : undefined}
-                  aria-label={t(section.label)}
-                  aria-expanded={collapsed ? activeCategory === section.label : (singlePageSection ? undefined : isExpanded)}
-                  onClick={() => {
-                    if (collapsed) {
-                      if (singlePageSection) {
-                        router.push(section.items[0].href)
-                        onClose()
-                        return
-                      }
-                      setActiveCategory((current) => current === section.label ? null : section.label)
-                    } else {
-                      if (singlePageSection) {
-                        router.push(section.items[0].href)
-                        onClose()
-                      } else {
-                        toggleSection(section.label)
-                      }
-                    }
-                  }}
-                  className={cn(
-                    'group relative flex w-full items-center rounded-lg text-sm transition-all duration-150',
-                    collapsed ? 'h-10 justify-center px-0' : 'gap-3 px-3 py-2',
-                    (hasActiveItem || activeCategory === section.label) ? 'bg-white text-[#172D55] shadow-[0_4px_12px_-5px_rgba(15,23,42,0.22)]' : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground',
-                  )}
-                >
-                  <Icon className={cn('size-[17px] shrink-0', hasActiveItem || activeCategory === section.label ? 'text-[#172D55]' : 'text-sidebar-muted group-hover:text-sidebar-foreground')} />
-                  <span className={cn('min-w-0 flex-1 truncate text-left text-[12px] font-medium tracking-normal', collapsed && 'lg:hidden')}>{t(section.label)}</span>
-                </button>
-
-                {!collapsed && !singlePageSection && isExpanded && (
-                  <div className="relative ml-[1.15rem] mt-1.5 border-l border-sidebar-border/90 pl-3">
-                    <span aria-hidden="true" className="pointer-events-none absolute -left-px top-0 h-2.5 w-px bg-sidebar" />
-                    <ul className="flex flex-col gap-0.5">
-                      {section.items.map((item) => {
-                        const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
-                        const ItemIcon = item.icon
-                        return (
-                          <li key={item.href} className="relative">
-                            <span aria-hidden="true" className="absolute -left-3 top-1/2 h-px w-2.5 bg-sidebar-border/90" />
-                            <Link href={item.href} onClick={onClose} aria-current={active ? 'page' : undefined} className={cn(
-                              'group flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors',
-                              active ? 'bg-white font-medium text-[#172D55] shadow-[0_3px_10px_-5px_rgba(15,23,42,0.2)]' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
-                            )}>
-                              <ItemIcon className={cn('size-3.5 shrink-0', active ? 'text-[#172D55]' : 'text-sidebar-muted')} />
-                              <span className="truncate">{t(item.label)}</span>
-                              {active && <span className="ml-auto size-1.5 shrink-0 rounded-full bg-sidebar-primary" />}
-                            </Link>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
+              <button
+                key={section.label}
+                type="button"
+                title={t(section.label)}
+                aria-label={t(section.label)}
+                aria-expanded={isActive}
+                onClick={() => setActiveCategory((current) => current === section.label ? null : section.label)}
+                className={cn(
+                  'flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors duration-150',
+                  isActive || hasCurrentPage ? 'bg-white text-[#172D55]' : 'text-white/85 hover:bg-white/12 hover:text-white',
                 )}
-              </div>
+              >
+                <Icon className="size-[18px]" strokeWidth={1.8} />
+              </button>
             )
           })}
         </nav>
 
-        <div className={cn('shrink-0 p-3', collapsed ? 'flex justify-center' : '')}>
-          <button type="button" onClick={() => { router.push('/settings'); onClose() }} title={t('nav.settings')} aria-label={t('nav.settings')} className={cn('group flex h-10 items-center rounded-lg text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-foreground', collapsed ? 'w-10 justify-center' : 'w-full gap-3 px-3')}>
-            <Settings className="size-[17px] shrink-0 text-sidebar-muted group-hover:text-sidebar-foreground" />
-            {!collapsed && <span className="text-[12px] font-medium">{t('nav.settings')}</span>}
+        <div className="mt-3 flex w-full shrink-0 flex-col items-center gap-2 px-2">
+          <button type="button" title={t('nav.settings')} aria-label={t('nav.settings')} onClick={() => { router.push('/settings'); onClose() }} className={cn('flex size-10 items-center justify-center rounded-lg transition-colors', pathname.startsWith('/settings') ? 'bg-white text-[#172D55]' : 'text-white/85 hover:bg-white/12 hover:text-white')}>
+            <Settings className="size-[18px]" strokeWidth={1.8} />
           </button>
         </div>
-
       </aside>
 
-      {/* Floating category panel sits outside the scroll container so it never gets clipped. */}
-      {collapsed && activeCategory && (
-        <>
-          <button type="button" aria-label="Close category menu" className="fixed inset-0 z-[55] hidden bg-transparent lg:block" onClick={() => setActiveCategory(null)} />
-          <section className="fixed left-[6.25rem] top-[4.5rem] z-[60] hidden w-60 overflow-hidden rounded-xl bg-popover p-2.5 text-popover-foreground shadow-[0_14px_38px_-12px_rgba(15,23,42,0.22),0_4px_12px_-4px_rgba(15,23,42,0.08)] lg:block" aria-label={t(activeCategory)}>
-            <div className="flex items-center gap-2 border-b border-border/70 px-2 pb-2.5 pt-1">
-              {(() => { const Icon = categoryIcons[activeCategory] ?? Building2; return <Icon className="size-4 text-primary" /> })()}
-              <p className="text-[13px] font-medium tracking-normal">{t(activeCategory as Parameters<typeof t>[0])}</p>
+      {activeCategory && selectedSection && (
+        <section aria-label={t(activeCategory as Parameters<typeof t>[0])} className={cn(
+          'fixed bottom-3 left-[5.25rem] top-3 z-[60] flex w-[15.5rem] flex-col overflow-hidden rounded-xl border border-border/60 bg-card p-3 text-card-foreground shadow-[0_0_24px_rgba(15,23,42,0.12)] lg:bottom-4 lg:left-[5.75rem] lg:top-4',
+          open ? 'max-lg:left-[5.25rem]' : 'max-lg:hidden',
+        )}>
+          <div className="flex min-h-11 shrink-0 items-center justify-between border-b border-border/70 px-1 pb-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              {(() => { const Icon = categoryIcons[activeCategory] ?? Building2; return <Icon className="size-[17px] shrink-0 text-foreground" strokeWidth={1.8} /> })()}
+              <h2 className="truncate text-sm font-semibold">{t(activeCategory as Parameters<typeof t>[0])}</h2>
             </div>
-            <ul className="mt-1.5 flex flex-col gap-0.5">
-              {(visibleSections.find((section) => section.label === activeCategory)?.items ?? []).map((item) => {
+            <button type="button" onClick={() => setActiveCategory(null)} aria-label="Close submenu" title="Close submenu" className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <X className="size-4" />
+            </button>
+          </div>
+
+          <nav aria-label={t(activeCategory as Parameters<typeof t>[0])} className="min-h-0 flex-1 overflow-y-auto pt-3">
+            <ul className="flex flex-col gap-1">
+              {selectedSection.items.map((item) => {
                 const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
                 const ItemIcon = item.icon
                 return (
                   <li key={item.href}>
-                    <Link href={item.href} onClick={() => { setActiveCategory(null); onClose() }} aria-current={active ? 'page' : undefined} className={cn('flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors', active ? 'bg-white font-medium text-[#172D55] shadow-[0_3px_10px_-5px_rgba(15,23,42,0.2)]' : 'text-foreground/75 hover:bg-accent/70 hover:text-foreground')}>
-                      <ItemIcon className={cn('size-4 shrink-0', active ? 'text-[#172D55]' : 'text-muted-foreground')} />
-                      <span className="truncate">{t(item.label)}</span>
-                      {active && <span className="ml-auto size-1.5 rounded-full bg-primary" />}
+                    <Link href={item.href} onClick={onClose} aria-current={active ? 'page' : undefined} className={cn(
+                      'flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-[13px] transition-colors',
+                      active ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
+                    )}>
+                      <ItemIcon className="size-4 shrink-0" strokeWidth={1.8} />
+                      <span className="min-w-0 flex-1 truncate">{t(item.label)}</span>
                     </Link>
                   </li>
                 )
               })}
             </ul>
-          </section>
-        </>
+          </nav>
+        </section>
       )}
     </>
   )
