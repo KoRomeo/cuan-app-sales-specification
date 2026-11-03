@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { authClient } from '@/lib/auth-client'
-import { Bell, Building2, Check, ChevronsUpDown, LogOut, Menu, Moon, Search, Settings, Sun, User } from 'lucide-react'
+import { Bell, Building2, Check, LogOut, Menu, Moon, Search, Settings, Sun, User } from 'lucide-react'
 import useSWR from 'swr'
 import { LocaleSwitcher } from '@/components/common/locale-switcher'
 import { useApp } from '@/components/providers'
@@ -41,7 +41,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
   ]
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-xl md:px-6">
+    <header className="sticky top-4 z-30 mx-4 mt-4 flex h-16 items-center gap-3 rounded-xl bg-card px-4 shadow-[0_14px_34px_-20px_rgba(15,23,42,0.28),0_4px_12px_-6px_rgba(15,23,42,0.12)] backdrop-blur-xl md:mx-6 md:px-6">
       <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenu} aria-label={t('top.menu')}>
         <Menu />
       </Button>
@@ -51,7 +51,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           render={
             <button
               type="button"
-              className="flex items-center gap-2.5 rounded-lg border bg-card px-2.5 py-1.5 text-left transition-colors hover:bg-muted"
+              className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-muted"
             />
           }
         >
@@ -62,7 +62,6 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
             <span className="text-sm font-medium">{business?.name ?? t('common.loading')}</span>
             <span className="text-[11px] text-muted-foreground">{business ? t(business.type === 'bakery' ? 'onboarding.bakeryType' : 'onboarding.salesType') : ''}</span>
           </span>
-          <ChevronsUpDown className="size-3.5 text-muted-foreground" />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-64">
           <DropdownMenuGroup>
@@ -89,9 +88,9 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           type="search"
           placeholder={t('top.search')}
           aria-label={t('top.search')}
-          className="h-9 w-full rounded-lg border bg-card pl-9 pr-12 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+          className="h-9 w-full rounded-lg bg-muted/65 pl-9 pr-12 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/30"
         />
-        <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">
+        <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md bg-background/80 px-1.5 font-mono text-[10px] text-muted-foreground">
           /
         </kbd>
       </div>
