@@ -665,84 +665,58 @@ body > * {
 }
 
 
-/* Refined CuanApp surfaces: clean white canvas, navy navigation, crisp corners. */
+/* Balanced, soft card shadows: light spreads evenly on every side. */
 :root {
-  --sidebar: #172d55;
-  --sidebar-foreground: #f8fafc;
-  --sidebar-muted: #c2ccdc;
-  --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #172d55;
-  --sidebar-accent: #243d68;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgb(255 255 255 / 10%);
+  --sidebar: oklch(0.965 0.008 260);
+  --sidebar-foreground: oklch(0.3 0.035 262);
+  --sidebar-muted: oklch(0.58 0.025 260);
+  --sidebar-primary: oklch(0.28 0.07 262);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(1 0 0);
+  --sidebar-accent-foreground: oklch(0.28 0.07 262);
+  --sidebar-border: transparent;
   --app-card-shadow:
-    0 12px 30px -22px rgb(23 45 85 / 22%),
-    0 3px 10px -7px rgb(23 45 85 / 12%);
+    0 0 15px 1px rgb(23 45 85 / 7%),
+    0 1px 3px rgb(23 45 85 / 4%);
   --app-card-shadow-hover:
-    0 16px 34px -22px rgb(23 45 85 / 25%),
-    0 5px 12px -7px rgb(23 45 85 / 14%);
+    0 0 18px 1px rgb(23 45 85 / 9%),
+    0 2px 5px rgb(23 45 85 / 5%);
 }
 .dark {
   --app-card-shadow:
-    0 14px 34px -22px rgb(0 0 0 / 48%),
-    0 4px 12px -8px rgb(0 0 0 / 30%);
+    0 0 16px 1px rgb(0 0 0 / 24%),
+    0 1px 4px rgb(0 0 0 / 18%);
   --app-card-shadow-hover:
-    0 18px 38px -22px rgb(0 0 0 / 54%),
-    0 6px 14px -8px rgb(0 0 0 / 34%);
+    0 0 19px 1px rgb(0 0 0 / 29%),
+    0 2px 5px rgb(0 0 0 / 22%);
 }
-
-/* White remains the base; blue gradients are intentionally soft and blended into it. */
-.app-shell-surface {
-  background-color: #fff !important;
-  background-image:
-    radial-gradient(ellipse 48rem 34rem at 100% 0%, rgb(35 83 180 / 13%), transparent 72%),
-    radial-gradient(ellipse 54rem 42rem at 0% 100%, rgb(30 70 160 / 11%), transparent 74%),
-    radial-gradient(ellipse 30rem 24rem at 82% 9%, rgb(80 125 215 / 7%), transparent 75%);
-  background-attachment: fixed;
-}
-:root:not(.dark) body {
-  background-color: #fff !important;
-}
-:root:not(.dark) body::before {
-  background:
-    radial-gradient(ellipse 72vw 58vh at 100% 0%, rgb(34 91 205 / 14%), transparent 70%),
-    radial-gradient(ellipse 66vw 62vh at 0% 100%, rgb(35 82 190 / 12%), transparent 72%),
-    radial-gradient(ellipse 42vw 36vh at 83% 8%, rgb(83 139 239 / 8%), transparent 74%),
-    var(--background);
-}
-:root:not(.dark) body::after { opacity: 0.08; }
-
-/* No outlines; use a restrained ambient shadow and slightly sharper 8px corners. */
 :where([data-slot="card"], .app-card, [class*="bg-card"][class*="rounded"]) {
   border: 0 !important;
   border-color: transparent !important;
   outline: 0 !important;
-  border-radius: 0.5rem !important;
-  background: var(--card) !important;
-  background-image: none !important;
   box-shadow: var(--app-card-shadow) !important;
-  transition: box-shadow 180ms ease, transform 180ms ease;
+  transition: box-shadow 180ms ease;
 }
 :where([data-slot="card"], .app-card, [class*="bg-card"][class*="rounded"]):hover {
   box-shadow: var(--app-card-shadow-hover) !important;
 }
-:where([data-slot="card"], .app-card) > :first-child,
-:where([data-slot="card"], .app-card) > :last-child {
-  border-radius: inherit;
+.dark [data-slot="card"],
+.dark .app-card,
+.dark [class*="bg-card"][class*="rounded"] {
+  border: 0 !important;
+  border-color: transparent !important;
+  box-shadow: var(--app-card-shadow) !important;
 }
-:where([class*="overflow-x-auto"][class*="rounded"], [class*="overflow-auto"][class*="rounded"]) {
-  border-radius: 0.5rem !important;
+.dark [data-slot="card"]:hover,
+.dark .app-card:hover,
+.dark [class*="bg-card"][class*="rounded"]:hover {
+  box-shadow: var(--app-card-shadow-hover) !important;
 }
 :where([class*="overflow-x-auto"][class*="rounded"], [class*="overflow-auto"][class*="rounded"]):has(> table) {
   border: 0 !important;
   box-shadow: var(--app-card-shadow) !important;
 }
-
-/* Use a consistent, clean outline weight for Lucide icons across the interface. */
-svg.lucide {
-  stroke-width: 1.7;
-}
-svg.lucide[class*="size-3"],
-svg.lucide[class*="size-3.5"] {
-  stroke-width: 1.8;
+.dark :where([class*="overflow-x-auto"][class*="rounded"], [class*="overflow-auto"][class*="rounded"]):has(> table) {
+  border: 0 !important;
+  box-shadow: var(--app-card-shadow) !important;
 }
