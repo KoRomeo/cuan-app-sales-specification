@@ -110,12 +110,8 @@ export function Sidebar({ open, onClose, onExpandedChange }: SidebarProps) {
                     setActiveCategory((current) => current === section.label ? null : section.label)
                   }}
                   className={cn(
-                    'flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors duration-150',
-                    hasCurrentPage
-                      ? 'bg-white text-[#172D55]'
-                      : isActive
-                        ? 'bg-white/20 text-white'
-                        : 'text-white/85 hover:bg-white/12 hover:text-white',
+                    'flex size-10 shrink-0 items-center justify-center rounded-none bg-transparent text-white/85 transition-colors duration-150 hover:bg-transparent hover:text-white',
+                    (hasCurrentPage || isActive) && 'text-white',
                   )}
                 >
                   <Icon className="size-[18px]" strokeWidth={1.8} />
