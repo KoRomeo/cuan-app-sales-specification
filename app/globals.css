@@ -807,3 +807,26 @@ html body .app-sidebar-rail a[aria-current="page"] {
 html body .topbar-profile-trigger {
   border-radius: 9999px !important;
 }
+
+
+/* FINAL OVERRIDE: every card surface is a true rectangle (90-degree corners).
+   Keep this after all theme and component rules so no later radius wins. */
+html body [data-slot="card"],
+html body .app-card,
+html body .app-floating-surface,
+html body [class*="bg-card"][class*="rounded"],
+html body [class*="overflow-x-auto"][class*="rounded"]:has(> table),
+html body [class*="overflow-auto"][class*="rounded"]:has(> table) {
+  border-radius: 0 !important;
+}
+
+/* Sidebar selection is indicated by icon color only: no tile or background. */
+html body .app-sidebar-rail nav > button,
+html body .app-sidebar-rail nav > button[aria-expanded="true"] {
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+html body .app-sidebar-rail nav > button:hover {
+  background: transparent !important;
+}
