@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
-  BarChart3, Boxes, Building2, ChevronDown, FileText, History, LayoutDashboard,
-  PanelLeftClose, PanelLeftOpen, Package, Settings, ShoppingBag, ShoppingCart,
-  Wallet, X,
+  BarChart3, Building2, History, LayoutDashboard, Package, PanelLeftClose,
+  Settings, ShoppingBag, ShoppingCart, Wallet,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useApp } from '@/components/providers'
@@ -26,159 +24,161 @@ const categoryIcons: Record<string, LucideIcon> = {
   'nav.settings': Settings,
 }
 
-export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: { open: boolean; onClose: () => void; collapsed: boolean; onToggleCollapsed: () => void }) {
+const directPagePaths = new Set(['/dashboard', '/reports', '/history', '/settings'])
+
+function getActiveCategory(pathname: string) {
+  if (directPagePaths.has(pathname)) return null
+  return navigation.find((section) =>
+    section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)),
+  )?.label ?? null
+}
+
+type SidebarProps = {
+  open: boolean
+  onClose: () => void
+  onExpandedChange: (expanded: boolean) => void
+}
+
+export function Sidebar({ open, onClose, onExpandedChange }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { t, features } = useApp()
-  const [expandedSections, setExpandedSections] = useState<string[]>(() => {
-    const active = navigation.find((section) => section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)))
-    return active ? [active.label] : ['nav.overview']
-  })
-  const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [activeCategory, setActiveCategory] = useState<string | null>(() => getActiveCategory(pathname))
+  const expanded = Boolean(activeCategory)
 
   useEffect(() => {
-    const active = navigation.find((section) => section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)))
-    if (active) setExpandedSections((current) => current.includes(active.label) ? current : [...current, active.label])
-    setActiveCategory(null)
+    setActiveCategory(getActiveCategory(pathname))
   }, [pathname])
 
-  const visibleSections = navigation.filter((section) => section.label !== 'nav.settings').map((section) => ({
+  useEffect(() => {
+    onExpandedChange(expanded)
+  }, [expanded, onExpandedChange])
+
+  const visibleSections = navigation.map((section) => ({
     ...section,
     items: section.items.filter((item) => !item.feature || features[item.feature]),
   })).filter((section) => section.items.length > 0)
-
-  const toggleSection = (label: string) => {
-    setExpandedSections((current) => current.includes(label) ? current.filter((item) => item !== label) : [...current, label])
-  }
+  const selectedSection = visibleSections.find((section) => section.label === activeCategory)
 
   return (
     <>
-      <div aria-hidden="true" onClick={onClose} className={cn('fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity lg:hidden', open ? 'opacity-100' : 'pointer-events-none opacity-0')} />
-      <aside className={cn(
-        'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-[10px_0_36px_-18px_rgba(15,23,42,0.32)] transition-[width,transform] duration-200 lg:translate-x-0',
-        collapsed ? 'w-60 lg:w-[4.25rem]' : 'w-60',
-        open ? 'translate-x-0' : '-translate-x-full',
-      )}>
-        <div className={cn('flex h-16 shrink-0 items-center border-b border-sidebar-border/70 px-3', collapsed ? 'justify-center lg:px-2' : 'justify-between px-5')}>
-          <Link href="/dashboard" onClick={onClose} aria-label="CuanApp Sales home" className={cn(collapsed && 'lg:hidden')}>
-            <Logo />
-          </Link>
-          <button type="button" onClick={onToggleCollapsed} className="hidden size-8 shrink-0 items-center justify-center rounded-lg text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground lg:flex" aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'} title={collapsed ? 'Expand navigation' : 'Collapse navigation'}>
-            {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
-          </button>
-          <button type="button" onClick={onClose} className="rounded-md p-1.5 text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground lg:hidden" aria-label="Close menu">
-            <X className="size-4" />
-          </button>
-        </div>
+      <button
+        type="button"
+        aria-label="Close navigation"
+        onClick={onClose}
+        className={cn(
+          'fixed inset-0 z-40 bg-slate-950/30 backdrop-blur-[2px] transition-opacity lg:hidden',
+          open ? 'opacity-100' : 'pointer-events-none opacity-0',
+        )}
+      />
 
-        <nav aria-label="Main" className={cn('app-nav-scroll flex-1 overflow-y-auto overflow-x-hidden py-4', collapsed ? 'px-2' : 'px-3')}>
-          {visibleSections.map((section) => {
-            const isExpanded = expandedSections.includes(section.label)
-            const hasActiveItem = section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
-            const Icon = categoryIcons[section.label] ?? Building2
-            const singlePageSection = section.items.length === 1
-            return (
-              <div key={section.label} className={cn('relative', collapsed ? 'mb-1.5' : 'mb-2')}>
-                {/* Compact mode: multi-page categories use a floating submenu; single-page categories navigate directly. */}
+      <aside className={cn(
+        'app-sidebar-dock fixed bottom-3 left-3 top-3 z-50 flex overflow-hidden rounded-xl shadow-[0_8px_32px_rgba(15,23,42,0.14)] transition-[width,transform] duration-200 ease-out lg:bottom-4 lg:left-4 lg:top-4',
+        expanded ? 'w-[min(17.25rem,calc(100vw-1.5rem))] lg:w-[17.25rem]' : 'w-[3.75rem]',
+        open ? 'translate-x-0' : '-translate-x-[150%] lg:translate-x-0',
+      )}>
+        <div className="app-sidebar-rail relative z-10 flex w-[3.75rem] shrink-0 flex-col items-center py-3 text-white">
+          <Link
+            href="/dashboard"
+            onClick={onClose}
+            aria-label="CuanApp dashboard"
+            className="mb-6 flex size-10 shrink-0 items-center justify-center rounded-lg text-white transition-colors hover:bg-white/10"
+          >
+            <Logo className="[&>div:first-child]:size-9 [&>div:first-child]:rounded-lg [&>div:first-child]:bg-transparent [&>div:first-child]:shadow-none [&>div:last-child]:hidden [&_svg]:size-7 [&_svg]:text-white" />
+          </Link>
+
+          <nav aria-label="Main navigation" className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-y-auto px-2">
+            {visibleSections.map((section) => {
+              const Icon = categoryIcons[section.label] ?? Building2
+              const isActive = activeCategory === section.label
+              const hasCurrentPage = section.items.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+              return (
                 <button
+                  key={section.label}
                   type="button"
-                  title={collapsed ? t(section.label) : undefined}
+                  title={t(section.label)}
                   aria-label={t(section.label)}
-                  aria-expanded={collapsed ? activeCategory === section.label : (singlePageSection ? undefined : isExpanded)}
+                  aria-expanded={isActive}
                   onClick={() => {
-                    if (collapsed) {
-                      if (singlePageSection) {
-                        router.push(section.items[0].href)
-                        onClose()
-                        return
-                      }
-                      setActiveCategory((current) => current === section.label ? null : section.label)
-                    } else {
-                      if (singlePageSection) {
-                        router.push(section.items[0].href)
-                        onClose()
-                      } else {
-                        toggleSection(section.label)
-                      }
+                    const directItem = section.items.length === 1 && directPagePaths.has(section.items[0].href)
+                    if (directItem) {
+                      setActiveCategory(null)
+                      router.push(section.items[0].href)
+                      onClose()
+                      return
                     }
+                    setActiveCategory((current) => current === section.label ? null : section.label)
                   }}
                   className={cn(
-                    'group relative flex w-full items-center rounded-lg text-sm transition-all duration-150',
-                    collapsed ? 'h-10 justify-center px-0' : 'gap-3 px-3 py-2',
-                    (hasActiveItem || activeCategory === section.label) ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/65 hover:text-sidebar-foreground',
+                    'flex size-10 shrink-0 items-center justify-center rounded-none bg-transparent text-white/85 transition-colors duration-150 hover:bg-transparent hover:text-white',
+                    (hasCurrentPage || isActive) && 'text-white',
                   )}
                 >
-                  {(hasActiveItem || activeCategory === section.label) && <span aria-hidden="true" className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-sidebar-primary" />}
-                  <Icon className={cn('size-[17px] shrink-0', hasActiveItem || activeCategory === section.label ? 'text-sidebar-primary' : 'text-sidebar-muted group-hover:text-sidebar-foreground')} />
-                  <span className={cn('min-w-0 flex-1 truncate text-left text-[12px] font-medium tracking-normal', collapsed && 'lg:hidden')}>{t(section.label)}</span>
-                  {!collapsed && !singlePageSection && <ChevronDown className={cn('size-3.5 text-sidebar-muted transition-transform', isExpanded && 'rotate-180')} />}
+                  <Icon className="size-[18px]" strokeWidth={1.8} />
                 </button>
-
-                {!collapsed && !singlePageSection && isExpanded && (
-                  <div className="relative ml-[1.15rem] mt-1.5 border-l border-sidebar-border/90 pl-3">
-                    <span aria-hidden="true" className="pointer-events-none absolute -left-px top-0 h-2.5 w-px bg-sidebar" />
-                    <ul className="flex flex-col gap-0.5">
-                      {section.items.map((item) => {
-                        const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
-                        const ItemIcon = item.icon
-                        return (
-                          <li key={item.href} className="relative">
-                            <span aria-hidden="true" className="absolute -left-3 top-1/2 h-px w-2.5 bg-sidebar-border/90" />
-                            <Link href={item.href} onClick={onClose} aria-current={active ? 'page' : undefined} className={cn(
-                              'group flex min-h-9 items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] transition-colors',
-                              active ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground' : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground',
-                            )}>
-                              <ItemIcon className={cn('size-3.5 shrink-0', active ? 'text-sidebar-primary' : 'text-sidebar-muted')} />
-                              <span className="truncate">{t(item.label)}</span>
-                              {active && <span className="ml-auto size-1.5 shrink-0 rounded-full bg-sidebar-primary" />}
-                            </Link>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </nav>
-
-        <div className={cn('shrink-0 border-t border-sidebar-border/70 p-3', collapsed ? 'flex justify-center' : '')}>
-          <button type="button" onClick={() => { router.push('/settings'); onClose() }} title={t('nav.settings')} aria-label={t('nav.settings')} className={cn('group flex h-10 items-center rounded-lg text-sm text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-foreground', collapsed ? 'w-10 justify-center' : 'w-full gap-3 px-3')}>
-            <Settings className="size-[17px] shrink-0 text-sidebar-muted group-hover:text-sidebar-foreground" />
-            {!collapsed && <span className="text-[12px] font-medium">{t('nav.settings')}</span>}
-          </button>
+              )
+            })}
+          </nav>
         </div>
 
-      </aside>
-
-      {/* Floating category panel sits outside the scroll container so it never gets clipped. */}
-      {collapsed && activeCategory && (
-        <>
-          <button type="button" aria-label="Close category menu" className="fixed inset-0 z-[55] hidden bg-transparent lg:block" onClick={() => setActiveCategory(null)} />
-          <section className="fixed left-[4.5rem] top-[4.5rem] z-[60] hidden w-60 overflow-hidden rounded-xl border border-sidebar-border bg-popover p-2.5 text-popover-foreground shadow-[0_14px_38px_-12px_rgba(15,23,42,0.22),0_4px_12px_-4px_rgba(15,23,42,0.08)] lg:block" aria-label={t(activeCategory)}>
-            <div className="flex items-center gap-2 border-b border-border/70 px-2 pb-2.5 pt-1">
-              {(() => { const Icon = categoryIcons[activeCategory] ?? Building2; return <Icon className="size-4 text-primary" /> })()}
-              <p className="text-[13px] font-medium tracking-normal">{t(activeCategory as Parameters<typeof t>[0])}</p>
+        {selectedSection && (
+          <section
+            aria-label={t(activeCategory as Parameters<typeof t>[0])}
+            className="app-sidebar-subnav flex min-w-0 flex-1 flex-col bg-card px-4 pb-3 pt-3 text-card-foreground"
+          >
+            <div className="flex min-h-10 shrink-0 items-center justify-between gap-3 border-b border-border/70 pb-3">
+              <div className="flex min-w-0 items-center gap-2.5">
+                {(() => {
+                  const Icon = categoryIcons[activeCategory!] ?? Building2
+                  return <Icon className="size-[17px] shrink-0 text-foreground" strokeWidth={1.8} />
+                })()}
+                <h2 className="truncate text-sm font-semibold">
+                  {t(activeCategory as Parameters<typeof t>[0])}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveCategory(null)}
+                aria-label="Collapse navigation"
+                title="Collapse navigation"
+                className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <PanelLeftClose className="size-[17px]" strokeWidth={1.7} />
+              </button>
             </div>
-            <ul className="mt-1.5 flex flex-col gap-0.5">
-              {(visibleSections.find((section) => section.label === activeCategory)?.items ?? []).map((item) => {
-                const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
-                const ItemIcon = item.icon
-                return (
-                  <li key={item.href}>
-                    <Link href={item.href} onClick={() => { setActiveCategory(null); onClose() }} aria-current={active ? 'page' : undefined} className={cn('flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors', active ? 'bg-accent font-medium text-accent-foreground' : 'text-foreground/75 hover:bg-accent/70 hover:text-foreground')}>
-                      <ItemIcon className={cn('size-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground')} />
-                      <span className="truncate">{t(item.label)}</span>
-                      {active && <span className="ml-auto size-1.5 rounded-full bg-primary" />}
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
+
+            <nav
+              aria-label={t(activeCategory as Parameters<typeof t>[0])}
+              className="min-h-0 flex-1 overflow-y-auto pt-3"
+            >
+              <ul className="flex flex-col gap-1">
+                {selectedSection.items.map((item) => {
+                  const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
+                  const ItemIcon = item.icon
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        onClick={onClose}
+                        aria-current={active ? 'page' : undefined}
+                        className={cn(
+                          'flex min-h-9 items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors',
+                          active
+                            ? 'bg-muted font-medium text-foreground'
+                            : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
+                        )}
+                      >
+                        <ItemIcon className="size-4 shrink-0" strokeWidth={1.8} />
+                        <span className="min-w-0 flex-1 truncate">{t(item.label)}</span>
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            </nav>
           </section>
-        </>
-      )}
+        )}
+      </aside>
     </>
   )
 }
