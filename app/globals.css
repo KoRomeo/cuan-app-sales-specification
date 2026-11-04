@@ -778,3 +778,30 @@ header.sticky { border-radius: 0.625rem !important; }
 /* Global square-corner treatment: cards, table surfaces, navbar, and header. */
 :where([data-slot="card"], .app-card, .app-floating-surface, [class*="bg-card"][class*="rounded"], [class*="overflow-x-auto"][class*="rounded"]:has(> table), [class*="overflow-auto"][class*="rounded"]:has(> table), .app-sidebar-dock, .app-sidebar-rail, .app-sidebar-subnav, header.sticky) { border-radius: 0 !important; }
 .app-sidebar-rail button { border-radius: 0 !important; }
+
+
+/* Enforce square corners after every component and Tailwind utility rule.
+   The higher-specificity selector also overrides rounded-* utility classes
+   used by dashboard panels and page-specific card wrappers. */
+html body *[class*="rounded"],
+html body [data-slot="card"],
+html body .app-card,
+html body .app-floating-surface,
+html body header,
+html body nav,
+html body .app-sidebar-dock,
+html body .app-sidebar-rail,
+html body .app-sidebar-subnav {
+  border-radius: 0 !important;
+}
+
+/* Keep the selected navigation icon visibly distinct from unselected icons. */
+html body .app-sidebar-rail button[aria-current="page"],
+html body .app-sidebar-rail button[aria-selected="true"],
+html body .app-sidebar-rail button[data-active="true"],
+html body .app-sidebar-rail button.active,
+html body .app-sidebar-rail a[aria-current="page"] {
+  background: rgb(255 255 255 / 20%) !important;
+  color: #fff !important;
+  border-radius: 0 !important;
+}
