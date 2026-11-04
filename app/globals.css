@@ -773,3 +773,8 @@ header.sticky { border-radius: 0.625rem !important; }
 @media (max-width: 1023px) {
   .app-sidebar-dock { width: min(17.25rem, calc(100vw - 1.5rem)) !important; }
 }
+
+
+/* Global square-corner treatment: cards, table surfaces, navbar, and header. */
+:where([data-slot="card"], .app-card, .app-floating-surface, [class*="bg-card"][class*="rounded"], [class*="overflow-x-auto"][class*="rounded"]:has(> table), [class*="overflow-auto"][class*="rounded"]:has(> table), .app-sidebar-dock, .app-sidebar-rail, .app-sidebar-subnav, header.sticky) { border-radius: 0 !important; }
+.app-sidebar-rail button { border-radius: 0 !important; }
