@@ -5,7 +5,6 @@ import { useTheme } from 'next-themes'
 import { authClient } from '@/lib/auth-client'
 import { Bell, Building2, Check, LogOut, Menu, Moon, Search, Settings, Sun, User } from 'lucide-react'
 import useSWR from 'swr'
-import { LocaleSwitcher } from '@/components/common/locale-switcher'
 import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
 import {
@@ -96,8 +95,6 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
       </div>
 
       <div className="ml-auto flex items-center gap-1.5 md:ml-0">
-        <LocaleSwitcher />
-
         <Button
           variant="ghost"
           size="icon"
@@ -142,7 +139,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
               <button
                 type="button"
                 aria-label={t('top.profile')}
-                className="ml-1 flex size-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary to-[oklch(0.45_0.2_268)] text-xs font-semibold text-white ring-2 ring-background"
+                className="topbar-profile-trigger ml-1 flex size-8 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary to-[oklch(0.45_0.2_268)] text-xs font-semibold text-white ring-2 ring-background"
               />
             }
           >
