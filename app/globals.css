@@ -780,22 +780,19 @@ header.sticky { border-radius: 0.625rem !important; }
 .app-sidebar-rail button { border-radius: 0 !important; }
 
 
-/* Enforce square corners after every component and Tailwind utility rule.
-   The higher-specificity selector also overrides rounded-* utility classes
-   used by dashboard panels and page-specific card wrappers. */
-html body *[class*="rounded"],
+/* Square app cards and app chrome, without flattening rounded controls or avatars. */
 html body [data-slot="card"],
 html body .app-card,
 html body .app-floating-surface,
-html body header,
-html body nav,
+html body header.sticky,
 html body .app-sidebar-dock,
 html body .app-sidebar-rail,
-html body .app-sidebar-subnav {
+html body .app-sidebar-subnav,
+html body .app-sidebar-rail button {
   border-radius: 0 !important;
 }
 
-/* Keep the selected navigation icon visibly distinct from unselected icons. */
+/* Selected navigation item has a quiet grey highlight. */
 html body .app-sidebar-rail button[aria-current="page"],
 html body .app-sidebar-rail button[aria-selected="true"],
 html body .app-sidebar-rail button[data-active="true"],
@@ -804,4 +801,9 @@ html body .app-sidebar-rail a[aria-current="page"] {
   background: rgb(255 255 255 / 20%) !important;
   color: #fff !important;
   border-radius: 0 !important;
+}
+
+/* The account avatar remains circular; it is not an app content card. */
+html body .topbar-profile-trigger {
+  border-radius: 9999px !important;
 }
