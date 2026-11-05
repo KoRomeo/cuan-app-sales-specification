@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
 
     const movementReferences = new Set(movementRows.map(row => row.reference))
     for (const purchase of purchaseRows) {
-      if (purchase.status !== "canceled" && !movementReferences.has(`purchase:${purchase.id}:receive`)) {
+      if (purchase.status !== "cancelled" && !movementReferences.has(`purchase:${purchase.id}:receive`)) {
         events.push({ fingerprint: `purchase:unreceived:${purchase.id}`, kind: "purchase_unreceived", entityId: purchase.id, payload: { name: purchase.id }, href: `/purchases/${purchase.id}`, priority: "warning" })
       }
     }

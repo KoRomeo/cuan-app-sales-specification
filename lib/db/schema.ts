@@ -540,7 +540,10 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
-})
+}, (table) => ({
+  businessUserCreated: index("notifications_business_user_created_idx").on(table.businessId, table.userId, table.createdAt),
+  businessUserActive: index("notifications_business_user_active_idx").on(table.businessId, table.userId, table.resolvedAt),
+}))
 
 // ============================================================
 // PURCHASE DOCUMENTS (private invoice originals + AI review state)
