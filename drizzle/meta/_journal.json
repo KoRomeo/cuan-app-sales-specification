@@ -134,6 +134,13 @@
       "when": 1793530000000,
       "tag": "0018_financial_account_number",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793865600000,
+      "tag": "0019_notifications",
+      "breakpoints": true
     }
   ]
 }
