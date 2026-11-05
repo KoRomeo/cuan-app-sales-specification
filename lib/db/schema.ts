@@ -524,6 +524,28 @@ export const unitOperations = pgTable("unit_operations", {
 
 
 // ============================================================
+// NOTIFICATIONS
+// ============================================================
+export const notifications = pgTable("notifications", {
+  id: text("id").primaryKey(),
+  businessId: text("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
+  fingerprint: text("fingerprint").notNull(),
+  kind: text("kind").notNull(),
+  entityId: text("entity_id"),
+  payload: jsonb("payload").$type<Record<string, string | number | null>>().notNull().default({}),
+  href: text("href").notNull(),
+  priority: text("priority").notNull().default("info"),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+}, (table) => ({
+  businessUserCreated: index("notifications_business_user_created_idx").on(table.businessId, table.userId, table.createdAt),
+  businessUserActive: index("notifications_business_user_active_idx").on(table.businessId, table.userId, table.resolvedAt),
+}))
+
+// ============================================================
 // PURCHASE DOCUMENTS (private invoice originals + AI review state)
 // ============================================================
 export const purchaseDocuments = pgTable("purchase_documents", {
