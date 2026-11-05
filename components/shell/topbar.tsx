@@ -177,7 +177,9 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           <DropdownMenuContent align="end" className="w-[min(26rem,calc(100vw-2rem))] p-0">
             <div className="flex items-center justify-between px-4 py-3">
               <div>
-                <DropdownMenuLabel className="p-0 text-sm">{t('top.notifications')}</DropdownMenuLabel>
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="p-0 text-sm">{t('top.notifications')}</DropdownMenuLabel>
+                </DropdownMenuGroup>
                 <p className="mt-0.5 text-xs text-muted-foreground">{t('notif.unreadCount', { n: notificationData?.unreadCount ?? 0 })}</p>
               </div>
               <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs" disabled={!notificationData?.unreadCount} onClick={() => void markAllRead()}>
