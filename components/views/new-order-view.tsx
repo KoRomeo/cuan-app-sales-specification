@@ -129,6 +129,9 @@ export function NewOrderView() {
       if (destination.pathname === window.location.pathname) return
       event.preventDefault()
       event.stopPropagation()
+      // The global navigation overlay also observes this click in the capture phase.
+      // Cancel its pending timer because this navigation now waits for the draft dialog.
+      window.dispatchEvent(new Event('cuanapp:navigation-intercepted'))
       setPendingNavigation(nextPath)
       setLeaveOpen(true)
     }
