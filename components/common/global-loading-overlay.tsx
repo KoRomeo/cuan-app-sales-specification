@@ -40,7 +40,12 @@ export function GlobalLoadingOverlay() {
       if (navigationTimer.current) clearTimeout(navigationTimer.current)
       navigationTimer.current = setTimeout(() => { if (navigationPending.current) setNavigationVisible(true) }, SHOW_DELAY)
     }
-    const onNavigationIntercepted = () => cancelNavigation()
+    const onNavigationIntercepted = () => {
+      navigationPending.current = false
+      if (navigationTimer.current) clearTimeout(navigationTimer.current)
+      navigationTimer.current = null
+      setNavigationVisible(false)
+    }
     window.addEventListener('cuanapp:navigation-intercepted', onNavigationIntercepted)
     document.addEventListener('click', onClick, true)
     return () => {
@@ -48,7 +53,7 @@ export function GlobalLoadingOverlay() {
       document.removeEventListener('click', onClick, true)
       if (navigationTimer.current) clearTimeout(navigationTimer.current)
     }
-  }, [cancelNavigation])
+  }, [])
 
   useEffect(() => {
     const originalFetch = window.fetch
