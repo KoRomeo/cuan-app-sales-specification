@@ -40,12 +40,15 @@ export function GlobalLoadingOverlay() {
       if (navigationTimer.current) clearTimeout(navigationTimer.current)
       navigationTimer.current = setTimeout(() => { if (navigationPending.current) setNavigationVisible(true) }, SHOW_DELAY)
     }
+    const onNavigationIntercepted = () => cancelNavigation()
+    window.addEventListener('cuanapp:navigation-intercepted', onNavigationIntercepted)
     document.addEventListener('click', onClick, true)
     return () => {
+      window.removeEventListener('cuanapp:navigation-intercepted', onNavigationIntercepted)
       document.removeEventListener('click', onClick, true)
       if (navigationTimer.current) clearTimeout(navigationTimer.current)
     }
-  }, [])
+  }, [cancelNavigation])
 
   useEffect(() => {
     const originalFetch = window.fetch
