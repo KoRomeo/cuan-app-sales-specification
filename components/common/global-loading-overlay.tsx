@@ -53,7 +53,7 @@ export function GlobalLoadingOverlay() {
       document.removeEventListener('click', onClick, true)
       if (navigationTimer.current) clearTimeout(navigationTimer.current)
     }
-  }, [])
+  }, [pathname])
 
   useEffect(() => {
     const originalFetch = window.fetch
