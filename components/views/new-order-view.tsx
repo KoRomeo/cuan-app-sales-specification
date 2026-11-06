@@ -29,6 +29,24 @@ type StockRow = { productId: string; stock: number | string }
 type FinancialAccountRow = { id: string; name: string; type: 'cash' | 'bank'; active: boolean }
 const MAX_ORDER_QTY = 999999
 
+const hasMeaningfulOrderDraft = (draft: OrderDraft, defaultProduct?: Product) =>
+  Boolean(
+    draft.customerId ||
+    draft.notes.trim() ||
+    draft.dueDate ||
+    Number(draft.paid) > 0 ||
+    draft.paymentAccount ||
+    draft.lines.some((line, index) =>
+      index > 0 ||
+      !defaultProduct ||
+      line.productId !== defaultProduct.id ||
+      line.qty !== 1 ||
+      line.price !== Number(defaultProduct.sellingPrice) ||
+      line.discount !== 0 ||
+      line.discountType !== 'amount'
+    ),
+  )
+
 interface Line {
   key: number
   productId: string
@@ -88,8 +106,7 @@ export function NewOrderView() {
         setLines(Array.isArray(draft.lines) ? draft.lines : [])
         setPaid(draft.paid ?? '0')
         setPaymentAccount(draft.paymentAccount ?? '')
-        setDraftExists(true)
-        setLastSaved(new Date())
+        setDraftExists(false)
       }
     } catch {
       sessionStorage.removeItem(draftKey)
@@ -104,16 +121,22 @@ export function NewOrderView() {
   }, [draftReady, lines.length, productRows])
 
   useEffect(() => {
-    if (!draftReady || !draftKey) return
+    if (!draftReady || !draftKey || !productRows) return
     const draft: OrderDraft = { customerId, orderDate, dueDate, notes, lines, paid, paymentAccount }
+    if (!hasMeaningfulOrderDraft(draft, productRows[0])) {
+      sessionStorage.removeItem(draftKey)
+      setDraftExists(false)
+      setLastSaved(null)
+      return
+    }
     try {
       sessionStorage.setItem(draftKey, JSON.stringify(draft))
-      setDraftExists(Boolean(customerId || notes || dueDate || lines.length || Number(paid) > 0 || paymentAccount))
+      setDraftExists(true)
       setLastSaved(new Date())
     } catch {
       toast.error(locale === 'id' ? 'Draft tidak dapat disimpan di browser ini.' : 'Unable to save draft in this browser.')
     }
-  }, [draftReady, draftKey, customerId, orderDate, dueDate, notes, lines, paid, paymentAccount, locale])
+  }, [draftReady, draftKey, customerId, orderDate, dueDate, notes, lines, paid, paymentAccount, locale, productRows])
 
   useEffect(() => {
     const interceptInternalNavigation = (event: MouseEvent) => {
