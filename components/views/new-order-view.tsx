@@ -364,7 +364,14 @@ export function NewOrderView() {
                 {lastSaved && <span>{locale === 'id' ? 'Tersimpan' : 'Saved'} {lastSaved.toLocaleTimeString(locale === 'id' ? 'id-ID' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>}
               </div>
               <div className="flex gap-2">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => { setPendingNavigation('/orders'); setLeaveOpen(true) }}>
+                <Button type="button" variant="outline" className="flex-1" onClick={() => {
+                  if (draftExists) {
+                    setPendingNavigation('/orders')
+                    setLeaveOpen(true)
+                  } else {
+                    router.push('/orders')
+                  }
+                }}>
                   {t('common.cancel')}
                 </Button>
                 <Button type="submit" className="flex-1" disabled={isSaving || (Number(paid || 0) > 0 && !selectedPaymentAccount)}>{isSaving ? 'Saving…' : (locale === 'id' ? 'Simpan Order' : 'Save Order')}</Button>
