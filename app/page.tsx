@@ -53,14 +53,14 @@ function SectionHeading({ eyebrow, title, description }: { eyebrow: string; titl
 }
 
 function DashboardPreview() {
-  return <div className="relative mx-auto w-full max-w-[1120px]">
+  return <div className="relative mx-auto w-full max-w-[1040px]">
     <div className="absolute -inset-4 rounded-[28px] bg-slate-400/20 blur-2xl" />
     <div className="relative overflow-hidden rounded-[18px] border border-slate-200/90 bg-white shadow-[0_28px_80px_-38px_rgba(22,44,72,.34)] ring-1 ring-white">
       <div className="flex h-12 items-center justify-between border-b border-slate-100 bg-white px-4 sm:px-6">
         <div className="flex items-center gap-2.5"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-700 text-white"><Wallet size={14}/></span><span className="text-sm font-semibold tracking-tight text-slate-800">CuanApp</span><span className="ml-2 hidden rounded-full bg-blue-50 px-2.5 py-1 text-[9px] font-medium text-blue-700 sm:inline-flex">Business workspace</span></div>
         <div className="flex items-center gap-2"><span className="hidden text-[10px] text-slate-400 sm:inline">Illustrative preview</span><span className="h-2 w-2 rounded-full bg-emerald-500"/><div className="h-7 w-7 rounded-full bg-slate-100"/></div>
       </div>
-      <div className="grid min-h-[350px] grid-cols-[52px_1fr] sm:grid-cols-[176px_1fr]">
+      <div className="grid min-h-[420px] grid-cols-[52px_1fr] sm:min-h-[470px] sm:grid-cols-[176px_1fr]">
         <aside className="border-r border-slate-100 bg-slate-50/90 p-2 sm:p-4">
           <div className="mb-5 hidden text-[9px] font-semibold uppercase tracking-[.18em] text-slate-400 sm:block">Workspace</div>
           {[[BarChart3,"Dashboard"],[ShoppingCart,"Sales & orders"],[Boxes,"Inventory"],[ClipboardList,"Purchasing"],[Wallet,"Finance"],[BookOpen,"Reports"]].map(([Icon,label],i)=>{const I=Icon as typeof BarChart3;return <div key={String(label)} className={`mb-1 flex items-center justify-center gap-2 rounded-lg px-2 py-2.5 text-[10px] sm:justify-start ${i===0?"bg-blue-700 font-medium text-white":"text-slate-500"}`}><I size={14}/><span className="hidden sm:inline">{String(label)}</span></div>})}
