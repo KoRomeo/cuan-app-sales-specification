@@ -447,6 +447,15 @@ export default function LandingPage() {
   return (
     <>
       <div className="relative min-h-screen bg-[#0E2A63] sm:px-7 sm:py-4">
+      {/* square grid across the whole mat, like a self-healing cutting mat */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 hidden sm:block"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(to right, rgba(255,255,255,.14) 0 1px, transparent 1px 40px), repeating-linear-gradient(to bottom, rgba(255,255,255,.14) 0 1px, transparent 1px 40px), repeating-linear-gradient(to right, rgba(255,255,255,.30) 0 1px, transparent 1px 200px), repeating-linear-gradient(to bottom, rgba(255,255,255,.30) 0 1px, transparent 1px 200px)",
+        }}
+      />
       {/* rulers on the mat, all four edges */}
       <div aria-hidden className="pointer-events-none absolute inset-0 hidden sm:block">
         <RulerTicks side="left" />
@@ -455,7 +464,7 @@ export default function LandingPage() {
         <RulerTicks side="bottom" withNumbers={false} />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-[1400px]">
+      <div className="relative z-10 mx-auto max-w-[1680px]">
       {/* ---------- navigation: its own torn-off strip of paper ---------- */}
       <header className="sticky top-3 z-40 border border-[#101A26]/25 bg-[#FCFCFA]/95 shadow-[0_10px_30px_-18px_rgba(0,0,0,.5)] backdrop-blur">
         <div className="flex h-12 items-center justify-between gap-4 px-4 sm:px-6">
@@ -840,34 +849,31 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ---------- 06 closing block (blue) ---------- */}
-      <section className="bg-[#0D2450] text-white">
-        <div
-          className="pointer-events-none absolute inset-x-0 h-0"
-          style={{ backgroundImage: "repeating-linear-gradient(90deg, rgba(255,255,255,.3) 0 1px, transparent 1px 12px)" }}
-        />
+      {/* ---------- 06 closing block (white, like the rest of the paper) ---------- */}
+      <PunchHoles />
+      <section className="relative border-b border-[#101A26]/15">
         <div className="relative mx-auto max-w-[1360px] px-4 py-14 sm:px-8 sm:py-20">
-          <div className="grid gap-10 border-white/20 [&>*]:min-w-0 lg:grid-cols-[1.05fr_1fr_1fr] lg:gap-12">
+          <div className="grid gap-10 border-[#101A26]/15 [&>*]:min-w-0 lg:grid-cols-[1.05fr_1fr_1fr] lg:gap-12">
             <div>
-              <Label className="text-white/60">06 — Get started</Label>
-              <h2 data-reveal className="mt-4 text-[30px] font-semibold leading-[1.06] tracking-[-.04em] sm:text-[40px] lg:text-[44px]">
-                Ready to take control of <span className="text-[#8FB0FF]">your business?</span>
+              <Label className="text-[#0E2A63]">06 — Get started</Label>
+              <h2 data-reveal className="mt-4 text-[30px] font-semibold leading-[1.06] tracking-[-.04em] text-[#101A26] sm:text-[40px] lg:text-[44px]">
+                Ready to take control of <span className="text-[#0E2A63]">your business?</span>
               </h2>
-              <p className="mt-4 max-w-[38ch] text-[13px] leading-[1.7] text-white/70">
+              <p className="mt-4 max-w-[38ch] text-[14px] leading-[1.7] text-[#3C4A5A]">
                 Bisnis Anda memiliki potensi untuk berkembang. Saatnya mengelolanya dengan sistem yang mampu berkembang bersama Anda.
               </p>
             </div>
 
             <div className="flex flex-col justify-end">
-              <div className="border-t border-white/20 pt-4">
-                <Label className="text-white/50">Satu sistem</Label>
-                <p className="mt-2 text-[13.5px] leading-[1.7] text-white/70">
+              <div className="border-t border-[#101A26]/15 pt-4">
+                <Label className="text-[#8A94A1]">Satu sistem</Label>
+                <p className="mt-2 text-[13.5px] leading-[1.7] text-[#3C4A5A]">
                   Operasional, persediaan, keuangan, dan laporan bekerja dari data yang sama. Tidak ada angka yang dihitung dua kali.
                 </p>
               </div>
-              <div className="mt-5 border-t border-white/20 pt-4">
-                <Label className="text-white/50">Fleksibel</Label>
-                <p className="mt-2 text-[13.5px] leading-[1.7] text-white/70">
+              <div className="mt-5 border-t border-[#101A26]/15 pt-4">
+                <Label className="text-[#8A94A1]">Fleksibel</Label>
+                <p className="mt-2 text-[13.5px] leading-[1.7] text-[#3C4A5A]">
                   Mulai dari modul yang dipakai hari ini, tambah konfigurasi saat bisnis bertumbuh.
                 </p>
               </div>
@@ -875,19 +881,19 @@ export default function LandingPage() {
 
             <div className="flex flex-col justify-between">
               <div className="flex flex-wrap gap-2">
-                <Link href="/register" className="inline-flex items-center gap-2 rounded-[2px] bg-white px-4 py-2.5 text-[12px] font-medium text-[#0D2450] transition hover:bg-[#E6EBF7]">
+                <Link href="/register" className="inline-flex items-center gap-2 rounded-[2px] bg-[#0E2A63] px-4 py-2.5 text-[12px] font-medium text-white transition hover:bg-[#0A1F4A]">
                   Get Started <ArrowRight size={13} />
                 </Link>
-                <a href="#product-tour" className="inline-flex items-center gap-2 rounded-[2px] border border-white/30 px-4 py-2.5 text-[12px] font-medium text-white transition hover:bg-white/10">
+                <a href="#product-tour" className="inline-flex items-center gap-2 rounded-[2px] border border-[#101A26]/25 px-4 py-2.5 text-[12px] font-medium text-[#101A26] transition hover:border-[#0E2A63] hover:text-[#0E2A63]">
                   <Play size={12} /> Explore CuanApp
                 </a>
               </div>
-              <div className="mt-8 flex items-end justify-between border-t border-white/20 pt-4">
+              <div className="mt-8 flex items-end justify-between border-t border-[#101A26]/15 pt-4">
                 <div>
-                  <Label className="text-white/50">CuanApp</Label>
-                  <div className="mt-1 font-mono text-[10px] uppercase tracking-[.14em] text-white/70">Business operating system</div>
+                  <Label className="text-[#8A94A1]">CuanApp</Label>
+                  <div className="mt-1 font-mono text-[10px] uppercase tracking-[.14em] text-[#59667A]">Business operating system</div>
                 </div>
-                <Label className="text-white/40">2026</Label>
+                <Label className="text-[#8A94A1]">2026</Label>
               </div>
             </div>
           </div>
@@ -895,7 +901,13 @@ export default function LandingPage() {
       </section>
       </main>
 
-      {/* ---------- footer ---------- */}
+      {/* ---------- footer: a second torn-off sheet, with its own holes ---------- */}
+      </div>{/* end first paper sheet */}
+
+      <div className="relative mt-3 border border-[#101A26]/25 bg-[#FCFCFA]">
+        <div className="pointer-events-none absolute inset-y-0 left-8 hidden w-px sm:block" style={{ backgroundImage: "repeating-linear-gradient(to bottom, rgba(16,26,38,.30) 0 4px, transparent 4px 10px)" }} />
+        <div className="pointer-events-none absolute inset-y-0 right-8 hidden w-px sm:block" style={{ backgroundImage: "repeating-linear-gradient(to bottom, rgba(16,26,38,.30) 0 4px, transparent 4px 10px)" }} />
+      <PunchHoles />
       <footer className="bg-[#FCFCFA]">
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
           <div className="grid gap-8 border-b border-[#101A26]/15 py-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
