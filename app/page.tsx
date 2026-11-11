@@ -97,23 +97,24 @@ function Rule({ className = "" }: { className?: string }) {
 }
 
 /**
- * Continuous-form punch holes on the paper edges. Six pairs per section,
- * evenly spaced down each edge.
+ * Continuous-form punch holes on the paper edges. Equal spacing everywhere,
+ * set by --hole-gap so the content matches the footer strip exactly.
  */
 function PunchHoles() {
-  const holes = Array.from({ length: 6 })
   return (
     <>
-      <div aria-hidden className="pointer-events-none absolute inset-y-7 left-[10px] z-20 hidden flex-col justify-between sm:flex">
-        {holes.map((_, i) => (
-          <span key={i} className="h-[9px] w-[9px] rounded-full border border-[#101A26]/30 bg-[#0E2A63] shadow-[inset_0_1px_2px_rgba(0,0,0,.35)]" />
-        ))}
-      </div>
-      <div aria-hidden className="pointer-events-none absolute inset-y-7 right-[10px] z-20 hidden flex-col justify-between sm:flex">
-        {holes.map((_, i) => (
-          <span key={i} className="h-[9px] w-[9px] rounded-full border border-[#101A26]/30 bg-[#0E2A63] shadow-[inset_0_1px_2px_rgba(0,0,0,.35)]" />
-        ))}
-      </div>
+      <div aria-hidden className="punch-holes pointer-events-none absolute inset-y-4 left-[10px] z-20 hidden w-[9px] sm:block" />
+      <div aria-hidden className="punch-holes pointer-events-none absolute inset-y-4 right-[10px] z-20 hidden w-[9px] sm:block" />
+    </>
+  )
+}
+
+/** One pair of holes, centred vertically — for the thin navbar strip. */
+function PunchHolePair() {
+  return (
+    <>
+      <span aria-hidden className="punch-hole pointer-events-none absolute left-[9px] top-1/2 z-20 hidden h-[9px] w-[9px] -translate-y-1/2 sm:block" />
+      <span aria-hidden className="punch-hole pointer-events-none absolute right-[9px] top-1/2 z-20 hidden h-[9px] w-[9px] -translate-y-1/2 sm:block" />
     </>
   )
 }
@@ -446,7 +447,7 @@ export default function LandingPage() {
 
   return (
     <>
-      <div className="relative min-h-screen bg-[#0E2A63] sm:px-7 sm:py-4">
+      <div className="relative min-h-screen overflow-hidden bg-[#0E2A63] sm:px-7 sm:py-4">
       {/* square grid across the whole mat, like a self-healing cutting mat */}
       <div
         aria-hidden
@@ -467,6 +468,7 @@ export default function LandingPage() {
       <div className="relative z-10 mx-auto max-w-[1680px]">
       {/* ---------- navigation: its own torn-off strip of paper ---------- */}
       <header className="sticky top-3 z-40 border border-[#101A26]/25 bg-[#FCFCFA]/95 shadow-[0_10px_30px_-18px_rgba(0,0,0,.5)] backdrop-blur">
+        <PunchHolePair />
         <div className="flex h-12 items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <Link href="/" className="flex items-center gap-2.5">
@@ -690,7 +692,6 @@ export default function LandingPage() {
 
       {/* ---------- 03 solutions ---------- */}
       <PunchHoles />
-      <PunchHoles />
       <section id="solutions" className="relative scroll-mt-16 border-b border-[#101A26]/15">
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
           <div className="grid [&>*]:min-w-0 lg:grid-cols-[260px_1fr]">
@@ -730,7 +731,6 @@ export default function LandingPage() {
       </section>
 
       {/* ---------- 04 flexibility ---------- */}
-      <PunchHoles />
       <PunchHoles />
       <section id="flexibility" className="relative scroll-mt-16 border-b border-[#101A26]/15">
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
@@ -775,7 +775,6 @@ export default function LandingPage() {
       </section>
 
       {/* ---------- 05 product tour ---------- */}
-      <PunchHoles />
       <PunchHoles />
       <section id="product-tour" className="relative scroll-mt-16 border-b border-[#101A26]/15">
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
