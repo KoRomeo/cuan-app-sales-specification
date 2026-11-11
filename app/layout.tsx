@@ -9,12 +9,11 @@ const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono'
 
 export const metadata: Metadata = {
   title: {
-    default: 'CuanApp Sales',
-    template: '%s · CuanApp Sales',
+    default: 'CuanApp — Run Your Business. Your Way.',
+    template: '%s · CuanApp',
   },
   description:
     'CuanApp Sales — business management for inventory-based sales and distribution: orders, purchasing, stock, receivables and accounting in one connected system.',
-  generator: 'v0.app',
   icons: {
     icon: [{ url: '/cuanapp-logo.svg', type: 'image/svg+xml' }],
     apple: '/cuanapp-logo.svg',

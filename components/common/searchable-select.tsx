@@ -24,6 +24,7 @@ export function SearchableSelect({
   selectedText = 'selected',
   doneLabel = 'Done',
   clearSearchLabel = 'Clear search',
+  popoverClassName,
 }: {
   value: string | string[]
   onChange: (value: string | string[]) => void
@@ -41,6 +42,7 @@ export function SearchableSelect({
   selectedText?: string
   doneLabel?: string
   clearSearchLabel?: string
+  popoverClassName?: string
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')

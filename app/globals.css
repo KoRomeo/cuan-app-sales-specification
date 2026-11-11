@@ -615,6 +615,91 @@ body > * {
   .cuan-loading-spinner { animation-duration: 1.8s; }
 }
 
+/* Landing page module marquee — duplicated list scrolls by half its width. */
+.animate-marquee {
+  animation: marquee 42s linear infinite;
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee { animation: none; transform: none; }
+  html { scroll-behavior: auto; }
+}
+
+/* ---- Motion tokens and helpers (from the motion spec) ---- */
+:root {
+  --m-fast: 140ms; --m-base: 200ms; --m-slow: 320ms; --m-rise: 10px;
+  --m-ease-out: cubic-bezier(.22,1,.36,1);
+  --m-ease-soft: cubic-bezier(.4,0,.2,1);
+  --m-ease-panel: cubic-bezier(.16,1,.3,1);
+}
+
+/* Hero entrance: 0 / 40 / 110 / 170 / 230 ms */
+@media (prefers-reduced-motion: no-preference) {
+  .m-enter { animation: m-rise-in var(--m-slow) var(--m-ease-out) both; }
+  .m-enter--1 { animation-duration: 240ms; animation-delay: 0ms; }
+  .m-enter--2 { animation-duration: 300ms; animation-delay: 40ms; }
+  .m-enter--3 { animation-duration: 280ms; animation-delay: 110ms; }
+  .m-enter--4 { animation-duration: 240ms; animation-delay: 170ms; }
+  .m-enter--5 { animation-name: m-rise-in-lg; animation-duration: 420ms; animation-delay: 230ms; }
+}
+@keyframes m-rise-in {
+  from { opacity: 0; transform: translate3d(0, var(--m-rise), 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes m-rise-in-lg {
+  from { opacity: 0; transform: translate3d(0, 16px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* Scroll reveal — JS adds data-reveal-ready, so a JS failure never hides copy */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal-ready] { transition: opacity 280ms var(--m-ease-out), transform 280ms var(--m-ease-out); }
+  [data-reveal-ready]:not(.is-in) { opacity: 0; transform: translate3d(0, 12px, 0); }
+  [data-reveal-stagger] > *:nth-child(2) { transition-delay: 60ms; }
+  [data-reveal-stagger] > *:nth-child(3) { transition-delay: 120ms; }
+}
+
+/* Industries carousel */
+.m-track { scroll-behavior: auto; }
+.m-progress { transition: width 150ms linear; }
+.m-card {
+  transition: transform 200ms var(--m-ease-soft), border-color 200ms var(--m-ease-soft),
+              box-shadow 200ms var(--m-ease-soft);
+}
+.m-card:hover { transform: translate3d(0, -2px, 0); }
+.m-arrow { transition: border-color var(--m-fast) var(--m-ease-soft), color var(--m-fast) var(--m-ease-soft); }
+
+/* Settings mockup */
+.m-toggle-track { transition: background-color 180ms var(--m-ease-soft); }
+.m-toggle-knob  { transition: transform 180ms var(--m-ease-soft); }
+.m-chip { transition: background-color 160ms var(--m-ease-soft), border-color 160ms var(--m-ease-soft),
+          color 160ms var(--m-ease-soft); }
+
+/* Solution cards */
+.m-lift { transition: transform 200ms var(--m-ease-soft), box-shadow 200ms var(--m-ease-soft); }
+
+/* Product tour modal */
+.m-overlay { animation: m-fade-in 180ms var(--m-ease-soft) both; }
+.m-panel   { animation: m-panel-in 240ms var(--m-ease-panel) both; }
+@keyframes m-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes m-panel-in {
+  from { opacity: 0; transform: translate3d(0, 8px, 0) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* One switch to turn all of it off */
+@media (prefers-reduced-motion: reduce) {
+  .m-enter, .m-overlay, .m-panel { animation: none !important; }
+  [data-reveal-ready] { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .m-track { scroll-behavior: auto; }
+  .m-progress, .m-card, .m-arrow, .m-toggle-track, .m-toggle-knob, .m-chip, .m-lift { transition: none; }
+  .m-card:hover { transform: none; }
+}
+
 /* Dialogs share consistent breathing room and remain usable on short screens. */
 [data-slot="dialog-content"] {
   max-height: calc(100dvh - 2rem);
