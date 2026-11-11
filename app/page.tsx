@@ -96,6 +96,23 @@ function Rule({ className = "" }: { className?: string }) {
   return <div className={`h-px w-full bg-[#101A26]/15 ${className}`} />
 }
 
+/**
+ * Continuous-form punch holes on the paper edges. One pair per section
+ * boundary, so the count stays low — corners only, not a full strip.
+ */
+function PunchHoles() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-20 hidden -translate-y-1/2 sm:block">
+      {(["left-[11px]", "right-[11px]"] as const).map(pos => (
+        <span
+          key={pos}
+          className={`absolute top-0 h-[9px] w-[9px] rounded-full border border-[#101A26]/30 bg-[#1B4AC8] shadow-[inset_0_1px_2px_rgba(0,0,0,.35)] ${pos}`}
+        />
+      ))}
+    </div>
+  )
+}
+
 function Tags({ items }: { items: string[] }) {
   return (
     <div className="mt-5 flex flex-wrap items-center gap-1.5">
@@ -378,31 +395,52 @@ export default function LandingPage() {
 
   return (
     <>
-      {/* ---------- top patterned band ---------- */}
-      <div className="relative overflow-hidden bg-[#0D2450] text-white">
+      {/* ---------- blue measuring mat behind the paper ---------- */}
+      <div className="pointer-events-none fixed inset-y-0 left-0 z-0 hidden w-5 bg-[#1B4AC8] sm:block">
         <div
-          className="pointer-events-none absolute inset-0 opacity-[.35]"
+          className="absolute inset-y-0 right-0 w-px bg-white/60"
+        />
+        <div
+          className="absolute inset-0"
           style={{
             backgroundImage:
-              "repeating-linear-gradient(90deg, rgba(255,255,255,.55) 0 1px, transparent 1px 10px)",
-            maskImage: "linear-gradient(to bottom, black 0 45%, transparent 100%)",
+              "repeating-linear-gradient(to bottom, rgba(255,255,255,.85) 0 1px, transparent 1px 10px), repeating-linear-gradient(to bottom, rgba(255,255,255,.5) 0 1px, transparent 1px 50px)",
+            backgroundSize: "8px 100%, 100% 100%",
+            backgroundPosition: "right 0, 0 0",
+            backgroundRepeat: "no-repeat, no-repeat",
+            maskImage: "linear-gradient(to bottom, transparent 0, black 12px, black calc(100% - 12px), transparent 100%)",
           }}
         />
-        <div className="relative mx-auto flex h-9 max-w-[1360px] items-center justify-between px-4 sm:px-8">
-          <Label className="text-white/80">CuanApp — Business operating system</Label>
-          <Label className="text-white/80">01 / 2026</Label>
-        </div>
+      </div>
+      <div className="pointer-events-none fixed inset-y-0 right-0 z-0 hidden w-5 bg-[#1B4AC8] sm:block">
+        <div className="absolute inset-y-0 left-0 w-px bg-white/60" />
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(to bottom, rgba(255,255,255,.85) 0 1px, transparent 1px 10px), repeating-linear-gradient(to bottom, rgba(255,255,255,.5) 0 1px, transparent 1px 50px)",
+            backgroundSize: "8px 100%, 100% 100%",
+            backgroundPosition: "left 0, 0 0",
+            backgroundRepeat: "no-repeat, no-repeat",
+            maskImage: "linear-gradient(to bottom, transparent 0, black 12px, black calc(100% - 12px), transparent 100%)",
+          }}
+        />
       </div>
 
+      <div className="relative z-10 min-h-screen bg-[#1B4AC8] sm:px-5">
       {/* ---------- navigation ---------- */}
-      <header className="sticky top-0 z-40 border-b border-[#101A26]/15 bg-[#F3F3ED]/95 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-[1360px] items-center justify-between px-4 sm:px-8">
-          <Link href="/" className="flex items-center gap-2.5">
-            <LogoMark />
-            <span className="text-[14px] font-semibold tracking-[-.02em]">CuanApp</span>
-          </Link>
+      <header className="sticky top-0 z-40 border-b border-[#101A26]/20 bg-[#FCFCFA]/95 backdrop-blur">
+        <div className="flex h-12 items-center justify-between gap-4 px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link href="/" className="flex items-center gap-2.5">
+              <LogoMark className="h-7 w-7" />
+              <span className="text-[14px] font-semibold tracking-[-.02em]">CuanApp</span>
+            </Link>
+            <span className="hidden h-4 w-px bg-[#101A26]/20 sm:block" />
+            <span className="hidden font-mono text-[10px] uppercase tracking-[.18em] text-[#6B7887] sm:block">Business OS</span>
+          </div>
 
-          <nav className="hidden items-center gap-6 lg:flex">
+          <nav className="hidden items-center gap-6 lg:flex" aria-label="Navigasi utama">
             {navItems.map(item => (
               <a key={item.label} href={item.href} className="font-mono text-[10px] uppercase tracking-[.16em] text-[#3C4A5A] transition hover:text-[#1746C8]">
                 {item.label}
@@ -410,43 +448,50 @@ export default function LandingPage() {
             ))}
           </nav>
 
-          <div className="hidden items-center gap-2 lg:flex">
-            <span className="flex items-center gap-1.5 rounded-[3px] border border-[#101A26]/20 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[.12em] text-[#3C4A5A]">
-              <Globe2 size={12} /> ID
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="hidden items-center gap-1.5 rounded-[3px] border border-[#101A26]/20 px-2 py-1 font-mono text-[10px] uppercase tracking-[.12em] text-[#3C4A5A] sm:flex">
+              <Globe2 size={11} /> ID
             </span>
-            <Link href="/login" className="px-2 font-mono text-[10px] uppercase tracking-[.12em] text-[#3C4A5A] hover:text-[#101A26]">Masuk</Link>
-            <Link href="/register" className="rounded-[3px] bg-[#1746C8] px-3.5 py-2 text-[11px] font-medium text-white transition hover:bg-[#1238A4]">
-              Mulai gratis
+            <Link href="/login" className="hidden px-1.5 font-mono text-[10px] uppercase tracking-[.12em] text-[#3C4A5A] hover:text-[#101A26] sm:block">Masuk</Link>
+            <Link href="/register" className="rounded-[3px] bg-[#1746C8] px-3.5 py-2 font-mono text-[10px] uppercase tracking-[.12em] text-white transition hover:bg-[#1238A4]">
+              Try it out
             </Link>
+            <button
+              className="rounded-[3px] border border-[#101A26]/20 p-2 lg:hidden"
+              onClick={() => setMenuOpen(v => !v)}
+              aria-label="Menu"
+              aria-expanded={menuOpen}
+              aria-controls="mobile-menu"
+            >
+              {menuOpen ? <X size={15} /> : <Menu size={15} />}
+            </button>
           </div>
-
-          <button
-            className="rounded-[3px] border border-[#101A26]/20 p-2 lg:hidden"
-            onClick={() => setMenuOpen(v => !v)}
-            aria-label="Menu"
-            aria-expanded={menuOpen}
-            aria-controls="mobile-menu"
-          >
-            {menuOpen ? <X size={16} /> : <Menu size={16} />}
-          </button>
         </div>
 
         {menuOpen && (
-          <div id="mobile-menu" className="border-t border-[#101A26]/15 bg-[#F3F3ED] px-4 py-3 lg:hidden">
+          <div id="mobile-menu" className="border-t border-[#101A26]/15 bg-[#FCFCFA] px-4 py-3 lg:hidden">
             {navItems.map(item => (
               <a key={item.label} href={item.href} onClick={() => setMenuOpen(false)} className="block border-b border-[#101A26]/10 py-2.5 font-mono text-[11px] uppercase tracking-[.14em] text-[#3C4A5A]">
                 {item.label}
               </a>
             ))}
             <div className="mt-3 flex gap-2">
-              <Link href="/login" className="flex-1 rounded-[3px] border border-[#101A26]/20 py-2 text-center text-[11px]">Masuk</Link>
-              <Link href="/register" className="flex-1 rounded-[3px] bg-[#1746C8] py-2 text-center text-[11px] text-white">Mulai gratis</Link>
+              <Link href="/login" className="flex-1 rounded-[3px] border border-[#101A26]/20 py-2 text-center text-[12px]">Masuk</Link>
+              <Link href="/register" className="flex-1 rounded-[3px] bg-[#1746C8] py-2 text-center text-[12px] text-white">Mulai gratis</Link>
             </div>
           </div>
         )}
       </header>
 
-      <main id="main" lang="id" className="min-h-screen bg-[#F3F3ED] text-[#101A26]">
+      {/* ---------- paper sheet ---------- */}
+      <div className="relative border-x border-[#101A26]/25 bg-[#FCFCFA]">
+        {/* perforation lines, like continuous-form paper */}
+        <div className="pointer-events-none absolute inset-y-0 left-8 hidden w-px sm:block" style={{ backgroundImage: "repeating-linear-gradient(to bottom, rgba(16,26,38,.30) 0 4px, transparent 4px 10px)" }} />
+        <div className="pointer-events-none absolute inset-y-0 right-8 hidden w-px sm:block" style={{ backgroundImage: "repeating-linear-gradient(to bottom, rgba(16,26,38,.30) 0 4px, transparent 4px 10px)" }} />
+
+        <PunchHoles />
+
+      <main id="main" lang="id" className="min-h-screen text-[#101A26]">
       {/* ---------- hero ---------- */}
       <section className="relative border-b border-[#101A26]/15">
         <div
@@ -464,12 +509,12 @@ export default function LandingPage() {
                 <Label className="text-[#1746C8]">01 — Platform</Label>
                 <span className="h-px w-14 bg-[#101A26]/25" />
               </div>
-              <h1 className="m-enter m-enter--1 mt-6 max-w-[15ch] text-[38px] font-semibold leading-[1.02] tracking-[-.045em] sm:text-[52px] lg:text-[64px]">
+              <h1 className="m-enter m-enter--1 mt-6 max-w-[15ch] text-[42px] font-semibold leading-[1.02] tracking-[-.045em] sm:text-[56px] lg:text-[68px]">
                 Run Your Business.{" "}
                 <span className="text-[#1746C8]">Your Way.</span>
               </h1>
               <div className="mt-7 flex flex-wrap items-center gap-2">
-                <Link href="/register" className="m-enter m-enter--4 inline-flex items-center gap-2 rounded-[3px] bg-[#1746C8] px-4 py-2.5 text-[12px] font-medium text-white transition hover:bg-[#1238A4]">
+                <Link href="/register" className="m-enter m-enter--4 inline-flex items-center gap-2 rounded-[3px] bg-[#1746C8] px-4 py-2.5 text-[12.5px] font-medium text-white transition hover:bg-[#1238A4]">
                   Get Started <ArrowRight size={13} />
                 </Link>
                 <a href="#product-tour" className="m-enter m-enter--4 inline-flex items-center gap-2 rounded-[3px] border border-[#101A26]/25 px-4 py-2.5 text-[12px] font-medium text-[#101A26] transition hover:border-[#101A26]/50">
@@ -479,7 +524,7 @@ export default function LandingPage() {
             </div>
 
             <div className="flex flex-col justify-end">
-              <p className="m-enter m-enter--2 max-w-[46ch] text-[15px] leading-[1.7] text-[#3C4A5A] sm:text-[16px]">
+              <p className="m-enter m-enter--2 max-w-[52ch] text-[16px] leading-[1.7] text-[#3C4A5A] sm:text-[17px]">
                 Kelola, pahami, dan kembangkan bisnis Anda melalui satu platform terintegrasi. Fleksibel untuk berbagai jenis usaha, dirancang untuk mengikuti pertumbuhan bisnis Anda.
               </p>
               <div className="mt-6 flex items-center gap-3 border-t border-[#101A26]/15 pt-4">
@@ -502,7 +547,7 @@ export default function LandingPage() {
       </section>
 
       {/* ---------- module marquee ---------- */}
-      <section aria-label="CuanApp modules" className="border-b border-[#101A26]/15 bg-[#EDEDE6] py-3">
+      <section aria-label="CuanApp modules" className="border-b border-[#101A26]/15 bg-[#F5F5F0] py-3">
         <div className="group flex overflow-hidden">
           <div className="flex shrink-0 animate-marquee items-center gap-6 pr-6 group-hover:[animation-play-state:paused]">
             {[...modules, ...modules].map((m, i) => (
@@ -516,17 +561,18 @@ export default function LandingPage() {
       </section>
 
       {/* ---------- 02 industries ---------- */}
-      <section id="industries" className="scroll-mt-16 overflow-x-clip border-b border-[#101A26]/15">
+      <PunchHoles />
+      <section id="industries" className="relative scroll-mt-16 overflow-x-clip border-b border-[#101A26]/15">
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
           <div className="grid [&>*]:min-w-0 lg:grid-cols-[260px_1fr]">
             <div className="border-[#101A26]/15 py-10 lg:border-r lg:py-14 lg:pr-8">
               <Label className="text-[#1746C8]">02 — Industries</Label>
-              <h2 data-reveal className="mt-4 text-[26px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[32px]">
+              <h2 data-reveal className="mt-4 text-[30px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[36px]">
                 Every business is different.
                 <br />
                 <span className="text-[#1746C8]">CuanApp is built for all.</span>
               </h2>
-              <p className="mt-4 max-w-[34ch] text-[13px] leading-[1.7] text-[#3C4A5A]">
+              <p className="mt-4 max-w-[38ch] text-[14px] leading-[1.7] text-[#3C4A5A]">
                 Setiap bisnis memiliki cara kerja yang unik. Arsitektur CuanApp fleksibel untuk mendukung ekspansi operasional usaha apa pun.
               </p>
               <div className="mt-6 flex items-center gap-2">
@@ -592,7 +638,7 @@ export default function LandingPage() {
                       </div>
                       <ul className="mt-4 space-y-1.5">
                         {group.items.map(item => (
-                          <li key={item} className="flex items-start gap-1.5 border-t border-[#101A26]/10 pt-1.5 text-[11px] leading-[1.5] text-[#3C4A5A] first:border-0 first:pt-0">
+                          <li key={item} className="flex items-start gap-1.5 border-t border-[#101A26]/10 pt-1.5 text-[12px] leading-[1.55] text-[#3C4A5A] first:border-0 first:pt-0">
                             {item}
                           </li>
                         ))}
@@ -607,17 +653,18 @@ export default function LandingPage() {
       </section>
 
       {/* ---------- 03 solutions ---------- */}
-      <section id="solutions" className="scroll-mt-16 border-b border-[#101A26]/15">
+      <PunchHoles />
+      <section id="solutions" className="relative scroll-mt-16 border-b border-[#101A26]/15">
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
           <div className="grid [&>*]:min-w-0 lg:grid-cols-[260px_1fr]">
             <div className="border-[#101A26]/15 py-10 lg:border-r lg:py-14 lg:pr-8">
               <Label className="text-[#1746C8]">03 — Solutions</Label>
-              <h2 data-reveal className="mt-4 text-[26px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[32px]">
+              <h2 data-reveal className="mt-4 text-[30px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[36px]">
                 Everything your business needs.
                 <br />
                 <span className="text-[#1746C8]">All in one place.</span>
               </h2>
-              <p className="mt-4 max-w-[34ch] text-[13px] leading-[1.7] text-[#3C4A5A]">
+              <p className="mt-4 max-w-[38ch] text-[14px] leading-[1.7] text-[#3C4A5A]">
                 CuanApp menghubungkan setiap bagian bisnis ke dalam satu sistem terintegrasi, dari operasional harian hingga laporan keuangan.
               </p>
             </div>
@@ -631,7 +678,7 @@ export default function LandingPage() {
                     </div>
                     <div>
                       <h3 className="text-[17px] font-semibold tracking-[-.02em] sm:text-[19px]">{row.title}</h3>
-                      <p className="mt-2 max-w-[62ch] text-[13px] leading-[1.7] text-[#3C4A5A]">{row.body}</p>
+                      <p className="mt-2 max-w-[68ch] text-[14px] leading-[1.75] text-[#3C4A5A]">{row.body}</p>
                       <Tags items={row.tags} />
                     </div>
                   </div>
@@ -646,17 +693,18 @@ export default function LandingPage() {
       </section>
 
       {/* ---------- 04 flexibility ---------- */}
-      <section id="flexibility" className="scroll-mt-16 border-b border-[#101A26]/15">
+      <PunchHoles />
+      <section id="flexibility" className="relative scroll-mt-16 border-b border-[#101A26]/15">
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
           <div className="grid [&>*]:min-w-0 lg:grid-cols-[260px_1fr]">
             <div className="border-[#101A26]/15 py-10 lg:border-r lg:py-14 lg:pr-8">
               <Label className="text-[#1746C8]">04 — Flexibility</Label>
-              <h2 data-reveal className="mt-4 text-[26px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[32px]">
+              <h2 data-reveal className="mt-4 text-[30px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[36px]">
                 Your business. Your rules.
                 <br />
                 <span className="text-[#1746C8]">Your system.</span>
               </h2>
-              <p className="mt-4 max-w-[34ch] text-[13px] leading-[1.7] text-[#3C4A5A]">
+              <p className="mt-4 max-w-[38ch] text-[14px] leading-[1.7] text-[#3C4A5A]">
                 Tidak ada dua bisnis yang beroperasi dengan cara yang sama. Aktifkan fitur yang dibutuhkan, nonaktifkan yang tidak relevan.
               </p>
               <div className="mt-6 flex items-center gap-2">
@@ -673,7 +721,7 @@ export default function LandingPage() {
                       <Label className="text-[#8A94A1]">{String(i + 1).padStart(2, "0")}</Label>
                       <h3 className="text-[14px] font-semibold tracking-[-.01em]">{f.title}</h3>
                     </div>
-                    <p className="mt-1.5 pl-8 text-[12.5px] leading-[1.65] text-[#3C4A5A]">{f.body}</p>
+                    <p className="mt-1.5 pl-8 text-[13.5px] leading-[1.7] text-[#3C4A5A]">{f.body}</p>
                   </div>
                 ))}
                 <a href="#product-tour" className="mt-5 inline-flex items-center gap-2 rounded-[3px] border border-[#101A26]/25 px-4 py-2.5 text-[12px] font-medium transition hover:border-[#1746C8] hover:text-[#1746C8]">
@@ -689,15 +737,16 @@ export default function LandingPage() {
       </section>
 
       {/* ---------- 05 product tour ---------- */}
-      <section id="product-tour" className="scroll-mt-16 border-b border-[#101A26]/15">
+      <PunchHoles />
+      <section id="product-tour" className="relative scroll-mt-16 border-b border-[#101A26]/15">
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
           <div className="grid [&>*]:min-w-0 lg:grid-cols-[260px_1fr]">
             <div className="border-[#101A26]/15 py-10 lg:border-r lg:py-14 lg:pr-8">
               <Label className="text-[#1746C8]">05 — Product tour</Label>
-              <h2 data-reveal className="mt-4 text-[26px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[32px]">
+              <h2 data-reveal className="mt-4 text-[30px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[36px]">
                 See how CuanApp works.
               </h2>
-              <p className="mt-4 max-w-[34ch] text-[13px] leading-[1.7] text-[#3C4A5A]">
+              <p className="mt-4 max-w-[38ch] text-[14px] leading-[1.7] text-[#3C4A5A]">
                 Jelajahi bagaimana CuanApp menghubungkan setiap aktivitas bisnis dalam satu pengalaman yang sederhana.
               </p>
               <div className="mt-6 flex items-center gap-2">
@@ -720,7 +769,7 @@ export default function LandingPage() {
                     >
                       <Label className="text-[#8A94A1]">{String(index + 1).padStart(2, "0")}</Label>
                       <Icon size={13} className={active ? "text-[#1746C8]" : "text-[#8A94A1]"} />
-                      <span className="flex-1 text-[12px] font-medium">{item.label}</span>
+                      <span className="flex-1 text-[13px] font-medium">{item.label}</span>
                       {active && <span className="h-1.5 w-1.5 rounded-[1px] bg-[#1746C8]" />}
                     </button>
                   )
@@ -782,13 +831,13 @@ export default function LandingPage() {
             <div className="flex flex-col justify-end">
               <div className="border-t border-white/20 pt-4">
                 <Label className="text-white/50">Satu sistem</Label>
-                <p className="mt-2 text-[12.5px] leading-[1.7] text-white/70">
+                <p className="mt-2 text-[13.5px] leading-[1.7] text-white/70">
                   Operasional, persediaan, keuangan, dan laporan bekerja dari data yang sama. Tidak ada angka yang dihitung dua kali.
                 </p>
               </div>
               <div className="mt-5 border-t border-white/20 pt-4">
                 <Label className="text-white/50">Fleksibel</Label>
-                <p className="mt-2 text-[12.5px] leading-[1.7] text-white/70">
+                <p className="mt-2 text-[13.5px] leading-[1.7] text-white/70">
                   Mulai dari modul yang dipakai hari ini, tambah konfigurasi saat bisnis bertumbuh.
                 </p>
               </div>
@@ -817,7 +866,7 @@ export default function LandingPage() {
       </main>
 
       {/* ---------- footer ---------- */}
-      <footer className="bg-[#F3F3ED]">
+      <footer className="bg-[#FCFCFA]">
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
           <div className="grid gap-8 border-b border-[#101A26]/15 py-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
             <div>
@@ -825,7 +874,7 @@ export default function LandingPage() {
                 <LogoMark />
                 <span className="text-[14px] font-semibold tracking-[-.02em]">CuanApp</span>
               </div>
-              <p className="mt-3 max-w-[34ch] text-[12px] leading-[1.7] text-[#59667A]">
+              <p className="mt-3 max-w-[34ch] text-[13px] leading-[1.7] text-[#59667A]">
                 Satu platform terintegrasi untuk mengelola, memahami, dan mengembangkan bisnis Anda.
               </p>
             </div>
@@ -840,8 +889,8 @@ export default function LandingPage() {
                   {col.links.map(([label, href]) => (
                     <li key={label}>
                       {href.startsWith("#")
-                        ? <a href={href} className="text-[12px] text-[#3C4A5A] transition hover:text-[#1746C8]">{label}</a>
-                        : <Link href={href} className="text-[12px] text-[#3C4A5A] transition hover:text-[#1746C8]">{label}</Link>}
+                        ? <a href={href} className="text-[13px] text-[#3C4A5A] transition hover:text-[#1746C8]">{label}</a>
+                        : <Link href={href} className="text-[13px] text-[#3C4A5A] transition hover:text-[#1746C8]">{label}</Link>}
                     </li>
                   ))}
                 </ul>
@@ -857,17 +906,8 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
-
-      {/* ---------- bottom patterned band ---------- */}
-      <div className="relative h-10 overflow-hidden bg-[#0D2450]">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-40"
-          style={{
-            backgroundImage: "repeating-linear-gradient(90deg, rgba(255,255,255,.5) 0 1px, transparent 1px 12px)",
-            maskImage: "linear-gradient(to top, black 0 45%, transparent 100%)",
-          }}
-        />
-      </div>
+      </div>{/* end paper sheet */}
+      </div>{/* end mat wrapper */}
 
       {/* ---------- tour modal ---------- */}
       {tourOpen && (
@@ -886,7 +926,7 @@ export default function LandingPage() {
             aria-modal="true"
             aria-labelledby="tour-title"
             tabIndex={-1}
-            className="m-panel relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-[3px] border border-[#101A26]/25 bg-[#F3F3ED] p-4 shadow-xl outline-none sm:p-7"
+            className="m-panel relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-[3px] border border-[#101A26]/25 bg-[#FCFCFA] p-4 shadow-xl outline-none sm:p-7"
           >
             <div className="flex items-center justify-between border-b border-[#101A26]/15 pb-3">
               <h2 id="tour-title" className="font-mono text-[10px] uppercase tracking-[.18em] text-[#1746C8]">CuanApp product tour</h2>
@@ -897,7 +937,7 @@ export default function LandingPage() {
             <div className="mt-4 flex aspect-video flex-col items-center justify-center border border-[#101A26]/20 bg-white text-center">
               <span className="flex h-12 w-12 items-center justify-center rounded-[3px] border border-[#101A26]/20"><Play size={18} /></span>
               <div className="mt-4 text-[15px] font-semibold">Walkthrough video</div>
-              <p className="mt-2 max-w-md px-6 text-[12px] leading-[1.7] text-[#59667A]">
+              <p className="mt-2 max-w-md px-6 text-[13px] leading-[1.7] text-[#59667A]">
                 Placeholder untuk video walkthrough resmi atau demo aplikasi terpandu.
               </p>
             </div>
