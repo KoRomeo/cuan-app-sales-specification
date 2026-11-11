@@ -9,7 +9,7 @@ import {
   Globe2, HeartPulse, Landmark, Laptop, Menu, Package, Play, Scale, Settings2,
   ShieldCheck, ShoppingBag, ShoppingCart, Sparkles, Truck, Users, Wallet, Wrench,
   X, Calculator, Camera, Clapperboard, GraduationCap, Plane, Scissors, Shirt,
-  Smartphone, SprayCan, Dumbbell, PawPrint, CarFront, Headset, Home, Handshake,
+  Smartphone, SprayCan, Dumbbell, PawPrint, CarFront, Headset, Handshake,
   ReceiptText, Banknote, Workflow, ChartNoAxesCombined, SlidersHorizontal
 } from "lucide-react"
 
