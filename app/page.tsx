@@ -97,19 +97,24 @@ function Rule({ className = "" }: { className?: string }) {
 }
 
 /**
- * Continuous-form punch holes on the paper edges. One pair per section
- * boundary, so the count stays low — corners only, not a full strip.
+ * Continuous-form punch holes on the paper edges. Six pairs per section,
+ * evenly spaced down each edge.
  */
 function PunchHoles() {
+  const holes = Array.from({ length: 6 })
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-20 hidden -translate-y-1/2 sm:block">
-      {(["left-[11px]", "right-[11px]"] as const).map(pos => (
-        <span
-          key={pos}
-          className={`absolute top-0 h-[9px] w-[9px] rounded-full border border-[#101A26]/30 bg-[#1B4AC8] shadow-[inset_0_1px_2px_rgba(0,0,0,.35)] ${pos}`}
-        />
-      ))}
-    </div>
+    <>
+      <div aria-hidden className="pointer-events-none absolute inset-y-7 left-[10px] z-20 hidden flex-col justify-between sm:flex">
+        {holes.map((_, i) => (
+          <span key={i} className="h-[9px] w-[9px] rounded-full border border-[#101A26]/30 bg-[#0E2A63] shadow-[inset_0_1px_2px_rgba(0,0,0,.35)]" />
+        ))}
+      </div>
+      <div aria-hidden className="pointer-events-none absolute inset-y-7 right-[10px] z-20 hidden flex-col justify-between sm:flex">
+        {holes.map((_, i) => (
+          <span key={i} className="h-[9px] w-[9px] rounded-full border border-[#101A26]/30 bg-[#0E2A63] shadow-[inset_0_1px_2px_rgba(0,0,0,.35)]" />
+        ))}
+      </div>
+    </>
   )
 }
 
@@ -117,7 +122,7 @@ function Tags({ items }: { items: string[] }) {
   return (
     <div className="mt-5 flex flex-wrap items-center gap-1.5">
       {items.map(t => (
-        <span key={t} className="rounded-[3px] border border-[#101A26]/20 px-2 py-1 font-mono text-[10px] uppercase tracking-[.12em] text-[#3C4A5A]">
+        <span key={t} className="rounded-[2px] border border-[#101A26]/20 px-2 py-1 font-mono text-[10px] uppercase tracking-[.12em] text-[#3C4A5A]">
           {t}
         </span>
       ))}
@@ -127,9 +132,55 @@ function Tags({ items }: { items: string[] }) {
 
 function LogoMark({ className = "h-7 w-7" }: { className?: string }) {
   return (
-    <span className={`inline-flex items-center justify-center rounded-[3px] bg-[#0E2A63] ${className}`}>
+    <span className={`inline-flex items-center justify-center bg-[#0E2A63] ${className}`}>
       <Image src="/cuanapp-logo.svg" alt="" width={15} height={15} />
     </span>
+  )
+}
+
+/**
+ * Ruler strip for the blue mat: fine ticks every 10px, heavy ticks every
+ * 50px, and mono numbers every 100px — like a self-healing cutting mat.
+ */
+function RulerTicks({ side, withNumbers = true }: { side: "left" | "right" | "top" | "bottom"; withNumbers?: boolean }) {
+  const isVertical = side !== "top"
+  const ticks = Array.from({ length: 64 }, (_, i) => i * 100)
+  return (
+    <div
+      aria-hidden
+      className={`pointer-events-none absolute ${side === "left" ? "inset-y-0 left-0 w-7 border-r border-white/50" : side === "right" ? "inset-y-0 right-0 w-7 border-l border-white/50" : side === "top" ? "inset-x-0 top-0 h-7 border-b border-white/50" : "inset-x-0 bottom-0 h-7 border-t border-white/50"}`}
+    >
+      {/* fine + heavy ticks */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: isVertical
+            ? `repeating-linear-gradient(to bottom, rgba(255,255,255,.55) 0 1px, transparent 1px 10px), repeating-linear-gradient(to bottom, rgba(255,255,255,.95) 0 1px, transparent 1px 50px)`
+            : `repeating-linear-gradient(to right, rgba(255,255,255,.55) 0 1px, transparent 1px 10px), repeating-linear-gradient(to right, rgba(255,255,255,.95) 0 1px, transparent 1px 50px)`,
+          backgroundSize: isVertical ? "6px 100%, 14px 100%" : "100% 6px, 100% 14px",
+          backgroundPosition: isVertical
+            ? side === "left" ? "left 0, left 0" : "right 0, right 0"
+            : side === "top" ? "top 0, top 0" : "bottom 0, bottom 0",
+          backgroundRepeat: "no-repeat",
+        }}
+      />
+      {/* numbers */}
+      {withNumbers && (
+        <div className={`absolute inset-0 ${isVertical ? (side === "left" ? "left-1.5" : "right-1.5") : "top-1 left-1.5"}`}>
+          {ticks.map(n => (
+            <span
+              key={n}
+              className="absolute font-mono text-[8px] leading-none text-white/75"
+              style={isVertical
+                ? { top: n + 16, [side === "left" ? "left" : "right"]: 0 }
+                : { left: n + 16, top: 0 }}
+            >
+              {n / 100 || ""}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -140,7 +191,7 @@ function LogoMark({ className = "h-7 w-7" }: { className?: string }) {
 function DashboardPreview() {
   return (
     <div className="relative w-full">
-      <div className="overflow-hidden rounded-[3px] border border-[#101A26]/25 bg-white">
+      <div className="overflow-hidden rounded-[2px] border border-[#101A26]/25 bg-white">
         <div className="flex h-9 items-center justify-between border-b border-[#101A26]/12 bg-[#FAFAF5] px-3">
           <div className="flex w-full items-center gap-2">
             <span className="h-2 w-2 rounded-[1px] bg-[#101A26]/20" />
@@ -157,7 +208,7 @@ function DashboardPreview() {
             {[[BarChart3, "Dashboard"], [ShoppingCart, "Sales & orders"], [Boxes, "Inventory"], [ClipboardList, "Purchasing"], [Wallet, "Finance"], [BookOpen, "Reports"]].map(([Icon, label], i) => {
               const I = Icon as typeof BarChart3
               return (
-                <div key={String(label)} className={`mb-0.5 flex items-center justify-center gap-2 rounded-[3px] px-2 py-2 text-[10px] sm:justify-start ${i === 0 ? "bg-[#1746C8] font-medium text-white" : "text-[#59667A]"}`}>
+                <div key={String(label)} className={`mb-0.5 flex items-center justify-center gap-2 rounded-[2px] px-2 py-2 text-[10px] sm:justify-start ${i === 0 ? "bg-[#0E2A63] font-medium text-white" : "text-[#59667A]"}`}>
                   <I size={13} /><span className="hidden sm:inline">{String(label)}</span>
                 </div>
               )
@@ -167,10 +218,10 @@ function DashboardPreview() {
           <div className="min-w-0 bg-white p-3 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-2 border-b border-[#101A26]/12 pb-3">
               <div>
-                <Label className="text-[#1746C8]">Business overview</Label>
+                <Label className="text-[#0E2A63]">Business overview</Label>
                 <div className="mt-1.5 text-[15px] font-semibold tracking-[-.02em] text-[#101A26] sm:text-lg">Good morning, business owner</div>
               </div>
-              <span className="rounded-[3px] border border-[#101A26]/20 px-2 py-1 font-mono text-[9px] uppercase tracking-[.1em] text-[#59667A]">This month</span>
+              <span className="rounded-[2px] border border-[#101A26]/20 px-2 py-1 font-mono text-[9px] uppercase tracking-[.1em] text-[#59667A]">This month</span>
             </div>
 
             <div className="mt-3 grid grid-cols-2 gap-px bg-[#101A26]/12 md:grid-cols-4">
@@ -178,30 +229,30 @@ function DashboardPreview() {
                 <div key={l} className="bg-white p-2.5">
                   <Label className="text-[#8A94A1]">{l}</Label>
                   <div className="mt-1.5 text-[11px] font-semibold tracking-[-.01em] text-[#101A26] sm:text-[13px]">{v}</div>
-                  <div className={`mt-0.5 font-mono text-[9px] ${i === 1 ? "text-emerald-700" : i === 2 ? "text-amber-700" : "text-[#1746C8]"}`}>{c}</div>
+                  <div className={`mt-0.5 font-mono text-[9px] ${i === 1 ? "text-emerald-700" : i === 2 ? "text-amber-700" : "text-[#0E2A63]"}`}>{c}</div>
                 </div>
               ))}
             </div>
 
             <div className="mt-3 grid gap-3 md:grid-cols-[1.4fr_1fr]">
-              <div className="rounded-[3px] border border-[#101A26]/12 p-3">
+              <div className="rounded-[2px] border border-[#101A26]/12 p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-semibold text-[#101A26]">Sales performance</span>
                   <Label className="text-[#8A94A1]">6 mo</Label>
                 </div>
                 <div className="mt-3 flex h-[92px] items-end gap-1.5 border-b border-[#101A26]/12">
                   {[38, 55, 46, 72, 61, 88].map((h, i) => (
-                    <div key={i} className="flex-1 bg-[#1746C8]" style={{ height: `${h}%`, opacity: 0.35 + i * 0.11 }} />
+                    <div key={i} className="flex-1 bg-[#0E2A63]" style={{ height: `${h}%`, opacity: 0.35 + i * 0.11 }} />
                   ))}
                 </div>
                 <div className="mt-1.5 flex justify-between font-mono text-[8px] uppercase text-[#8A94A1]">
                   <span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span>
                 </div>
               </div>
-              <div className="rounded-[3px] border border-[#101A26]/12 p-3">
+              <div className="rounded-[2px] border border-[#101A26]/12 p-3">
                 <Label className="text-[#8A94A1]">Recent activity</Label>
                 <div className="mt-3 space-y-2.5">
-                  {[["Purchase recorded", "Supplier invoice · 2m", "bg-[#1746C8]"], ["Order delivered", "ORD-2026-0082 · 24m", "bg-emerald-600"], ["Payment received", "BCA · 1h", "bg-violet-600"]].map(([a, b, d]) => (
+                  {[["Purchase recorded", "Supplier invoice · 2m", "bg-[#0E2A63]"], ["Order delivered", "ORD-2026-0082 · 24m", "bg-emerald-600"], ["Payment received", "BCA · 1h", "bg-violet-600"]].map(([a, b, d]) => (
                     <div key={a} className="flex gap-2">
                       <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-[1px] ${d}`} />
                       <div>
@@ -226,7 +277,7 @@ function SettingsPreview() {
   const rows = ["Inventory", "Purchasing", "Sales", "Delivery", "Customer Credit", "Supplier Credit"]
 
   return (
-    <div className="overflow-hidden rounded-[3px] border border-[#101A26]/25 bg-white">
+    <div className="overflow-hidden rounded-[2px] border border-[#101A26]/25 bg-white">
       <div className="flex items-center justify-between border-b border-[#101A26]/12 bg-[#FAFAF5] px-4 py-2.5">
         <span className="flex items-center gap-2 text-[11px] font-semibold text-[#101A26]"><Settings2 size={13} /> Business settings</span>
         <Label className="text-[#8A94A1]">Configuration</Label>
@@ -242,7 +293,7 @@ function SettingsPreview() {
                 role="switch"
                 aria-checked={toggles[i]}
                 aria-label={f}
-                className={`m-toggle-track relative h-4 w-7 rounded-[2px] border ${toggles[i] ? "border-[#1746C8] bg-[#1746C8]" : "border-[#101A26]/25 bg-white"}`}
+                className={`m-toggle-track relative h-4 w-7 rounded-[2px] border ${toggles[i] ? "border-[#0E2A63] bg-[#0E2A63]" : "border-[#101A26]/25 bg-white"}`}
               >
                 <span className={`m-toggle-knob absolute top-[1px] h-[12px] w-[12px] rounded-[1px] ${toggles[i] ? "translate-x-[13px] bg-white" : "translate-x-[1px] bg-[#101A26]/25"}`} />
               </button>
@@ -257,7 +308,7 @@ function SettingsPreview() {
                 key={m}
                 onClick={() => setMethod(m)}
                 aria-pressed={method === m}
-                className={`m-chip rounded-[3px] border px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[.08em] ${method === m ? "border-[#1746C8] bg-[#1746C8] text-white" : "border-[#101A26]/20 text-[#3C4A5A]"}`}
+                className={`m-chip rounded-[2px] border px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[.08em] ${method === m ? "border-[#0E2A63] bg-[#0E2A63] text-white" : "border-[#101A26]/20 text-[#3C4A5A]"}`}
               >
                 {m}
               </button>
@@ -395,41 +446,18 @@ export default function LandingPage() {
 
   return (
     <>
-      {/* ---------- blue measuring mat behind the paper ---------- */}
-      <div className="pointer-events-none fixed inset-y-0 left-0 z-0 hidden w-5 bg-[#1B4AC8] sm:block">
-        <div
-          className="absolute inset-y-0 right-0 w-px bg-white/60"
-        />
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(to bottom, rgba(255,255,255,.85) 0 1px, transparent 1px 10px), repeating-linear-gradient(to bottom, rgba(255,255,255,.5) 0 1px, transparent 1px 50px)",
-            backgroundSize: "8px 100%, 100% 100%",
-            backgroundPosition: "right 0, 0 0",
-            backgroundRepeat: "no-repeat, no-repeat",
-            maskImage: "linear-gradient(to bottom, transparent 0, black 12px, black calc(100% - 12px), transparent 100%)",
-          }}
-        />
-      </div>
-      <div className="pointer-events-none fixed inset-y-0 right-0 z-0 hidden w-5 bg-[#1B4AC8] sm:block">
-        <div className="absolute inset-y-0 left-0 w-px bg-white/60" />
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(to bottom, rgba(255,255,255,.85) 0 1px, transparent 1px 10px), repeating-linear-gradient(to bottom, rgba(255,255,255,.5) 0 1px, transparent 1px 50px)",
-            backgroundSize: "8px 100%, 100% 100%",
-            backgroundPosition: "left 0, 0 0",
-            backgroundRepeat: "no-repeat, no-repeat",
-            maskImage: "linear-gradient(to bottom, transparent 0, black 12px, black calc(100% - 12px), transparent 100%)",
-          }}
-        />
+      <div className="relative min-h-screen bg-[#0E2A63] sm:px-7 sm:py-4">
+      {/* rulers on the mat, all four edges */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 hidden sm:block">
+        <RulerTicks side="left" />
+        <RulerTicks side="right" />
+        <RulerTicks side="top" withNumbers={false} />
+        <RulerTicks side="bottom" withNumbers={false} />
       </div>
 
-      <div className="relative z-10 min-h-screen bg-[#1B4AC8] sm:px-5">
-      {/* ---------- navigation ---------- */}
-      <header className="sticky top-0 z-40 border-b border-[#101A26]/20 bg-[#FCFCFA]/95 backdrop-blur">
+      <div className="relative z-10 mx-auto max-w-[1400px]">
+      {/* ---------- navigation: its own torn-off strip of paper ---------- */}
+      <header className="sticky top-3 z-40 border border-[#101A26]/25 bg-[#FCFCFA]/95 shadow-[0_10px_30px_-18px_rgba(0,0,0,.5)] backdrop-blur">
         <div className="flex h-12 items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <Link href="/" className="flex items-center gap-2.5">
@@ -442,22 +470,22 @@ export default function LandingPage() {
 
           <nav className="hidden items-center gap-6 lg:flex" aria-label="Navigasi utama">
             {navItems.map(item => (
-              <a key={item.label} href={item.href} className="font-mono text-[10px] uppercase tracking-[.16em] text-[#3C4A5A] transition hover:text-[#1746C8]">
+              <a key={item.label} href={item.href} className="font-mono text-[10px] uppercase tracking-[.16em] text-[#3C4A5A] transition hover:text-[#0E2A63]">
                 {item.label}
               </a>
             ))}
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <span className="hidden items-center gap-1.5 rounded-[3px] border border-[#101A26]/20 px-2 py-1 font-mono text-[10px] uppercase tracking-[.12em] text-[#3C4A5A] sm:flex">
+            <span className="hidden items-center gap-1.5 rounded-[2px] border border-[#101A26]/20 px-2 py-1 font-mono text-[10px] uppercase tracking-[.12em] text-[#3C4A5A] sm:flex">
               <Globe2 size={11} /> ID
             </span>
             <Link href="/login" className="hidden px-1.5 font-mono text-[10px] uppercase tracking-[.12em] text-[#3C4A5A] hover:text-[#101A26] sm:block">Masuk</Link>
-            <Link href="/register" className="rounded-[3px] bg-[#1746C8] px-3.5 py-2 font-mono text-[10px] uppercase tracking-[.12em] text-white transition hover:bg-[#1238A4]">
+            <Link href="/register" className="rounded-[2px] bg-[#0E2A63] px-3.5 py-2 font-mono text-[10px] uppercase tracking-[.12em] text-white transition hover:bg-[#0A1F4A]">
               Try it out
             </Link>
             <button
-              className="rounded-[3px] border border-[#101A26]/20 p-2 lg:hidden"
+              className="rounded-[2px] border border-[#101A26]/20 p-2 lg:hidden"
               onClick={() => setMenuOpen(v => !v)}
               aria-label="Menu"
               aria-expanded={menuOpen}
@@ -476,23 +504,22 @@ export default function LandingPage() {
               </a>
             ))}
             <div className="mt-3 flex gap-2">
-              <Link href="/login" className="flex-1 rounded-[3px] border border-[#101A26]/20 py-2 text-center text-[12px]">Masuk</Link>
-              <Link href="/register" className="flex-1 rounded-[3px] bg-[#1746C8] py-2 text-center text-[12px] text-white">Mulai gratis</Link>
+              <Link href="/login" className="flex-1 rounded-[2px] border border-[#101A26]/20 py-2 text-center text-[12px]">Masuk</Link>
+              <Link href="/register" className="flex-1 rounded-[2px] bg-[#0E2A63] py-2 text-center text-[12px] text-white">Mulai gratis</Link>
             </div>
           </div>
         )}
       </header>
 
-      {/* ---------- paper sheet ---------- */}
-      <div className="relative border-x border-[#101A26]/25 bg-[#FCFCFA]">
+      {/* ---------- paper sheet: a separate sheet below the torn-off nav ---------- */}
+      <div className="relative mt-3 border border-[#101A26]/25 bg-[#FCFCFA]">
         {/* perforation lines, like continuous-form paper */}
         <div className="pointer-events-none absolute inset-y-0 left-8 hidden w-px sm:block" style={{ backgroundImage: "repeating-linear-gradient(to bottom, rgba(16,26,38,.30) 0 4px, transparent 4px 10px)" }} />
         <div className="pointer-events-none absolute inset-y-0 right-8 hidden w-px sm:block" style={{ backgroundImage: "repeating-linear-gradient(to bottom, rgba(16,26,38,.30) 0 4px, transparent 4px 10px)" }} />
 
-        <PunchHoles />
-
       <main id="main" lang="id" className="min-h-screen text-[#101A26]">
       {/* ---------- hero ---------- */}
+      <PunchHoles />
       <section className="relative border-b border-[#101A26]/15">
         <div
           className="pointer-events-none absolute inset-0 hidden lg:block"
@@ -506,18 +533,18 @@ export default function LandingPage() {
           <div className="grid gap-8 [&>*]:min-w-0 border-[#101A26]/15 py-12 sm:py-16 lg:grid-cols-[1.1fr_.9fr] lg:gap-16 lg:border-b lg:py-20">
             <div>
               <div className="flex items-center gap-3">
-                <Label className="text-[#1746C8]">01 — Platform</Label>
+                <Label className="text-[#0E2A63]">01 — Platform</Label>
                 <span className="h-px w-14 bg-[#101A26]/25" />
               </div>
               <h1 className="m-enter m-enter--1 mt-6 max-w-[15ch] text-[42px] font-semibold leading-[1.02] tracking-[-.045em] sm:text-[56px] lg:text-[68px]">
                 Run Your Business.{" "}
-                <span className="text-[#1746C8]">Your Way.</span>
+                <span className="text-[#0E2A63]">Your Way.</span>
               </h1>
               <div className="mt-7 flex flex-wrap items-center gap-2">
-                <Link href="/register" className="m-enter m-enter--4 inline-flex items-center gap-2 rounded-[3px] bg-[#1746C8] px-4 py-2.5 text-[12.5px] font-medium text-white transition hover:bg-[#1238A4]">
+                <Link href="/register" className="m-enter m-enter--4 inline-flex items-center gap-2 rounded-[2px] bg-[#0E2A63] px-4 py-2.5 text-[12.5px] font-medium text-white transition hover:bg-[#0A1F4A]">
                   Get Started <ArrowRight size={13} />
                 </Link>
-                <a href="#product-tour" className="m-enter m-enter--4 inline-flex items-center gap-2 rounded-[3px] border border-[#101A26]/25 px-4 py-2.5 text-[12px] font-medium text-[#101A26] transition hover:border-[#101A26]/50">
+                <a href="#product-tour" className="m-enter m-enter--4 inline-flex items-center gap-2 rounded-[2px] border border-[#101A26]/25 px-4 py-2.5 text-[12px] font-medium text-[#101A26] transition hover:border-[#101A26]/50">
                   <Play size={12} /> Explore CuanApp
                 </a>
               </div>
@@ -552,7 +579,7 @@ export default function LandingPage() {
           <div className="flex shrink-0 animate-marquee items-center gap-6 pr-6 group-hover:[animation-play-state:paused]">
             {[...modules, ...modules].map((m, i) => (
               <span key={`${m}-${i}`} className="flex items-center gap-2 whitespace-nowrap">
-                <span className="h-1 w-1 rounded-[1px] bg-[#1746C8]" />
+                <span className="h-1 w-1 rounded-[1px] bg-[#0E2A63]" />
                 <Label className="text-[#3C4A5A]">{m}</Label>
               </span>
             ))}
@@ -566,29 +593,29 @@ export default function LandingPage() {
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
           <div className="grid [&>*]:min-w-0 lg:grid-cols-[260px_1fr]">
             <div className="border-[#101A26]/15 py-10 lg:border-r lg:py-14 lg:pr-8">
-              <Label className="text-[#1746C8]">02 — Industries</Label>
+              <Label className="text-[#0E2A63]">02 — Industries</Label>
               <h2 data-reveal className="mt-4 text-[30px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[36px]">
                 Every business is different.
                 <br />
-                <span className="text-[#1746C8]">CuanApp is built for all.</span>
+                <span className="text-[#0E2A63]">CuanApp is built for all.</span>
               </h2>
               <p className="mt-4 max-w-[38ch] text-[14px] leading-[1.7] text-[#3C4A5A]">
                 Setiap bisnis memiliki cara kerja yang unik. Arsitektur CuanApp fleksibel untuk mendukung ekspansi operasional usaha apa pun.
               </p>
               <div className="mt-6 flex items-center gap-2">
-                <button onClick={() => scrollCarousel(-1)} aria-label="Previous industries" className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-[#101A26]/20 transition hover:border-[#1746C8] hover:text-[#1746C8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1746C8] focus-visible:ring-offset-2">
+                <button onClick={() => scrollCarousel(-1)} aria-label="Previous industries" className="flex h-8 w-8 items-center justify-center rounded-[2px] border border-[#101A26]/20 transition hover:border-[#0E2A63] hover:text-[#0E2A63] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A63] focus-visible:ring-offset-2">
                   <ArrowLeft size={13} />
                 </button>
-                <button onClick={() => scrollCarousel(1)} aria-label="Next industries" className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-[#101A26]/20 transition hover:border-[#1746C8] hover:text-[#1746C8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1746C8] focus-visible:ring-offset-2">
+                <button onClick={() => scrollCarousel(1)} aria-label="Next industries" className="flex h-8 w-8 items-center justify-center rounded-[2px] border border-[#101A26]/20 transition hover:border-[#0E2A63] hover:text-[#0E2A63] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A63] focus-visible:ring-offset-2">
                   <ArrowRight size={13} />
                 </button>
                 <div className="ml-2 h-0.5 w-24 overflow-hidden bg-[#101A26]/15">
-                  <div className="m-progress h-full bg-[#1746C8]" style={{ width: `${progress}%` }} />
+                  <div className="m-progress h-full bg-[#0E2A63]" style={{ width: `${progress}%` }} />
                 </div>
                 <button
                   onClick={() => { paused.current = !paused.current; setPausedUi(paused.current) }}
                   aria-pressed={pausedUi}
-                  className="ml-1 flex h-8 items-center gap-1.5 rounded-[3px] border border-[#101A26]/20 px-2 font-mono text-[9px] uppercase tracking-[.12em] text-[#3C4A5A] transition hover:border-[#1746C8] hover:text-[#1746C8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1746C8] focus-visible:ring-offset-2"
+                  className="ml-1 flex h-8 items-center gap-1.5 rounded-[2px] border border-[#101A26]/20 px-2 font-mono text-[9px] uppercase tracking-[.12em] text-[#3C4A5A] transition hover:border-[#0E2A63] hover:text-[#0E2A63] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A63] focus-visible:ring-offset-2"
                 >
                   {pausedUi ? <Play size={10} /> : <Pause size={10} />}
                   {pausedUi ? "Play" : "Pause"}
@@ -624,14 +651,14 @@ export default function LandingPage() {
                 }}
                 onPointerCancel={() => { drag.current = null; hover.current = false }}
                 onPointerLeave={() => { drag.current = null }}
-                className="m-track flex cursor-grab touch-pan-y gap-3 overflow-x-auto pb-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1746C8] focus-visible:ring-offset-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="m-track flex cursor-grab touch-pan-y gap-3 overflow-x-auto pb-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A63] focus-visible:ring-offset-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 {industries.map((group, i) => {
                   const Icon = group.icon
                   return (
-                    <div key={i} data-card className="m-card w-[248px] shrink-0 select-none rounded-[3px] border border-[#101A26]/20 bg-white p-4">
+                    <div key={i} data-card className="m-card w-[248px] shrink-0 select-none rounded-[2px] border border-[#101A26]/20 bg-white p-4">
                       <div className="flex items-center justify-between">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-[3px] border border-[#101A26]/15 text-[#1746C8]">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-[2px] border border-[#101A26]/15 text-[#0E2A63]">
                           <Icon size={15} strokeWidth={1.7} />
                         </span>
                         <Label className="text-[#8A94A1]">{String(i + 1).padStart(2, "0")}</Label>
@@ -654,15 +681,16 @@ export default function LandingPage() {
 
       {/* ---------- 03 solutions ---------- */}
       <PunchHoles />
+      <PunchHoles />
       <section id="solutions" className="relative scroll-mt-16 border-b border-[#101A26]/15">
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
           <div className="grid [&>*]:min-w-0 lg:grid-cols-[260px_1fr]">
             <div className="border-[#101A26]/15 py-10 lg:border-r lg:py-14 lg:pr-8">
-              <Label className="text-[#1746C8]">03 — Solutions</Label>
+              <Label className="text-[#0E2A63]">03 — Solutions</Label>
               <h2 data-reveal className="mt-4 text-[30px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[36px]">
                 Everything your business needs.
                 <br />
-                <span className="text-[#1746C8]">All in one place.</span>
+                <span className="text-[#0E2A63]">All in one place.</span>
               </h2>
               <p className="mt-4 max-w-[38ch] text-[14px] leading-[1.7] text-[#3C4A5A]">
                 CuanApp menghubungkan setiap bagian bisnis ke dalam satu sistem terintegrasi, dari operasional harian hingga laporan keuangan.
@@ -674,7 +702,7 @@ export default function LandingPage() {
                 {solutionRows.map((row, i) => (
                   <div key={row.no} className={`m-lift grid gap-3 border-t border-[#101A26]/15 py-6 sm:grid-cols-[54px_1fr] ${i === solutionRows.length - 1 ? "border-b" : ""}`}>
                     <div>
-                      <Label className="text-[#1746C8]">{row.no}</Label>
+                      <Label className="text-[#0E2A63]">{row.no}</Label>
                     </div>
                     <div>
                       <h3 className="text-[17px] font-semibold tracking-[-.02em] sm:text-[19px]">{row.title}</h3>
@@ -684,7 +712,7 @@ export default function LandingPage() {
                   </div>
                 ))}
               </div>
-              <a href="#product-tour" className="mt-7 inline-flex items-center gap-2 rounded-[3px] border border-[#101A26]/25 px-4 py-2.5 text-[12px] font-medium transition hover:border-[#1746C8] hover:text-[#1746C8]">
+              <a href="#product-tour" className="mt-7 inline-flex items-center gap-2 rounded-[2px] border border-[#101A26]/25 px-4 py-2.5 text-[12px] font-medium transition hover:border-[#0E2A63] hover:text-[#0E2A63]">
                 Discover our solutions <ArrowRight size={13} />
               </a>
             </div>
@@ -694,21 +722,22 @@ export default function LandingPage() {
 
       {/* ---------- 04 flexibility ---------- */}
       <PunchHoles />
+      <PunchHoles />
       <section id="flexibility" className="relative scroll-mt-16 border-b border-[#101A26]/15">
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
           <div className="grid [&>*]:min-w-0 lg:grid-cols-[260px_1fr]">
             <div className="border-[#101A26]/15 py-10 lg:border-r lg:py-14 lg:pr-8">
-              <Label className="text-[#1746C8]">04 — Flexibility</Label>
+              <Label className="text-[#0E2A63]">04 — Flexibility</Label>
               <h2 data-reveal className="mt-4 text-[30px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[36px]">
                 Your business. Your rules.
                 <br />
-                <span className="text-[#1746C8]">Your system.</span>
+                <span className="text-[#0E2A63]">Your system.</span>
               </h2>
               <p className="mt-4 max-w-[38ch] text-[14px] leading-[1.7] text-[#3C4A5A]">
                 Tidak ada dua bisnis yang beroperasi dengan cara yang sama. Aktifkan fitur yang dibutuhkan, nonaktifkan yang tidak relevan.
               </p>
               <div className="mt-6 flex items-center gap-2">
-                <SlidersHorizontal size={13} className="text-[#1746C8]" />
+                <SlidersHorizontal size={13} className="text-[#0E2A63]" />
                 <Label className="text-[#8A94A1]">Settings driven</Label>
               </div>
             </div>
@@ -724,7 +753,7 @@ export default function LandingPage() {
                     <p className="mt-1.5 pl-8 text-[13.5px] leading-[1.7] text-[#3C4A5A]">{f.body}</p>
                   </div>
                 ))}
-                <a href="#product-tour" className="mt-5 inline-flex items-center gap-2 rounded-[3px] border border-[#101A26]/25 px-4 py-2.5 text-[12px] font-medium transition hover:border-[#1746C8] hover:text-[#1746C8]">
+                <a href="#product-tour" className="mt-5 inline-flex items-center gap-2 rounded-[2px] border border-[#101A26]/25 px-4 py-2.5 text-[12px] font-medium transition hover:border-[#0E2A63] hover:text-[#0E2A63]">
                   Explore customization <ArrowRight size={13} />
                 </a>
               </div>
@@ -738,11 +767,12 @@ export default function LandingPage() {
 
       {/* ---------- 05 product tour ---------- */}
       <PunchHoles />
+      <PunchHoles />
       <section id="product-tour" className="relative scroll-mt-16 border-b border-[#101A26]/15">
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
           <div className="grid [&>*]:min-w-0 lg:grid-cols-[260px_1fr]">
             <div className="border-[#101A26]/15 py-10 lg:border-r lg:py-14 lg:pr-8">
-              <Label className="text-[#1746C8]">05 — Product tour</Label>
+              <Label className="text-[#0E2A63]">05 — Product tour</Label>
               <h2 data-reveal className="mt-4 text-[30px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[36px]">
                 See how CuanApp works.
               </h2>
@@ -750,7 +780,7 @@ export default function LandingPage() {
                 Jelajahi bagaimana CuanApp menghubungkan setiap aktivitas bisnis dalam satu pengalaman yang sederhana.
               </p>
               <div className="mt-6 flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-[1px] bg-[#1746C8]" />
+                <span className="h-1.5 w-1.5 rounded-[1px] bg-[#0E2A63]" />
                 <Label className="text-[#8A94A1]">Interactive demonstration</Label>
               </div>
             </div>
@@ -768,21 +798,21 @@ export default function LandingPage() {
                       className={`flex items-center gap-2.5 border-b border-[#101A26]/15 px-1 py-2.5 text-left transition ${active ? "text-[#101A26]" : "text-[#6B7887] hover:text-[#101A26]"}`}
                     >
                       <Label className="text-[#8A94A1]">{String(index + 1).padStart(2, "0")}</Label>
-                      <Icon size={13} className={active ? "text-[#1746C8]" : "text-[#8A94A1]"} />
+                      <Icon size={13} className={active ? "text-[#0E2A63]" : "text-[#8A94A1]"} />
                       <span className="flex-1 text-[13px] font-medium">{item.label}</span>
-                      {active && <span className="h-1.5 w-1.5 rounded-[1px] bg-[#1746C8]" />}
+                      {active && <span className="h-1.5 w-1.5 rounded-[1px] bg-[#0E2A63]" />}
                     </button>
                   )
                 })}
               </div>
 
-              <div className="rounded-[3px] border border-[#101A26]/20 bg-white p-5 sm:p-6">
+              <div className="rounded-[2px] border border-[#101A26]/20 bg-white p-5 sm:p-6">
                 <div className="flex items-center justify-between border-b border-[#101A26]/12 pb-3">
                   <Label className="text-[#8A94A1]">Screen preview</Label>
                   <Label className="text-[#8A94A1]">{String(activeTour + 1).padStart(2, "0")} / 06</Label>
                 </div>
                 <div className="mt-5 flex items-center gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-[3px] bg-[#1746C8] text-white"><ActiveIcon size={16} /></span>
+                  <span className="flex h-9 w-9 items-center justify-center rounded-[2px] bg-[#0E2A63] text-white"><ActiveIcon size={16} /></span>
                   <h3 className="text-[17px] font-semibold tracking-[-.02em]">{tourItems[activeTour].label}</h3>
                 </div>
                 <p className="mt-3 text-[13px] leading-[1.7] text-[#3C4A5A]">{tourItems[activeTour].detail}</p>
@@ -794,13 +824,13 @@ export default function LandingPage() {
                         onClick={() => setActiveTour(index)}
                         aria-label={`Show ${item.label}`}
                         aria-current={activeTour === index}
-                        className="flex h-9 w-9 items-center justify-center rounded-[3px]"
+                        className="flex h-9 w-9 items-center justify-center rounded-[2px]"
                       >
-                        <span className={`h-1 w-full rounded-[1px] ${activeTour === index ? "bg-[#1746C8]" : "bg-[#101A26]/15"}`} />
+                        <span className={`h-1 w-full rounded-[1px] ${activeTour === index ? "bg-[#0E2A63]" : "bg-[#101A26]/15"}`} />
                       </button>
                     ))}
                   </div>
-                  <button ref={tourTriggerRef} onClick={() => setTourOpen(true)} className="ml-auto inline-flex items-center gap-2 rounded-[3px] bg-[#101A26] px-3.5 py-2 text-[11px] font-medium text-white transition hover:bg-[#0E2A63]">
+                  <button ref={tourTriggerRef} onClick={() => setTourOpen(true)} className="ml-auto inline-flex items-center gap-2 rounded-[2px] bg-[#101A26] px-3.5 py-2 text-[11px] font-medium text-white transition hover:bg-[#0E2A63]">
                     Take a tour <Play size={11} />
                   </button>
                 </div>
@@ -845,10 +875,10 @@ export default function LandingPage() {
 
             <div className="flex flex-col justify-between">
               <div className="flex flex-wrap gap-2">
-                <Link href="/register" className="inline-flex items-center gap-2 rounded-[3px] bg-white px-4 py-2.5 text-[12px] font-medium text-[#0D2450] transition hover:bg-[#E6EBF7]">
+                <Link href="/register" className="inline-flex items-center gap-2 rounded-[2px] bg-white px-4 py-2.5 text-[12px] font-medium text-[#0D2450] transition hover:bg-[#E6EBF7]">
                   Get Started <ArrowRight size={13} />
                 </Link>
-                <a href="#product-tour" className="inline-flex items-center gap-2 rounded-[3px] border border-white/30 px-4 py-2.5 text-[12px] font-medium text-white transition hover:bg-white/10">
+                <a href="#product-tour" className="inline-flex items-center gap-2 rounded-[2px] border border-white/30 px-4 py-2.5 text-[12px] font-medium text-white transition hover:bg-white/10">
                   <Play size={12} /> Explore CuanApp
                 </a>
               </div>
@@ -889,8 +919,8 @@ export default function LandingPage() {
                   {col.links.map(([label, href]) => (
                     <li key={label}>
                       {href.startsWith("#")
-                        ? <a href={href} className="text-[13px] text-[#3C4A5A] transition hover:text-[#1746C8]">{label}</a>
-                        : <Link href={href} className="text-[13px] text-[#3C4A5A] transition hover:text-[#1746C8]">{label}</Link>}
+                        ? <a href={href} className="text-[13px] text-[#3C4A5A] transition hover:text-[#0E2A63]">{label}</a>
+                        : <Link href={href} className="text-[13px] text-[#3C4A5A] transition hover:text-[#0E2A63]">{label}</Link>}
                     </li>
                   ))}
                 </ul>
@@ -907,6 +937,7 @@ export default function LandingPage() {
         </div>
       </footer>
       </div>{/* end paper sheet */}
+      </div>{/* end inner wrapper */}
       </div>{/* end mat wrapper */}
 
       {/* ---------- tour modal ---------- */}
@@ -926,16 +957,16 @@ export default function LandingPage() {
             aria-modal="true"
             aria-labelledby="tour-title"
             tabIndex={-1}
-            className="m-panel relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-[3px] border border-[#101A26]/25 bg-[#FCFCFA] p-4 shadow-xl outline-none sm:p-7"
+            className="m-panel relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-[2px] border border-[#101A26]/25 bg-[#FCFCFA] p-4 shadow-xl outline-none sm:p-7"
           >
             <div className="flex items-center justify-between border-b border-[#101A26]/15 pb-3">
-              <h2 id="tour-title" className="font-mono text-[10px] uppercase tracking-[.18em] text-[#1746C8]">CuanApp product tour</h2>
-              <button onClick={() => setTourOpen(false)} className="rounded-[3px] border border-[#101A26]/20 p-1.5 text-[#3C4A5A] hover:border-[#101A26]/40" aria-label="Close product tour">
+              <h2 id="tour-title" className="font-mono text-[10px] uppercase tracking-[.18em] text-[#0E2A63]">CuanApp product tour</h2>
+              <button onClick={() => setTourOpen(false)} className="rounded-[2px] border border-[#101A26]/20 p-1.5 text-[#3C4A5A] hover:border-[#101A26]/40" aria-label="Close product tour">
                 <X size={14} />
               </button>
             </div>
             <div className="mt-4 flex aspect-video flex-col items-center justify-center border border-[#101A26]/20 bg-white text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-[3px] border border-[#101A26]/20"><Play size={18} /></span>
+              <span className="flex h-12 w-12 items-center justify-center rounded-[2px] border border-[#101A26]/20"><Play size={18} /></span>
               <div className="mt-4 text-[15px] font-semibold">Walkthrough video</div>
               <p className="mt-2 max-w-md px-6 text-[13px] leading-[1.7] text-[#59667A]">
                 Placeholder untuk video walkthrough resmi atau demo aplikasi terpandu.
@@ -943,7 +974,7 @@ export default function LandingPage() {
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <Label className="text-[#8A94A1]">Dashboard · Transactions · Inventory · Finance · Reports</Label>
-              <button onClick={() => setTourOpen(false)} className="rounded-[3px] bg-[#1746C8] px-3.5 py-2 text-[11px] font-medium text-white">Close</button>
+              <button onClick={() => setTourOpen(false)} className="rounded-[2px] bg-[#0E2A63] px-3.5 py-2 text-[11px] font-medium text-white">Close</button>
             </div>
           </div>
         </div>
