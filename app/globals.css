@@ -629,24 +629,52 @@ body > * {
   html { scroll-behavior: auto; }
 }
 
-/* Continuous-form punch holes: repeating dots at a fixed pitch, so every
-   sheet (content sections and footer) shares the exact same spacing. */
-:root { --hole-gap: 46px; }
+/* ---- Auth pages: printed-form treatment, scoped so the app UI is untouched ---- */
+.auth-light [data-slot="input"] {
+  height: 2.75rem;
+  border-radius: 2px;
+  border-color: rgba(16, 26, 38, 0.25);
+  background: #fff;
+  padding-inline: 0.75rem;
+  font-size: 14px;
+  color: #101a26;
+}
+.auth-light [data-slot="input"]::placeholder { color: #5f6b7a; }
+.auth-light [data-slot="input"]:focus-visible {
+  border-color: #0e2a63;
+  box-shadow: inset 0 0 0 1px #0e2a63;
+  --tw-ring-shadow: 0 0 #0000;
+}
+.auth-light [data-slot="input"][aria-invalid="true"] {
+  border-color: #b42318;
+  box-shadow: inset 0 0 0 1px #b42318;
+}
+.auth-light [data-slot="input"]:disabled {
+  background: rgba(16, 26, 38, 0.04);
+  border-color: rgba(16, 26, 38, 0.15);
+  color: #5a6675;
+  opacity: 1;
+}
+.auth-light input:-webkit-autofill,
+.auth-light input:-webkit-autofill:focus {
+  box-shadow: inset 0 0 0 1000px #fcfcfa;
+  -webkit-text-fill-color: #101a26;
+}
 
-/* Page scrollbar, themed for the navy mat and paper sheet. */
+/* Page scrollbar: neutral grey that reads on both the navy mat and paper. */
 html {
   scrollbar-width: thin;
-  scrollbar-color: #0e2a63 #e8e8e0;
+  scrollbar-color: rgba(107, 120, 135, 0.75) transparent;
+  scrollbar-gutter: stable;
 }
-::-webkit-scrollbar { width: 12px; height: 12px; }
-::-webkit-scrollbar-track { background: #e8e8e0; }
-::-webkit-scrollbar-thumb {
-  background: #0e2a63;
-  border: 3px solid #e8e8e0;
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover { background: #0a1f4a; }
-::-webkit-scrollbar-corner { background: #e8e8e0; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(107, 120, 135, 0.75); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: rgba(90, 102, 117, 0.9); }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* Continuous-form punch holes at a fixed pitch, shared by every sheet. */
+:root { --hole-gap: 46px; }
 .punch-holes {
   background-image: radial-gradient(
     circle at 50% 50%,
@@ -746,4 +774,15 @@ html {
 @media (max-width: 639px) {
   [data-slot="dialog-content"] { padding: 1.125rem; }
   [data-slot="dialog-footer"] { margin-inline: -1.125rem; margin-bottom: -1.125rem; padding: 1rem 1.125rem; }
+}
+
+/* Auth card reads as printed paper: overrides the app-wide light-mode card
+   depth system (gradient border + ambient shadow) for these pages only. */
+:root .auth-light [data-slot="card"],
+:root .auth-light [data-slot="card"]:hover {
+  border: 1px solid rgba(16, 26, 38, 0.2) !important;
+  border-color: rgba(16, 26, 38, 0.2) !important;
+  background: #fcfcfa !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
 }

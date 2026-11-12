@@ -4,12 +4,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
-import { ArrowRight, Boxes, CheckCircle2, Eye, EyeOff, LoaderCircle, ShoppingCart, Wallet } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Eye, EyeOff, Globe2, LoaderCircle } from 'lucide-react'
 import { appToast as toast } from '@/lib/toast'
 import { authClient } from '@/lib/auth-client'
-import { LocaleSwitcher } from '@/components/common/locale-switcher'
 import { useApp } from '@/components/providers'
-import { Logo } from '@/components/shell/logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -33,16 +31,16 @@ function AuthField({
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id} className="font-mono text-[10px] uppercase tracking-[.18em] text-[#3C4A5A]">{label}</Label>
       {children}
-      {hint && <p id={`${id}-hint`} className="text-xs text-muted-foreground">{hint}</p>}
-      {error && <p id={`${id}-error`} role="alert" className="text-xs text-destructive">{error}</p>}
+      {hint && <p id={`${id}-hint`} className="text-[11.5px] leading-[1.45] text-[#5A6675]">{hint}</p>}
+      {error && <p id={`${id}-error`} role="alert" className="text-[11.5px] text-[#B42318]">{error}</p>}
     </div>
   )
 }
 
 export function AuthView({ mode }: { mode: AuthMode }) {
-  const { t } = useApp()
+  const { t, locale, setLocale } = useApp()
   const router = useRouter()
   const [fields, setFields] = useState({ name: '', email: '', password: '', confirm: '' })
   const [errors, setErrors] = useState<Partial<Record<AuthField, string>>>({})
@@ -101,11 +99,6 @@ export function AuthView({ mode }: { mode: AuthMode }) {
   const description = t(isRegister ? 'auth.registerDescription' : 'auth.loginDescription')
   const submitLabel = t(isRegister ? 'auth.registerAction' : 'auth.loginAction')
   const resultMessage = t(isRegister ? 'auth.registerResult' : 'auth.loginResult')
-  const highlights = [
-    { label: t('nav.orders'), icon: ShoppingCart },
-    { label: t('nav.products'), icon: Boxes },
-    { label: t('nav.profitLoss'), icon: Wallet },
-  ]
 
   return (
     <main className="auth-light relative min-h-screen bg-[#0E2A63] sm:px-7 sm:py-4">
@@ -128,7 +121,20 @@ export function AuthView({ mode }: { mode: AuthMode }) {
             </span>
             <span className="text-[14px] font-semibold tracking-[-.02em] text-[#101A26]">CuanApp</span>
           </Link>
-          <LocaleSwitcher className="rounded-[2px] border-[#101A26]/20 bg-transparent" />
+          <div role="group" aria-label={t('top.language')} className="flex items-center gap-0.5 rounded-[2px] border border-[#101A26]/20 p-0.5">
+            <Globe2 size={11} className="mx-1 text-[#3C4A5A]" />
+            {(['en', 'id'] as const).map(option => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setLocale(option)}
+                aria-pressed={locale === option}
+                className={`h-7 rounded-[2px] px-2 font-mono text-[10px] uppercase tracking-[.1em] transition ${locale === option ? 'bg-[#0E2A63] text-white' : 'text-[#3C4A5A] hover:text-[#0E2A63]'}`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
         </header>
 
         {/* paper sheet with one centred card */}
@@ -139,14 +145,14 @@ export function AuthView({ mode }: { mode: AuthMode }) {
           <div aria-hidden className="punch-holes pointer-events-none absolute inset-y-4 right-[10px] hidden w-[9px] sm:block" />
 
           <div className="flex min-h-[calc(100vh-9rem)] items-center justify-center px-4 py-12 sm:px-8">
-<Card className="w-full max-w-[420px] rounded-[2px] border-[#101A26]/25 bg-white shadow-[0_20px_50px_-30px_rgba(10,20,40,.45)]">
-              <CardHeader className="gap-3 border-b border-[#101A26]/15 pb-4">
+<Card className="w-full max-w-[440px] rounded-none border-[#101A26]/20 bg-[#FCFCFA] shadow-none">
+              <CardHeader className="flex-row items-center justify-between gap-3 border-b border-[#101A26]/15 px-5 py-3 sm:px-7">
                 <span className="inline-flex w-fit items-center border border-[#0E2A63]/30 px-2 py-1 font-mono text-[10px] uppercase tracking-[.18em] text-[#0E2A63]">
                   CuanApp
                 </span>
                 <div className="grid gap-1.5">
-                  <CardTitle role="heading" aria-level={1} className="text-[26px] font-semibold leading-[1.1] tracking-[-.035em] text-[#101A26]">{title}</CardTitle>
-                  <CardDescription className="text-[13px] leading-[1.65] text-[#3C4A5A]">{description}</CardDescription>
+                  <CardTitle role="heading" aria-level={1} className="text-[24px] font-semibold leading-[1.15] tracking-[-.03em] text-[#101A26] sm:text-[28px]">{title}</CardTitle>
+                  <CardDescription className="mt-2 max-w-[34ch] text-[13.5px] leading-[1.6] text-[#3C4A5A]">{description}</CardDescription>
                 </div>
               </CardHeader>
 
@@ -204,7 +210,7 @@ export function AuthView({ mode }: { mode: AuthMode }) {
                         type="button"
                         variant="ghost"
                         size="icon-sm"
-                        className="absolute right-1 top-1/2 -translate-y-1/2"
+                        className="absolute right-0.5 top-1/2 h-9 w-9 -translate-y-1/2 text-[#5A6675]"
                         aria-label={t(showPassword ? 'auth.hidePassword' : 'auth.showPassword')}
                         disabled={isLoading}
                         onClick={() => setShowPassword((visible) => !visible)}
@@ -256,7 +262,7 @@ export function AuthView({ mode }: { mode: AuthMode }) {
                     </p>
                   )}
 
-                  <Button type="submit" className="mt-1 w-full rounded-[2px] bg-[#0E2A63] hover:bg-[#0A1F4A]" disabled={isLoading}>
+                  <Button type="submit" className="mt-1 h-11 w-full rounded-[2px] bg-[#0E2A63] text-[12.5px] font-medium text-white transition hover:bg-[#0A1F4A] focus-visible:ring-2 focus-visible:ring-[#0E2A63] focus-visible:ring-offset-2" disabled={isLoading}>
                     {isLoading && <LoaderCircle className="animate-spin" data-icon="inline-start" aria-hidden="true" />}
                     {isLoading ? t('auth.checking') : submitLabel}
                     {!isLoading && <ArrowRight data-icon="inline-end" aria-hidden="true" />}
@@ -280,7 +286,7 @@ export function AuthView({ mode }: { mode: AuthMode }) {
                 )}
               </CardContent>
 
-              <CardFooter className="flex-col items-stretch gap-4 border-t border-[#101A26]/15 pt-5">
+              <CardFooter className="flex-col items-stretch gap-3 border-t border-[#101A26]/15 px-5 py-4 sm:px-7">
                 <p className="text-center text-sm text-muted-foreground">
                   <Link href={isRegister ? '/login' : '/register'} className="font-medium text-primary underline-offset-4 hover:underline">
                     {t(isRegister ? 'auth.toLogin' : 'auth.toRegister')}
