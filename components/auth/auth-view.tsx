@@ -1,13 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
-import { ArrowRight, CheckCircle2, Eye, EyeOff, Globe2, LoaderCircle } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Eye, EyeOff, LoaderCircle } from 'lucide-react'
 import { appToast as toast } from '@/lib/toast'
 import { authClient } from '@/lib/auth-client'
 import { useApp } from '@/components/providers'
+import { MeasuredPageFrame } from '@/components/landing/measured-page-frame'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -40,7 +40,7 @@ function AuthField({
 }
 
 export function AuthView({ mode }: { mode: AuthMode }) {
-  const { t, locale, setLocale } = useApp()
+  const { t } = useApp()
   const router = useRouter()
   const [fields, setFields] = useState({ name: '', email: '', password: '', confirm: '' })
   const [errors, setErrors] = useState<Partial<Record<AuthField, string>>>({})
@@ -101,62 +101,20 @@ export function AuthView({ mode }: { mode: AuthMode }) {
   const resultMessage = t(isRegister ? 'auth.registerResult' : 'auth.loginResult')
 
   return (
-    <main className="auth-light relative min-h-screen bg-[#0E2A63] sm:px-7 sm:py-4">
-      {/* square grid across the mat, like a self-healing cutting mat */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 hidden sm:block"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(to right, rgba(255,255,255,.14) 0 1px, transparent 1px 40px), repeating-linear-gradient(to bottom, rgba(255,255,255,.14) 0 1px, transparent 1px 40px), repeating-linear-gradient(to right, rgba(255,255,255,.30) 0 1px, transparent 1px 200px), repeating-linear-gradient(to bottom, rgba(255,255,255,.30) 0 1px, transparent 1px 200px)",
-        }}
-      />
-
-      <div className="relative z-10 mx-auto max-w-[1680px]">
-        {/* torn-off nav strip, same as the landing page */}
-        <header className="sticky top-3 z-40 flex h-12 items-center justify-between gap-4 border border-[#101A26]/25 bg-[#FCFCFA]/95 px-4 shadow-[0_10px_30px_-18px_rgba(0,0,0,.5)] backdrop-blur sm:px-6">
-          <Link href="/" aria-label={t('auth.backToDashboard')} className="flex items-center gap-2.5">
-            <span className="inline-flex h-7 w-7 items-center justify-center bg-[#0E2A63]">
-              <Image src="/cuanapp-logo.svg" alt="" width={15} height={15} />
-            </span>
-            <span className="text-[14px] font-semibold tracking-[-.02em] text-[#101A26]">CuanApp</span>
-          </Link>
-          <div role="group" aria-label={t('top.language')} className="flex items-center gap-0.5 rounded-[2px] border border-[#101A26]/20 p-0.5">
-            <Globe2 size={11} className="mx-1 text-[#3C4A5A]" />
-            {(['en', 'id'] as const).map(option => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setLocale(option)}
-                aria-pressed={locale === option}
-                className={`h-7 rounded-[2px] px-2 font-mono text-[10px] uppercase tracking-[.1em] transition ${locale === option ? 'bg-[#0E2A63] text-white' : 'text-[#3C4A5A] hover:text-[#0E2A63]'}`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        </header>
-
-        {/* paper sheet with one centred card */}
-        <div className="relative mt-3 border border-[#101A26]/25 bg-[#FCFCFA]">
-          <div className="pointer-events-none absolute inset-y-0 left-8 hidden w-px sm:block" style={{ backgroundImage: "repeating-linear-gradient(to bottom, rgba(16,26,38,.30) 0 4px, transparent 4px 10px)" }} />
-          <div className="pointer-events-none absolute inset-y-0 right-8 hidden w-px sm:block" style={{ backgroundImage: "repeating-linear-gradient(to bottom, rgba(16,26,38,.30) 0 4px, transparent 4px 10px)" }} />
-          <div aria-hidden className="punch-holes pointer-events-none absolute inset-y-4 left-[10px] hidden w-[9px] sm:block" />
-          <div aria-hidden className="punch-holes pointer-events-none absolute inset-y-4 right-[10px] hidden w-[9px] sm:block" />
-
-          <div className="flex min-h-[calc(100vh-9rem)] items-center justify-center px-4 py-12 sm:px-8">
-<Card className="w-full max-w-[440px] rounded-none border-[#101A26]/20 bg-[#FCFCFA] shadow-none">
-              <CardHeader className="flex-row items-center justify-between gap-3 border-b border-[#101A26]/15 px-5 py-3 sm:px-7">
+    <MeasuredPageFrame contentClassName="flex flex-col">
+      <div className="flex flex-1 items-center justify-center px-4 py-8 sm:px-10 sm:py-10">
+        <Card className="w-full max-w-[560px] rounded-none border-[#101A26]/20 bg-[#FCFCFA] shadow-none">
+              <CardHeader className="grid gap-3 border-b border-[#101A26]/15 px-5 py-5 sm:px-8 sm:py-7">
                 <span className="inline-flex w-fit items-center border border-[#0E2A63]/30 px-2 py-1 font-mono text-[10px] uppercase tracking-[.18em] text-[#0E2A63]">
                   CuanApp
                 </span>
                 <div className="grid gap-1.5">
                   <CardTitle role="heading" aria-level={1} className="text-[24px] font-semibold leading-[1.15] tracking-[-.03em] text-[#101A26] sm:text-[28px]">{title}</CardTitle>
-                  <CardDescription className="mt-2 max-w-[34ch] text-[13.5px] leading-[1.6] text-[#3C4A5A]">{description}</CardDescription>
+                  <CardDescription className="max-w-[48ch] text-[13.5px] leading-[1.6] text-[#3C4A5A]">{description}</CardDescription>
                 </div>
               </CardHeader>
 
-              <CardContent>
+              <CardContent className="px-5 py-5 sm:px-8 sm:py-7">
                 <form noValidate onSubmit={handleSubmit} aria-busy={isLoading} className="grid gap-4">
                   {isRegister && (
                     <AuthField id="auth-name" label={t('auth.name')} error={errors.name}>
@@ -257,7 +215,7 @@ export function AuthView({ mode }: { mode: AuthMode }) {
                   )}
 
                   {showResetNotice && (
-                    <p role="status" className="rounded-lg border bg-muted/60 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                    <p role="status" className="rounded-[2px] border bg-muted/60 px-3 py-2 text-xs leading-5 text-muted-foreground">
                       {t('auth.passwordResetPreview')}
                     </p>
                   )}
@@ -270,7 +228,7 @@ export function AuthView({ mode }: { mode: AuthMode }) {
                 </form>
 
                 {isComplete && (
-                  <div role="status" aria-live="polite" className="mt-4 rounded-xl border border-primary/25 bg-primary/5 p-4">
+                  <div role="status" aria-live="polite" className="mt-4 rounded-[2px] border border-primary/25 bg-primary/5 p-4">
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
                       <div className="grid gap-2">
@@ -296,16 +254,8 @@ export function AuthView({ mode }: { mode: AuthMode }) {
                   {t('auth.backToDashboard')}
                 </Link>
               </CardFooter>
-            </Card>
-          </div>
-
-          <div className="border-t border-[#101A26]/15 px-4 py-4 sm:px-6">
-            <p className="font-mono text-[10px] uppercase tracking-[.16em] text-[#8A94A1]">
-              CuanApp — Business operating system · 2026
-            </p>
-          </div>
-        </div>
+        </Card>
       </div>
-    </main>
+    </MeasuredPageFrame>
   )
 }

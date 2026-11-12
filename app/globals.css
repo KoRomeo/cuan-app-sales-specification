@@ -661,17 +661,28 @@ body > * {
   -webkit-text-fill-color: #101a26;
 }
 
-/* Page scrollbar: neutral grey that reads on both the navy mat and paper. */
-html {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(107, 120, 135, 0.75) transparent;
-  scrollbar-gutter: stable;
+/* Page scrollbar. Each engine gets one mechanism: setting scrollbar-width in
+   Chromium 121+ switches off ::-webkit-scrollbar styling, so they are split. */
+html { scrollbar-gutter: stable; }
+
+@supports selector(::-webkit-scrollbar) {
+  html::-webkit-scrollbar { width: 12px; height: 12px; }
+  html::-webkit-scrollbar-track { background: #0e2a63; }
+  html::-webkit-scrollbar-thumb {
+    background: #fcfcfa;
+    border: 3px solid #0e2a63;
+    border-radius: 0;
+  }
+  html::-webkit-scrollbar-thumb:hover { background: #e4e4da; }
+  html::-webkit-scrollbar-corner { background: #0e2a63; }
 }
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(107, 120, 135, 0.75); border-radius: 0; }
-::-webkit-scrollbar-thumb:hover { background: rgba(90, 102, 117, 0.9); }
-::-webkit-scrollbar-corner { background: transparent; }
+
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: #fcfcfa #0e2a63;
+  }
+}
 
 /* Continuous-form punch holes at a fixed pitch, shared by every sheet. */
 :root { --hole-gap: 46px; }

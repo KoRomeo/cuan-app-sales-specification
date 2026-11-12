@@ -38,9 +38,9 @@ const modules = [
 ]
 
 const solutionRows = [
-  { no: "01", titleKey: "landing.solutions.row1.title", bodyKey: "landing.solutions.row1.body", tags: ["Purchasing", "Sales", "Inventory", "Delivery"] },
-  { no: "02", titleKey: "landing.solutions.row2.title", bodyKey: "landing.solutions.row2.body", tags: ["Cash flow", "Receivables", "Payables", "Profitability"] },
-  { no: "03", titleKey: "landing.solutions.row3.title", bodyKey: "landing.solutions.row3.body", tags: ["HPP", "Margin", "Trend", "Reports"] },
+  { no: "01", titleKey: "landing.solutions.row1.title", bodyKey: "landing.solutions.row1.body", tags: ["landing.solutions.tag.purchasing", "landing.solutions.tag.sales", "landing.solutions.tag.inventory", "landing.solutions.tag.delivery"] },
+  { no: "02", titleKey: "landing.solutions.row2.title", bodyKey: "landing.solutions.row2.body", tags: ["landing.solutions.tag.cashFlow", "landing.solutions.tag.receivables", "landing.solutions.tag.payables", "landing.solutions.tag.profitability"] },
+  { no: "03", titleKey: "landing.solutions.row3.title", bodyKey: "landing.solutions.row3.body", tags: ["landing.solutions.tag.costOfGoods", "landing.solutions.tag.margin", "landing.solutions.tag.trend", "landing.solutions.tag.reports"] },
 ]
 
 const flexibility = [
@@ -107,11 +107,12 @@ function PunchHolePair() {
 }
 
 function Tags({ items }: { items: string[] }) {
+  const { t } = useApp()
   return (
     <div className="mt-5 flex flex-wrap items-center gap-1.5">
-      {items.map(t => (
-        <span key={t} className="rounded-[2px] border border-[#101A26]/20 px-2 py-1 font-mono text-[10px] uppercase tracking-[.12em] text-[#3C4A5A]">
-          {t}
+      {items.map(key => (
+        <span key={key} className="rounded-[2px] border border-[#101A26]/20 px-2 py-1 font-mono text-[10px] uppercase tracking-[.12em] text-[#3C4A5A]">
+          {t(key)}
         </span>
       ))}
     </div>
@@ -177,6 +178,7 @@ function RulerTicks({ side, withNumbers = true }: { side: "left" | "right" | "to
 /* ------------------------------------------------------------------ */
 
 function DashboardPreview() {
+  const { t } = useApp()
   return (
     <div className="relative w-full">
       <div className="overflow-hidden rounded-[2px] border border-[#101A26]/25 bg-white">
@@ -187,13 +189,13 @@ function DashboardPreview() {
             <span className="h-2 w-2 rounded-[1px] bg-[#101A26]/20" />
             <span className="ml-3 font-mono text-[9px] uppercase tracking-[.14em] text-[#6B7887]">app.cuanapp.id / dashboard</span>
           </div>
-          <Label className="hidden text-[#6B7887] sm:block">Illustrative preview</Label>
+          <Label className="hidden text-[#6B7887] sm:block">{t("landing.preview.label")}</Label>
         </div>
 
         <div className="grid min-h-[380px] grid-cols-[46px_1fr] sm:min-h-[430px] sm:grid-cols-[168px_1fr]">
           <aside className="border-r border-[#101A26]/12 bg-[#FAFAF5] p-2 sm:p-3">
-            <Label className="mb-4 hidden text-[#8A94A1] sm:block">Workspace</Label>
-            {[[BarChart3, "Dashboard"], [ShoppingCart, "Sales & orders"], [Boxes, "Inventory"], [ClipboardList, "Purchasing"], [Wallet, "Finance"], [BookOpen, "Reports"]].map(([Icon, label], i) => {
+            <Label className="mb-4 hidden text-[#8A94A1] sm:block">{t("landing.preview.workspace")}</Label>
+            {[[BarChart3, t("landing.tour.item1")], [ShoppingCart, t("landing.tour.item2")], [Boxes, t("landing.tour.item3")], [ClipboardList, t("landing.tour.item4")], [Wallet, t("landing.tour.item5")], [BookOpen, t("landing.tour.item6")]].map(([Icon, label], i) => {
               const I = Icon as typeof BarChart3
               return (
                 <div key={String(label)} className={`mb-0.5 flex items-center justify-center gap-2 rounded-[2px] px-2 py-2 text-[10px] sm:justify-start ${i === 0 ? "bg-[#0E2A63] font-medium text-white" : "text-[#59667A]"}`}>
@@ -206,18 +208,23 @@ function DashboardPreview() {
           <div className="min-w-0 bg-white p-3 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-2 border-b border-[#101A26]/12 pb-3">
               <div>
-                <Label className="text-[#0E2A63]">Business overview</Label>
-                <div className="mt-1.5 text-[15px] font-semibold tracking-[-.02em] text-[#101A26] sm:text-lg">Good morning, business owner</div>
+                <Label className="text-[#0E2A63]">{t("landing.preview.businessOverview")}</Label>
+                <div className="mt-1.5 text-[15px] font-semibold tracking-[-.02em] text-[#101A26] sm:text-lg">{t("landing.preview.greeting")}</div>
               </div>
-              <span className="rounded-[2px] border border-[#101A26]/20 px-2 py-1 font-mono text-[9px] uppercase tracking-[.1em] text-[#59667A]">This month</span>
+              <span className="rounded-[2px] border border-[#101A26]/20 px-2 py-1 font-mono text-[9px] uppercase tracking-[.1em] text-[#59667A]">{t("landing.preview.thisMonth")}</span>
             </div>
 
             <div className="mt-3 grid grid-cols-2 gap-px bg-[#101A26]/12 md:grid-cols-4">
-              {[["Total sales", "Rp 48.250.000", "+12.8%"], ["Gross profit", "Rp 12.840.000", "+8.2%"], ["Receivables", "Rp 6.450.000", "Open"], ["Inventory", "Rp 32.600.000", "128 SKU"]].map(([l, v, c], i) => (
-                <div key={l} className="bg-white p-2.5">
-                  <Label className="text-[#8A94A1]">{l}</Label>
+              {[
+                ["landing.preview.totalSales", "Rp 48.250.000", "+12.8%"],
+                ["landing.preview.grossProfit", "Rp 12.840.000", "+8.2%"],
+                ["landing.preview.receivables", "Rp 6.450.000", "landing.preview.open"],
+                ["landing.preview.inventory", "Rp 32.600.000", "128 SKU"],
+              ].map(([labelKey, v, detail], i) => (
+                <div key={labelKey} className="bg-white p-2.5">
+                  <Label className="text-[#8A94A1]">{t(labelKey)}</Label>
                   <div className="mt-1.5 text-[11px] font-semibold tracking-[-.01em] text-[#101A26] sm:text-[13px]">{v}</div>
-                  <div className={`mt-0.5 font-mono text-[9px] ${i === 1 ? "text-emerald-700" : i === 2 ? "text-amber-700" : "text-[#0E2A63]"}`}>{c}</div>
+                  <div className={`mt-0.5 font-mono text-[9px] ${i === 1 ? "text-emerald-700" : i === 2 ? "text-amber-700" : "text-[#0E2A63]"}`}>{detail === "landing.preview.open" ? t(detail) : detail}</div>
                 </div>
               ))}
             </div>
@@ -225,8 +232,8 @@ function DashboardPreview() {
             <div className="mt-3 grid gap-3 md:grid-cols-[1.4fr_1fr]">
               <div className="rounded-[2px] border border-[#101A26]/12 p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-semibold text-[#101A26]">Sales performance</span>
-                  <Label className="text-[#8A94A1]">6 mo</Label>
+                  <span className="text-[10px] font-semibold text-[#101A26]">{t("landing.preview.salesPerformance")}</span>
+                  <Label className="text-[#8A94A1]">{t("landing.preview.sixMonths")}</Label>
                 </div>
                 <div className="mt-3 flex h-[92px] items-end gap-1.5 border-b border-[#101A26]/12">
                   {[38, 55, 46, 72, 61, 88].map((h, i) => (
@@ -238,9 +245,13 @@ function DashboardPreview() {
                 </div>
               </div>
               <div className="rounded-[2px] border border-[#101A26]/12 p-3">
-                <Label className="text-[#8A94A1]">Recent activity</Label>
+                <Label className="text-[#8A94A1]">{t("landing.preview.recentActivity")}</Label>
                 <div className="mt-3 space-y-2.5">
-                  {[["Purchase recorded", "Supplier invoice · 2m", "bg-[#0E2A63]"], ["Order delivered", "ORD-2026-0082 · 24m", "bg-emerald-600"], ["Payment received", "BCA · 1h", "bg-violet-600"]].map(([a, b, d]) => (
+                  {[
+                    [t("landing.preview.purchaseRecorded"), `${t("landing.preview.supplierInvoice")} · 2m`, "bg-[#0E2A63]"],
+                    [t("landing.preview.orderDelivered"), "ORD-2026-0082 · 24m", "bg-emerald-600"],
+                    [t("landing.preview.paymentReceived"), "BCA · 1h", "bg-violet-600"],
+                  ].map(([a, b, d]) => (
                     <div key={a} className="flex gap-2">
                       <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-[1px] ${d}`} />
                       <div>
@@ -260,27 +271,35 @@ function DashboardPreview() {
 }
 
 function SettingsPreview() {
+  const { t } = useApp()
   const [toggles, setToggles] = useState([true, true, true, false, true, false])
   const [method, setMethod] = useState("FIFO")
-  const rows = ["Inventory", "Purchasing", "Sales", "Delivery", "Customer Credit", "Supplier Credit"]
+  const rows = [
+    "landing.preview.inventory",
+    "landing.preview.purchasing",
+    "landing.preview.sales",
+    "landing.preview.delivery",
+    "landing.preview.customerCredit",
+    "landing.preview.supplierCredit",
+  ]
 
   return (
     <div className="overflow-hidden rounded-[2px] border border-[#101A26]/25 bg-white">
       <div className="flex items-center justify-between border-b border-[#101A26]/12 bg-[#FAFAF5] px-4 py-2.5">
-        <span className="flex items-center gap-2 text-[11px] font-semibold text-[#101A26]"><Settings2 size={13} /> Business settings</span>
-        <Label className="text-[#8A94A1]">Configuration</Label>
+        <span className="flex items-center gap-2 text-[11px] font-semibold text-[#101A26]"><Settings2 size={13} /> {t("landing.preview.businessSettings")}</span>
+        <Label className="text-[#8A94A1]">{t("landing.preview.configuration")}</Label>
       </div>
       <div className="p-4">
-        <Label className="text-[#8A94A1]">Features</Label>
+        <Label className="text-[#8A94A1]">{t("landing.preview.features")}</Label>
         <div className="mt-2">
           {rows.map((f, i) => (
             <div key={f} className="flex items-center justify-between border-b border-[#101A26]/12 py-2 last:border-0">
-              <span className="text-[11px] text-[#101A26]">{f}</span>
+              <span className="text-[11px] text-[#101A26]">{t(f)}</span>
               <button
                 onClick={() => setToggles(t => t.map((v, j) => (j === i ? !v : v)))}
                 role="switch"
                 aria-checked={toggles[i]}
-                aria-label={f}
+                aria-label={t(f)}
                 className={`m-toggle-track relative h-4 w-7 rounded-[2px] border ${toggles[i] ? "border-[#0E2A63] bg-[#0E2A63]" : "border-[#101A26]/25 bg-white"}`}
               >
                 <span className={`m-toggle-knob absolute top-[1px] h-[12px] w-[12px] rounded-[1px] ${toggles[i] ? "translate-x-[13px] bg-white" : "translate-x-[1px] bg-[#101A26]/25"}`} />
@@ -289,7 +308,7 @@ function SettingsPreview() {
           ))}
         </div>
         <div className="mt-4 border border-[#101A26]/15 p-3">
-          <Label className="text-[#8A94A1]">Inventory costing method</Label>
+          <Label className="text-[#8A94A1]">{t("landing.preview.costingMethod")}</Label>
           <div className="mt-2 flex gap-1.5">
             {["FIFO", "Weighted Average"].map(m => (
               <button
@@ -330,7 +349,6 @@ export default function LandingPage() {
 
   /* time-based auto-scroll so refresh rate does not change the speed */
   useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)")
     const SPEED = 26
     let raf = 0
     let last = performance.now()
@@ -338,7 +356,7 @@ export default function LandingPage() {
       const dt = Math.min(now - last, 64)
       last = now
       const el = trackRef.current
-      if (el && !paused.current && !hover.current && now > pauseUntil.current && !reduce.matches && !document.hidden) {
+      if (el && !paused.current && !hover.current && now > pauseUntil.current && !document.hidden) {
         el.scrollLeft += (SPEED * dt) / 1000
         if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 2) el.scrollLeft = 0
       }
@@ -346,6 +364,13 @@ export default function LandingPage() {
     }
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
+  }, [])
+
+  /* Reduced motion starts the carousel paused; Play is an explicit opt-in. */
+  useEffect(() => {
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+    paused.current = true
+    setPausedUi(true)
   }, [])
 
   /* reveal once, in view */
@@ -435,7 +460,7 @@ export default function LandingPage() {
 
   return (
     <>
-      <div className="relative min-h-screen overflow-hidden bg-[#0E2A63] sm:px-7 sm:py-4">
+      <div className="relative min-h-screen overflow-clip bg-[#0E2A63] sm:px-7 sm:py-4">
       {/* square grid across the whole mat, like a self-healing cutting mat */}
       <div
         aria-hidden
@@ -467,7 +492,7 @@ export default function LandingPage() {
             <span className="hidden font-mono text-[10px] uppercase tracking-[.18em] text-[#6B7887] sm:block">{t("landing.brand")}</span>
           </div>
 
-          <nav className="hidden items-center gap-6 lg:flex" aria-label="Navigasi utama">
+          <nav className="hidden items-center gap-6 lg:flex" aria-label={t("landing.nav.primary")}>
             {navItems.map(item => (
               <a key={t(item.labelKey)} href={item.href} className="font-mono text-[10px] uppercase tracking-[.16em] text-[#3C4A5A] transition hover:text-[#0E2A63]">
                 {t(item.labelKey)}
@@ -527,7 +552,7 @@ export default function LandingPage() {
         <div className="pointer-events-none absolute inset-y-0 left-8 hidden w-px sm:block" style={{ backgroundImage: "repeating-linear-gradient(to bottom, rgba(16,26,38,.30) 0 4px, transparent 4px 10px)" }} />
         <div className="pointer-events-none absolute inset-y-0 right-8 hidden w-px sm:block" style={{ backgroundImage: "repeating-linear-gradient(to bottom, rgba(16,26,38,.30) 0 4px, transparent 4px 10px)" }} />
 
-      <main id="main" lang="id" className="min-h-screen text-[#101A26]">
+      <main id="main" lang={locale} className="min-h-screen text-[#101A26]">
       {/* ---------- hero ---------- */}
       <PunchHoles />
       <section className="relative border-b border-[#101A26]/15">
@@ -626,7 +651,6 @@ export default function LandingPage() {
                     if (!next) hover.current = false
                     setPausedUi(next)
                   }}
-                  aria-pressed={pausedUi}
                   className="ml-1 flex h-8 items-center gap-1.5 rounded-[2px] border border-[#101A26]/20 px-2 font-mono text-[9px] uppercase tracking-[.12em] text-[#3C4A5A] transition hover:border-[#0E2A63] hover:text-[#0E2A63] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A63] focus-visible:ring-offset-2"
                 >
                   {pausedUi ? <Play size={10} /> : <Pause size={10} />}
@@ -827,7 +851,7 @@ export default function LandingPage() {
                       <button
                         key={t(item.labelKey)}
                         onClick={() => setActiveTour(index)}
-                        aria-label={`Show ${t(item.labelKey)}`}
+                        aria-label={t("landing.tour.show", { item: t(item.labelKey) })}
                         aria-current={activeTour === index}
                         className="flex h-9 w-9 items-center justify-center rounded-[2px]"
                       >
@@ -887,7 +911,7 @@ export default function LandingPage() {
               <div className="mt-8 flex items-end justify-between border-t border-[#101A26]/15 pt-4">
                 <div>
                   <Label className="text-[#8A94A1]">CuanApp</Label>
-                  <div className="mt-1 font-mono text-[10px] uppercase tracking-[.14em] text-[#59667A]">Business operating system</div>
+                  <div className="mt-1 font-mono text-[10px] uppercase tracking-[.14em] text-[#59667A]">{t("landing.cta.productDescriptor")}</div>
                 </div>
                 <Label className="text-[#8A94A1]">{t("landing.cta.year")}</Label>
               </div>
@@ -969,7 +993,7 @@ export default function LandingPage() {
           >
             <div className="flex items-center justify-between border-b border-[#101A26]/15 pb-3">
               <h2 id="tour-title" className="font-mono text-[10px] uppercase tracking-[.18em] text-[#0E2A63]">{t("landing.tour.dialogTitle")}</h2>
-              <button onClick={() => setTourOpen(false)} className="rounded-[2px] border border-[#101A26]/20 p-1.5 text-[#3C4A5A] hover:border-[#101A26]/40" aria-label="Close product tour">
+              <button onClick={() => setTourOpen(false)} className="rounded-[2px] border border-[#101A26]/20 p-1.5 text-[#3C4A5A] hover:border-[#101A26]/40" aria-label={t("landing.tour.dialogClose")}>
                 <X size={14} />
               </button>
             </div>
@@ -981,7 +1005,7 @@ export default function LandingPage() {
               </p>
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <Label className="text-[#8A94A1]">Dashboard · Transactions · Inventory · Finance · Reports</Label>
+              <Label className="text-[#8A94A1]">{t("landing.tour.modules")}</Label>
               <button onClick={() => setTourOpen(false)} className="rounded-[2px] bg-[#0E2A63] px-3.5 py-2 text-[11px] font-medium text-white">{t("landing.tour.dialogClose")}</button>
             </div>
           </div>
