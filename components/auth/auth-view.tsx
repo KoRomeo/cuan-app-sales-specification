@@ -79,19 +79,26 @@ export function AuthView({ mode }: { mode: AuthMode }) {
 
     setIsLoading(true)
     setIsComplete(false)
-    const result = mode === 'register'
-      ? await authClient.signUp.email({ name: fields.name.trim(), email: fields.email.trim(), password: fields.password })
-      : await authClient.signIn.email({ email: fields.email.trim(), password: fields.password })
-      setIsLoading(false)
+    try {
+      const result = mode === 'register'
+        ? await authClient.signUp.email({ name: fields.name.trim(), email: fields.email.trim(), password: fields.password })
+        : await authClient.signIn.email({ email: fields.email.trim(), password: fields.password })
       if (result.error) {
-        const errorMessage =
-          result.error.message || "Login failed. Please try again."
+        const errorMessage = result.error.message || t('auth.requestError')
         toast.error(errorMessage)
         setErrors({ email: errorMessage })
         return
       }
-    router.push(isRegister ? '/onboarding' : '/dashboard')
-    router.refresh()
+
+      router.push(mode === 'register' ? '/onboarding' : '/dashboard')
+      router.refresh()
+    } catch {
+      const errorMessage = t('auth.requestError')
+      toast.error(errorMessage)
+      setErrors({ email: errorMessage })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const isRegister = mode === 'register'

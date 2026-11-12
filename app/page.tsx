@@ -845,21 +845,21 @@ export default function LandingPage() {
                   <h3 className="text-[17px] font-semibold tracking-[-.02em]">{t(tourItems[activeTour].labelKey)}</h3>
                 </div>
                 <p className="mt-3 text-[13px] leading-[1.7] text-[#3C4A5A]">{t(tourItems[activeTour].detailKey)}</p>
-                <div className="mt-6 flex items-center gap-3">
-                  <div className="flex items-center gap-1">
+                <div className="mt-6 flex items-center gap-2 sm:gap-3">
+                  <div className="flex items-center gap-0.5 sm:gap-1">
                     {tourItems.map((item, index) => (
                       <button
                         key={t(item.labelKey)}
                         onClick={() => setActiveTour(index)}
                         aria-label={t("landing.tour.show", { item: t(item.labelKey) })}
                         aria-current={activeTour === index}
-                        className="flex h-9 w-9 items-center justify-center rounded-[2px]"
+                        className="flex h-8 w-8 items-center justify-center rounded-[2px] sm:h-9 sm:w-9"
                       >
                         <span className={`h-1 w-full rounded-[1px] ${activeTour === index ? "bg-[#0E2A63]" : "bg-[#101A26]/15"}`} />
                       </button>
                     ))}
                   </div>
-                  <button ref={tourTriggerRef} onClick={() => setTourOpen(true)} className="ml-auto inline-flex items-center gap-2 rounded-[2px] bg-[#101A26] px-3.5 py-2 text-[11px] font-medium text-white transition hover:bg-[#0E2A63]">
+                  <button ref={tourTriggerRef} onClick={() => setTourOpen(true)} className="ml-auto inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-[2px] bg-[#101A26] px-3.5 py-2 text-[11px] font-medium text-white transition hover:bg-[#0E2A63]">
                     {t("landing.tour.cta")} <Play size={11} />
                   </button>
                 </div>
