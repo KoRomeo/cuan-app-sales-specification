@@ -1,3 +1,5 @@
+import { landingEn, landingId } from './i18n-landing'
+
 export type Locale = 'en' | 'id'
 
 const en = {
@@ -1580,7 +1582,10 @@ const id: Record<TranslationKey, string> = {
   'err.notDeleted': 'Biaya ini belum dihapus.',
 }
 
-export const dictionaries: Record<Locale, Record<TranslationKey, string>> = { en, id }
+export const dictionaries: Record<Locale, Record<TranslationKey, string>> = {
+  en: { ...en, ...landingEn },
+  id: { ...id, ...landingId },
+}
 
 const expenseCategoryKeys: Partial<Record<string, TranslationKey>> = {
   Transport: 'expenseCategory.transport',

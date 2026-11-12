@@ -632,6 +632,21 @@ body > * {
 /* Continuous-form punch holes: repeating dots at a fixed pitch, so every
    sheet (content sections and footer) shares the exact same spacing. */
 :root { --hole-gap: 46px; }
+
+/* Page scrollbar, themed for the navy mat and paper sheet. */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #0e2a63 #e8e8e0;
+}
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: #e8e8e0; }
+::-webkit-scrollbar-thumb {
+  background: #0e2a63;
+  border: 3px solid #e8e8e0;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover { background: #0a1f4a; }
+::-webkit-scrollbar-corner { background: #e8e8e0; }
 .punch-holes {
   background-image: radial-gradient(
     circle at 50% 50%,

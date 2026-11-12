@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { useApp } from "@/components/providers"
 import {
   ArrowLeft, ArrowRight, BarChart3, BookOpen, Boxes, BriefcaseBusiness,
   Check, ChevronDown, ClipboardList, Globe2, HeartPulse, Landmark, Menu,
@@ -37,48 +38,34 @@ const modules = [
 ]
 
 const solutionRows = [
-  {
-    no: "01",
-    title: "Unified Business Operations",
-    body: "Kelola pembelian, penjualan, persediaan, dan pengiriman melalui satu sistem yang saling terhubung. Sederhanakan operasional tanpa kehilangan kendali atas setiap transaksi.",
-    tags: ["Purchasing", "Sales", "Inventory", "Delivery"],
-  },
-  {
-    no: "02",
-    title: "Complete Financial Visibility",
-    body: "Pantau arus kas, utang, piutang, biaya, dan profitabilitas melalui pencatatan serta laporan keuangan yang terintegrasi.",
-    tags: ["Cash flow", "Receivables", "Payables", "Profitability"],
-  },
-  {
-    no: "03",
-    title: "Smarter Business Decisions",
-    body: "Ubah data transaksi menjadi informasi yang bermakna. Pahami performa bisnis dan gunakan informasi tersebut untuk menentukan langkah selanjutnya.",
-    tags: ["HPP", "Margin", "Trend", "Reports"],
-  },
+  { no: "01", titleKey: "landing.solutions.row1.title", bodyKey: "landing.solutions.row1.body", tags: ["Purchasing", "Sales", "Inventory", "Delivery"] },
+  { no: "02", titleKey: "landing.solutions.row2.title", bodyKey: "landing.solutions.row2.body", tags: ["Cash flow", "Receivables", "Payables", "Profitability"] },
+  { no: "03", titleKey: "landing.solutions.row3.title", bodyKey: "landing.solutions.row3.body", tags: ["HPP", "Margin", "Trend", "Reports"] },
 ]
 
 const flexibility = [
-  { title: "Flexible Feature Management", body: "Aktifkan dan nonaktifkan modul seperti Inventory, Purchasing, Sales, Delivery, Customer Credit, Supplier Credit, dan Accounting sesuai kebutuhan bisnis." },
-  { title: "Customizable Business Logic", body: "Sesuaikan metode perhitungan dan aturan bisnis, termasuk metode penilaian persediaan seperti FIFO dan Weighted Average." },
-  { title: "Configurable Workflows", body: "Atur bagaimana proses pembelian, penjualan, pembayaran, persediaan, dan aktivitas operasional berjalan sesuai model bisnis Anda." },
-  { title: "Designed to Expand", body: "Mulai dengan fitur yang diperlukan hari ini dan kembangkan konfigurasi sistem seiring bertambahnya kebutuhan bisnis." },
+  { titleKey: "landing.flex.item1.title", bodyKey: "landing.flex.item1.body" },
+  { titleKey: "landing.flex.item2.title", bodyKey: "landing.flex.item2.body" },
+  { titleKey: "landing.flex.item3.title", bodyKey: "landing.flex.item3.body" },
+  { titleKey: "landing.flex.item4.title", bodyKey: "landing.flex.item4.body" },
 ]
 
 const tourItems = [
-  { label: "Dashboard", icon: BarChart3, detail: "Pahami kondisi bisnis melalui ringkasan penjualan, laba, persediaan, dan aktivitas terbaru." },
-  { label: "Sales & Orders", icon: ShoppingCart, detail: "Kelola pesanan, pelanggan, status pengiriman, pembayaran, dan retur dalam alur yang terhubung." },
-  { label: "Inventory", icon: Boxes, detail: "Pantau pergerakan stok dan nilai persediaan berdasarkan transaksi yang tercatat." },
-  { label: "Purchasing", icon: ClipboardList, detail: "Catat pembelian, invoice pemasok, penerimaan barang, dan kewajiban pembayaran." },
-  { label: "Finance", icon: Wallet, detail: "Hubungkan penerimaan, pengeluaran, akun keuangan, utang, dan piutang." },
-  { label: "Reports", icon: ChartNoAxesCombined, detail: "Telusuri performa usaha melalui laporan operasional dan laporan keuangan." },
+  { labelKey: "landing.tour.item1", detailKey: "landing.tour.item1.body", icon: BarChart3 },
+  { labelKey: "landing.tour.item2", detailKey: "landing.tour.item2.body", icon: ShoppingCart },
+  { labelKey: "landing.tour.item3", detailKey: "landing.tour.item3.body", icon: Boxes },
+  { labelKey: "landing.tour.item4", detailKey: "landing.tour.item4.body", icon: ClipboardList },
+  { labelKey: "landing.tour.item5", detailKey: "landing.tour.item5.body", icon: Wallet },
+  { labelKey: "landing.tour.item6", detailKey: "landing.tour.item6.body", icon: ChartNoAxesCombined },
 ]
 
 const navItems = [
-  { label: "Solutions", href: "#solutions" },
-  { label: "Industries", href: "#industries" },
-  { label: "Flexibility", href: "#flexibility" },
-  { label: "Product Tour", href: "#product-tour" },
+  { labelKey: "landing.nav.solutions", href: "#solutions" },
+  { labelKey: "landing.nav.industries", href: "#industries" },
+  { labelKey: "landing.nav.flexibility", href: "#flexibility" },
+  { labelKey: "landing.nav.tour", href: "#product-tour" },
 ]
+
 
 /* ------------------------------------------------------------------ */
 /* Small shared pieces                                                 */
@@ -171,7 +158,7 @@ function RulerTicks({ side, withNumbers = true }: { side: "left" | "right" | "to
           {ticks.map(n => (
             <span
               key={n}
-              className="absolute font-mono text-[8px] leading-none text-white/75"
+              className="absolute font-mono text-[10px] leading-none text-white/85"
               style={isVertical
                 ? { top: n + 16, [side === "left" ? "left" : "right"]: 0 }
                 : { left: n + 16, top: 0 }}
@@ -326,6 +313,7 @@ function SettingsPreview() {
 /* ------------------------------------------------------------------ */
 
 export default function LandingPage() {
+  const { t, locale, setLocale } = useApp()
   const [activeTour, setActiveTour] = useState(0)
   const [tourOpen, setTourOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -461,8 +449,8 @@ export default function LandingPage() {
       <div aria-hidden className="pointer-events-none absolute inset-0 hidden sm:block">
         <RulerTicks side="left" />
         <RulerTicks side="right" />
-        <RulerTicks side="top" withNumbers={false} />
-        <RulerTicks side="bottom" withNumbers={false} />
+        <RulerTicks side="top" />
+        <RulerTicks side="bottom" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-[1680px]">
@@ -476,29 +464,40 @@ export default function LandingPage() {
               <span className="text-[14px] font-semibold tracking-[-.02em]">CuanApp</span>
             </Link>
             <span className="hidden h-4 w-px bg-[#101A26]/20 sm:block" />
-            <span className="hidden font-mono text-[10px] uppercase tracking-[.18em] text-[#6B7887] sm:block">Business OS</span>
+            <span className="hidden font-mono text-[10px] uppercase tracking-[.18em] text-[#6B7887] sm:block">{t("landing.brand")}</span>
           </div>
 
           <nav className="hidden items-center gap-6 lg:flex" aria-label="Navigasi utama">
             {navItems.map(item => (
-              <a key={item.label} href={item.href} className="font-mono text-[10px] uppercase tracking-[.16em] text-[#3C4A5A] transition hover:text-[#0E2A63]">
-                {item.label}
+              <a key={t(item.labelKey)} href={item.href} className="font-mono text-[10px] uppercase tracking-[.16em] text-[#3C4A5A] transition hover:text-[#0E2A63]">
+                {t(item.labelKey)}
               </a>
             ))}
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <span className="hidden items-center gap-1.5 rounded-[2px] border border-[#101A26]/20 px-2 py-1 font-mono text-[10px] uppercase tracking-[.12em] text-[#3C4A5A] sm:flex">
-              <Globe2 size={11} /> ID
-            </span>
-            <Link href="/login" className="hidden px-1.5 font-mono text-[10px] uppercase tracking-[.12em] text-[#3C4A5A] hover:text-[#101A26] sm:block">Masuk</Link>
+            <div role="group" aria-label={t("landing.nav.language")} className="hidden items-center gap-0.5 rounded-[2px] border border-[#101A26]/20 p-0.5 sm:flex">
+              <Globe2 size={11} className="mx-1 text-[#3C4A5A]" />
+              {(["en", "id"] as const).map(option => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setLocale(option)}
+                  aria-pressed={locale === option}
+                  className={`rounded-[2px] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[.1em] transition ${locale === option ? "bg-[#0E2A63] text-white" : "text-[#3C4A5A] hover:text-[#0E2A63]"}`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+            <Link href="/login" className="hidden px-1.5 font-mono text-[10px] uppercase tracking-[.12em] text-[#3C4A5A] hover:text-[#101A26] sm:block">{t("landing.nav.login")}</Link>
             <Link href="/register" className="rounded-[2px] bg-[#0E2A63] px-3.5 py-2 font-mono text-[10px] uppercase tracking-[.12em] text-white transition hover:bg-[#0A1F4A]">
-              Try it out
+              {t("landing.nav.cta")}
             </Link>
             <button
               className="rounded-[2px] border border-[#101A26]/20 p-2 lg:hidden"
               onClick={() => setMenuOpen(v => !v)}
-              aria-label="Menu"
+              aria-label={t("landing.nav.menu")}
               aria-expanded={menuOpen}
               aria-controls="mobile-menu"
             >
@@ -510,13 +509,13 @@ export default function LandingPage() {
         {menuOpen && (
           <div id="mobile-menu" className="border-t border-[#101A26]/15 bg-[#FCFCFA] px-4 py-3 lg:hidden">
             {navItems.map(item => (
-              <a key={item.label} href={item.href} onClick={() => setMenuOpen(false)} className="block border-b border-[#101A26]/10 py-2.5 font-mono text-[11px] uppercase tracking-[.14em] text-[#3C4A5A]">
-                {item.label}
+              <a key={t(item.labelKey)} href={item.href} onClick={() => setMenuOpen(false)} className="block border-b border-[#101A26]/10 py-2.5 font-mono text-[11px] uppercase tracking-[.14em] text-[#3C4A5A]">
+                {t(item.labelKey)}
               </a>
             ))}
             <div className="mt-3 flex gap-2">
-              <Link href="/login" className="flex-1 rounded-[2px] border border-[#101A26]/20 py-2 text-center text-[12px]">Masuk</Link>
-              <Link href="/register" className="flex-1 rounded-[2px] bg-[#0E2A63] py-2 text-center text-[12px] text-white">Mulai gratis</Link>
+              <Link href="/login" className="flex-1 rounded-[2px] border border-[#101A26]/20 py-2 text-center text-[12px]">{t("landing.nav.login")}</Link>
+              <Link href="/register" className="flex-1 rounded-[2px] bg-[#0E2A63] py-2 text-center text-[12px] text-white">{t("landing.nav.cta")}</Link>
             </div>
           </div>
         )}
@@ -544,31 +543,30 @@ export default function LandingPage() {
           <div className="grid gap-8 [&>*]:min-w-0 border-[#101A26]/15 py-12 sm:py-16 lg:grid-cols-[1.1fr_.9fr] lg:gap-16 lg:border-b lg:py-20">
             <div>
               <div className="flex items-center gap-3">
-                <Label className="text-[#0E2A63]">01 — Platform</Label>
+                <Label className="text-[#0E2A63]">{t("landing.hero.eyebrow")}</Label>
                 <span className="h-px w-14 bg-[#101A26]/25" />
               </div>
               <h1 className="m-enter m-enter--1 mt-6 max-w-[15ch] text-[42px] font-semibold leading-[1.02] tracking-[-.045em] sm:text-[56px] lg:text-[68px]">
-                Run Your Business.{" "}
-                <span className="text-[#0E2A63]">Your Way.</span>
+                {t("landing.hero.title1")}{" "}<span className="text-[#0E2A63]">{t("landing.hero.title2")}</span>
               </h1>
               <div className="mt-7 flex flex-wrap items-center gap-2">
                 <Link href="/register" className="m-enter m-enter--4 inline-flex items-center gap-2 rounded-[2px] bg-[#0E2A63] px-4 py-2.5 text-[12.5px] font-medium text-white transition hover:bg-[#0A1F4A]">
-                  Get Started <ArrowRight size={13} />
+                  {t("landing.hero.primary")} <ArrowRight size={13} />
                 </Link>
                 <a href="#product-tour" className="m-enter m-enter--4 inline-flex items-center gap-2 rounded-[2px] border border-[#101A26]/25 px-4 py-2.5 text-[12px] font-medium text-[#101A26] transition hover:border-[#101A26]/50">
-                  <Play size={12} /> Explore CuanApp
+                  <Play size={12} /> {t("landing.hero.secondary")}
                 </a>
               </div>
             </div>
 
             <div className="flex flex-col justify-end">
               <p className="m-enter m-enter--2 max-w-[52ch] text-[16px] leading-[1.7] text-[#3C4A5A] sm:text-[17px]">
-                Kelola, pahami, dan kembangkan bisnis Anda melalui satu platform terintegrasi. Fleksibel untuk berbagai jenis usaha, dirancang untuk mengikuti pertumbuhan bisnis Anda.
+                {t("landing.hero.body")}
               </p>
               <div className="mt-6 flex items-center gap-3 border-t border-[#101A26]/15 pt-4">
-                <Label className="text-[#8A94A1]">Operational clarity</Label>
+                <Label className="text-[#8A94A1]">{t("landing.hero.meta1")}</Label>
                 <span className="h-px flex-1 bg-[#101A26]/10" />
-                <Label className="text-[#8A94A1]">Financial visibility</Label>
+                <Label className="text-[#8A94A1]">{t("landing.hero.meta2")}</Label>
               </div>
             </div>
           </div>
@@ -576,8 +574,8 @@ export default function LandingPage() {
           {/* screenshot, framed like a figure in a document */}
           <div className="m-enter m-enter--5 relative pb-12 pt-8 sm:pb-16">
             <div className="mb-3 flex items-end justify-between">
-              <Label className="text-[#8A94A1]">Fig. 01 — Connected business workspace</Label>
-              <Label className="hidden text-[#8A94A1] sm:block">Dashboard</Label>
+              <Label className="text-[#8A94A1]">{t("landing.hero.figure")}</Label>
+              <Label className="hidden text-[#8A94A1] sm:block">{t("landing.hero.figureRight")}</Label>
             </div>
             <DashboardPreview />
           </div>
@@ -585,7 +583,7 @@ export default function LandingPage() {
       </section>
 
       {/* ---------- module marquee ---------- */}
-      <section aria-label="CuanApp modules" className="border-b border-[#101A26]/15 bg-[#F5F5F0] py-3">
+      <section aria-label={t("landing.marquee.label")} className="border-b border-[#101A26]/15 bg-[#F5F5F0] py-3">
         <div className="group flex overflow-hidden">
           <div className="flex shrink-0 animate-marquee items-center gap-6 pr-6 group-hover:[animation-play-state:paused]">
             {[...modules, ...modules].map((m, i) => (
@@ -604,32 +602,35 @@ export default function LandingPage() {
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
           <div className="grid [&>*]:min-w-0 lg:grid-cols-[260px_1fr]">
             <div className="border-[#101A26]/15 py-10 lg:border-r lg:py-14 lg:pr-8">
-              <Label className="text-[#0E2A63]">02 — Industries</Label>
+              <Label className="text-[#0E2A63]">{t("landing.industries.eyebrow")}</Label>
               <h2 data-reveal className="mt-4 text-[30px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[36px]">
-                Every business is different.
-                <br />
-                <span className="text-[#0E2A63]">CuanApp is built for all.</span>
+                {t("landing.industries.title1")}<br /><span className="text-[#0E2A63]">{t("landing.industries.title2")}</span>
               </h2>
               <p className="mt-4 max-w-[38ch] text-[14px] leading-[1.7] text-[#3C4A5A]">
-                Setiap bisnis memiliki cara kerja yang unik. Arsitektur CuanApp fleksibel untuk mendukung ekspansi operasional usaha apa pun.
+                {t("landing.industries.body")}
               </p>
               <div className="mt-6 flex items-center gap-2">
-                <button onClick={() => scrollCarousel(-1)} aria-label="Previous industries" className="flex h-8 w-8 items-center justify-center rounded-[2px] border border-[#101A26]/20 transition hover:border-[#0E2A63] hover:text-[#0E2A63] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A63] focus-visible:ring-offset-2">
+                <button onClick={() => scrollCarousel(-1)} aria-label={t("landing.industries.prev")} className="flex h-8 w-8 items-center justify-center rounded-[2px] border border-[#101A26]/20 transition hover:border-[#0E2A63] hover:text-[#0E2A63] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A63] focus-visible:ring-offset-2">
                   <ArrowLeft size={13} />
                 </button>
-                <button onClick={() => scrollCarousel(1)} aria-label="Next industries" className="flex h-8 w-8 items-center justify-center rounded-[2px] border border-[#101A26]/20 transition hover:border-[#0E2A63] hover:text-[#0E2A63] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A63] focus-visible:ring-offset-2">
+                <button onClick={() => scrollCarousel(1)} aria-label={t("landing.industries.next")} className="flex h-8 w-8 items-center justify-center rounded-[2px] border border-[#101A26]/20 transition hover:border-[#0E2A63] hover:text-[#0E2A63] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A63] focus-visible:ring-offset-2">
                   <ArrowRight size={13} />
                 </button>
                 <div className="ml-2 h-0.5 w-24 overflow-hidden bg-[#101A26]/15">
                   <div className="m-progress h-full bg-[#0E2A63]" style={{ width: `${progress}%` }} />
                 </div>
                 <button
-                  onClick={() => { paused.current = !paused.current; setPausedUi(paused.current) }}
+                  onClick={() => {
+                    const next = !paused.current
+                    paused.current = next
+                    if (!next) hover.current = false
+                    setPausedUi(next)
+                  }}
                   aria-pressed={pausedUi}
                   className="ml-1 flex h-8 items-center gap-1.5 rounded-[2px] border border-[#101A26]/20 px-2 font-mono text-[9px] uppercase tracking-[.12em] text-[#3C4A5A] transition hover:border-[#0E2A63] hover:text-[#0E2A63] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0E2A63] focus-visible:ring-offset-2"
                 >
                   {pausedUi ? <Play size={10} /> : <Pause size={10} />}
-                  {pausedUi ? "Play" : "Pause"}
+                  {pausedUi ? t("landing.industries.play") : t("landing.industries.pause")}
                 </button>
               </div>
             </div>
@@ -638,7 +639,7 @@ export default function LandingPage() {
               <div
                 ref={trackRef}
                 role="region"
-                aria-label="Business types carousel"
+                aria-label={t("landing.industries.region")}
                 tabIndex={0}
                 onKeyDown={onCarouselKey}
                 onScroll={onScroll}
@@ -696,14 +697,12 @@ export default function LandingPage() {
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
           <div className="grid [&>*]:min-w-0 lg:grid-cols-[260px_1fr]">
             <div className="border-[#101A26]/15 py-10 lg:border-r lg:py-14 lg:pr-8">
-              <Label className="text-[#0E2A63]">03 — Solutions</Label>
+              <Label className="text-[#0E2A63]">{t("landing.solutions.eyebrow")}</Label>
               <h2 data-reveal className="mt-4 text-[30px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[36px]">
-                Everything your business needs.
-                <br />
-                <span className="text-[#0E2A63]">All in one place.</span>
+                {t("landing.solutions.title1")}<br /><span className="text-[#0E2A63]">{t("landing.solutions.title2")}</span>
               </h2>
               <p className="mt-4 max-w-[38ch] text-[14px] leading-[1.7] text-[#3C4A5A]">
-                CuanApp menghubungkan setiap bagian bisnis ke dalam satu sistem terintegrasi, dari operasional harian hingga laporan keuangan.
+                {t("landing.solutions.body")}
               </p>
             </div>
 
@@ -715,15 +714,15 @@ export default function LandingPage() {
                       <Label className="text-[#0E2A63]">{row.no}</Label>
                     </div>
                     <div>
-                      <h3 className="text-[17px] font-semibold tracking-[-.02em] sm:text-[19px]">{row.title}</h3>
-                      <p className="mt-2 max-w-[68ch] text-[14px] leading-[1.75] text-[#3C4A5A]">{row.body}</p>
+                      <h3 className="text-[17px] font-semibold tracking-[-.02em] sm:text-[19px]">{t(row.titleKey)}</h3>
+                      <p className="mt-2 max-w-[68ch] text-[14px] leading-[1.75] text-[#3C4A5A]">{t(row.bodyKey)}</p>
                       <Tags items={row.tags} />
                     </div>
                   </div>
                 ))}
               </div>
               <a href="#product-tour" className="mt-7 inline-flex items-center gap-2 rounded-[2px] border border-[#101A26]/25 px-4 py-2.5 text-[12px] font-medium transition hover:border-[#0E2A63] hover:text-[#0E2A63]">
-                Discover our solutions <ArrowRight size={13} />
+                {t("landing.solutions.cta")} <ArrowRight size={13} />
               </a>
             </div>
           </div>
@@ -736,34 +735,32 @@ export default function LandingPage() {
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
           <div className="grid [&>*]:min-w-0 lg:grid-cols-[260px_1fr]">
             <div className="border-[#101A26]/15 py-10 lg:border-r lg:py-14 lg:pr-8">
-              <Label className="text-[#0E2A63]">04 — Flexibility</Label>
+              <Label className="text-[#0E2A63]">{t("landing.flex.eyebrow")}</Label>
               <h2 data-reveal className="mt-4 text-[30px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[36px]">
-                Your business. Your rules.
-                <br />
-                <span className="text-[#0E2A63]">Your system.</span>
+                {t("landing.flex.title1")}<br /><span className="text-[#0E2A63]">{t("landing.flex.title2")}</span>
               </h2>
               <p className="mt-4 max-w-[38ch] text-[14px] leading-[1.7] text-[#3C4A5A]">
-                Tidak ada dua bisnis yang beroperasi dengan cara yang sama. Aktifkan fitur yang dibutuhkan, nonaktifkan yang tidak relevan.
+                {t("landing.flex.body")}
               </p>
               <div className="mt-6 flex items-center gap-2">
                 <SlidersHorizontal size={13} className="text-[#0E2A63]" />
-                <Label className="text-[#8A94A1]">Settings driven</Label>
+                <Label className="text-[#8A94A1]">{t("landing.flex.meta")}</Label>
               </div>
             </div>
 
             <div className="grid gap-8 border-t border-[#101A26]/15 py-8 lg:border-t-0 lg:grid-cols-[1fr_.85fr] lg:py-14 lg:pl-8">
               <div data-reveal>
                 {flexibility.map((f, i) => (
-                  <div key={f.title} className="border-t border-[#101A26]/15 py-4 first:border-t-0 first:pt-0">
+                  <div key={f.titleKey} className="border-t border-[#101A26]/15 py-4 first:border-t-0 first:pt-0">
                     <div className="flex items-baseline gap-3">
                       <Label className="text-[#8A94A1]">{String(i + 1).padStart(2, "0")}</Label>
-                      <h3 className="text-[14px] font-semibold tracking-[-.01em]">{f.title}</h3>
+                      <h3 className="text-[14px] font-semibold tracking-[-.01em]">{t(f.titleKey)}</h3>
                     </div>
-                    <p className="mt-1.5 pl-8 text-[13.5px] leading-[1.7] text-[#3C4A5A]">{f.body}</p>
+                    <p className="mt-1.5 pl-8 text-[13.5px] leading-[1.7] text-[#3C4A5A]">{t(f.bodyKey)}</p>
                   </div>
                 ))}
                 <a href="#product-tour" className="mt-5 inline-flex items-center gap-2 rounded-[2px] border border-[#101A26]/25 px-4 py-2.5 text-[12px] font-medium transition hover:border-[#0E2A63] hover:text-[#0E2A63]">
-                  Explore customization <ArrowRight size={13} />
+                  {t("landing.flex.cta")} <ArrowRight size={13} />
                 </a>
               </div>
               <div data-reveal>
@@ -780,16 +777,16 @@ export default function LandingPage() {
         <div className="mx-auto max-w-[1360px] px-4 sm:px-8">
           <div className="grid [&>*]:min-w-0 lg:grid-cols-[260px_1fr]">
             <div className="border-[#101A26]/15 py-10 lg:border-r lg:py-14 lg:pr-8">
-              <Label className="text-[#0E2A63]">05 — Product tour</Label>
+              <Label className="text-[#0E2A63]">{t("landing.tour.eyebrow")}</Label>
               <h2 data-reveal className="mt-4 text-[30px] font-semibold leading-[1.08] tracking-[-.035em] sm:text-[36px]">
-                See how CuanApp works.
+                {t("landing.tour.title")}
               </h2>
               <p className="mt-4 max-w-[38ch] text-[14px] leading-[1.7] text-[#3C4A5A]">
-                Jelajahi bagaimana CuanApp menghubungkan setiap aktivitas bisnis dalam satu pengalaman yang sederhana.
+                {t("landing.tour.body")}
               </p>
               <div className="mt-6 flex items-center gap-2">
                 <span className="h-1.5 w-1.5 rounded-[1px] bg-[#0E2A63]" />
-                <Label className="text-[#8A94A1]">Interactive demonstration</Label>
+                <Label className="text-[#8A94A1]">{t("landing.tour.meta")}</Label>
               </div>
             </div>
 
@@ -800,14 +797,14 @@ export default function LandingPage() {
                   const active = activeTour === index
                   return (
                     <button
-                      key={item.label}
+                      key={t(item.labelKey)}
                       onClick={() => setActiveTour(index)}
                       aria-pressed={active}
                       className={`flex items-center gap-2.5 border-b border-[#101A26]/15 px-1 py-2.5 text-left transition ${active ? "text-[#101A26]" : "text-[#6B7887] hover:text-[#101A26]"}`}
                     >
                       <Label className="text-[#8A94A1]">{String(index + 1).padStart(2, "0")}</Label>
                       <Icon size={13} className={active ? "text-[#0E2A63]" : "text-[#8A94A1]"} />
-                      <span className="flex-1 text-[13px] font-medium">{item.label}</span>
+                      <span className="flex-1 text-[13px] font-medium">{t(item.labelKey)}</span>
                       {active && <span className="h-1.5 w-1.5 rounded-[1px] bg-[#0E2A63]" />}
                     </button>
                   )
@@ -816,21 +813,21 @@ export default function LandingPage() {
 
               <div className="rounded-[2px] border border-[#101A26]/20 bg-white p-5 sm:p-6">
                 <div className="flex items-center justify-between border-b border-[#101A26]/12 pb-3">
-                  <Label className="text-[#8A94A1]">Screen preview</Label>
+                  <Label className="text-[#8A94A1]">{t("landing.tour.preview")}</Label>
                   <Label className="text-[#8A94A1]">{String(activeTour + 1).padStart(2, "0")} / 06</Label>
                 </div>
                 <div className="mt-5 flex items-center gap-3">
                   <span className="flex h-9 w-9 items-center justify-center rounded-[2px] bg-[#0E2A63] text-white"><ActiveIcon size={16} /></span>
-                  <h3 className="text-[17px] font-semibold tracking-[-.02em]">{tourItems[activeTour].label}</h3>
+                  <h3 className="text-[17px] font-semibold tracking-[-.02em]">{t(tourItems[activeTour].labelKey)}</h3>
                 </div>
-                <p className="mt-3 text-[13px] leading-[1.7] text-[#3C4A5A]">{tourItems[activeTour].detail}</p>
+                <p className="mt-3 text-[13px] leading-[1.7] text-[#3C4A5A]">{t(tourItems[activeTour].detailKey)}</p>
                 <div className="mt-6 flex items-center gap-3">
                   <div className="flex items-center gap-1">
                     {tourItems.map((item, index) => (
                       <button
-                        key={item.label}
+                        key={t(item.labelKey)}
                         onClick={() => setActiveTour(index)}
-                        aria-label={`Show ${item.label}`}
+                        aria-label={`Show ${t(item.labelKey)}`}
                         aria-current={activeTour === index}
                         className="flex h-9 w-9 items-center justify-center rounded-[2px]"
                       >
@@ -839,7 +836,7 @@ export default function LandingPage() {
                     ))}
                   </div>
                   <button ref={tourTriggerRef} onClick={() => setTourOpen(true)} className="ml-auto inline-flex items-center gap-2 rounded-[2px] bg-[#101A26] px-3.5 py-2 text-[11px] font-medium text-white transition hover:bg-[#0E2A63]">
-                    Take a tour <Play size={11} />
+                    {t("landing.tour.cta")} <Play size={11} />
                   </button>
                 </div>
               </div>
@@ -854,26 +851,26 @@ export default function LandingPage() {
         <div className="relative mx-auto max-w-[1360px] px-4 py-14 sm:px-8 sm:py-20">
           <div className="grid gap-10 border-[#101A26]/15 [&>*]:min-w-0 lg:grid-cols-[1.05fr_1fr_1fr] lg:gap-12">
             <div>
-              <Label className="text-[#0E2A63]">06 — Get started</Label>
+              <Label className="text-[#0E2A63]">{t("landing.cta.eyebrow")}</Label>
               <h2 data-reveal className="mt-4 text-[30px] font-semibold leading-[1.06] tracking-[-.04em] text-[#101A26] sm:text-[40px] lg:text-[44px]">
-                Ready to take control of <span className="text-[#0E2A63]">your business?</span>
+                {t("landing.cta.title1")} <span className="text-[#0E2A63]">{t("landing.cta.title2")}</span>
               </h2>
               <p className="mt-4 max-w-[38ch] text-[14px] leading-[1.7] text-[#3C4A5A]">
-                Bisnis Anda memiliki potensi untuk berkembang. Saatnya mengelolanya dengan sistem yang mampu berkembang bersama Anda.
+                {t("landing.cta.body")}
               </p>
             </div>
 
             <div className="flex flex-col justify-end">
               <div className="border-t border-[#101A26]/15 pt-4">
-                <Label className="text-[#8A94A1]">Satu sistem</Label>
+                <Label className="text-[#8A94A1]">{t("landing.cta.col1.head")}</Label>
                 <p className="mt-2 text-[13.5px] leading-[1.7] text-[#3C4A5A]">
-                  Operasional, persediaan, keuangan, dan laporan bekerja dari data yang sama. Tidak ada angka yang dihitung dua kali.
+                  {t("landing.cta.col1.body")}
                 </p>
               </div>
               <div className="mt-5 border-t border-[#101A26]/15 pt-4">
-                <Label className="text-[#8A94A1]">Fleksibel</Label>
+                <Label className="text-[#8A94A1]">{t("landing.cta.col2.head")}</Label>
                 <p className="mt-2 text-[13.5px] leading-[1.7] text-[#3C4A5A]">
-                  Mulai dari modul yang dipakai hari ini, tambah konfigurasi saat bisnis bertumbuh.
+                  {t("landing.cta.col2.body")}
                 </p>
               </div>
             </div>
@@ -881,10 +878,10 @@ export default function LandingPage() {
             <div className="flex flex-col justify-between">
               <div className="flex flex-wrap gap-2">
                 <Link href="/register" className="inline-flex items-center gap-2 rounded-[2px] bg-[#0E2A63] px-4 py-2.5 text-[12px] font-medium text-white transition hover:bg-[#0A1F4A]">
-                  Get Started <ArrowRight size={13} />
+                  {t("landing.hero.primary")} <ArrowRight size={13} />
                 </Link>
                 <a href="#product-tour" className="inline-flex items-center gap-2 rounded-[2px] border border-[#101A26]/25 px-4 py-2.5 text-[12px] font-medium text-[#101A26] transition hover:border-[#0E2A63] hover:text-[#0E2A63]">
-                  <Play size={12} /> Explore CuanApp
+                  <Play size={12} /> {t("landing.hero.secondary")}
                 </a>
               </div>
               <div className="mt-8 flex items-end justify-between border-t border-[#101A26]/15 pt-4">
@@ -892,7 +889,7 @@ export default function LandingPage() {
                   <Label className="text-[#8A94A1]">CuanApp</Label>
                   <div className="mt-1 font-mono text-[10px] uppercase tracking-[.14em] text-[#59667A]">Business operating system</div>
                 </div>
-                <Label className="text-[#8A94A1]">2026</Label>
+                <Label className="text-[#8A94A1]">{t("landing.cta.year")}</Label>
               </div>
             </div>
           </div>
@@ -916,22 +913,22 @@ export default function LandingPage() {
                 <span className="text-[14px] font-semibold tracking-[-.02em]">CuanApp</span>
               </div>
               <p className="mt-3 max-w-[34ch] text-[13px] leading-[1.7] text-[#59667A]">
-                Satu platform terintegrasi untuk mengelola, memahami, dan mengembangkan bisnis Anda.
+                {t("landing.footer.tagline")}
               </p>
             </div>
             {[
-              { head: "Product", links: [["Solutions", "#solutions"], ["Industries", "#industries"], ["Flexibility", "#flexibility"], ["Product Tour", "#product-tour"]] },
-              { head: "Akun", links: [["Masuk", "/login"], ["Daftar", "/register"]] },
-              { head: "Bantuan", links: [["Cara kerja", "#product-tour"], ["Kustomisasi", "#flexibility"]] },
+              { headKey: "landing.footer.product", links: [["landing.nav.solutions", "#solutions"], ["landing.nav.industries", "#industries"], ["landing.nav.flexibility", "#flexibility"], ["landing.nav.tour", "#product-tour"]] },
+              { headKey: "landing.footer.account", links: [["landing.footer.signIn", "/login"], ["landing.footer.signUp", "/register"]] },
+              { headKey: "landing.footer.help", links: [["landing.footer.howItWorks", "#product-tour"], ["landing.footer.customization", "#flexibility"]] },
             ].map(col => (
-              <div key={col.head}>
-                <Label className="text-[#8A94A1]">{col.head}</Label>
+              <div key={col.headKey}>
+                <Label className="text-[#8A94A1]">{t(col.headKey)}</Label>
                 <ul className="mt-3 space-y-2">
-                  {col.links.map(([label, href]) => (
-                    <li key={label}>
+                  {col.links.map(([labelKey, href]) => (
+                    <li key={labelKey}>
                       {href.startsWith("#")
-                        ? <a href={href} className="text-[13px] text-[#3C4A5A] transition hover:text-[#0E2A63]">{label}</a>
-                        : <Link href={href} className="text-[13px] text-[#3C4A5A] transition hover:text-[#0E2A63]">{label}</Link>}
+                        ? <a href={href} className="text-[13px] text-[#3C4A5A] transition hover:text-[#0E2A63]">{t(labelKey)}</a>
+                        : <Link href={href} className="text-[13px] text-[#3C4A5A] transition hover:text-[#0E2A63]">{t(labelKey)}</Link>}
                     </li>
                   ))}
                 </ul>
@@ -939,10 +936,10 @@ export default function LandingPage() {
             ))}
           </div>
           <div className="flex flex-col items-start justify-between gap-3 py-5 sm:flex-row sm:items-center">
-            <Label className="text-[#8A94A1]">© 2026 CuanApp. All rights reserved.</Label>
+            <Label className="text-[#8A94A1]">{t("landing.footer.rights")}</Label>
             <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5"><Globe2 size={11} className="text-[#8A94A1]" /><Label className="text-[#59667A]">Bahasa Indonesia</Label></span>
-              <span className="flex items-center gap-1.5"><ShieldCheck size={11} className="text-[#8A94A1]" /><Label className="text-[#59667A]">Data privat</Label></span>
+              <span className="flex items-center gap-1.5"><Globe2 size={11} className="text-[#8A94A1]" /><Label className="text-[#59667A]">{t("landing.footer.language")}</Label></span>
+              <span className="flex items-center gap-1.5"><ShieldCheck size={11} className="text-[#8A94A1]" /><Label className="text-[#59667A]">{t("landing.footer.privacy")}</Label></span>
             </div>
           </div>
         </div>
@@ -971,21 +968,21 @@ export default function LandingPage() {
             className="m-panel relative my-auto max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-[2px] border border-[#101A26]/25 bg-[#FCFCFA] p-4 shadow-xl outline-none sm:p-7"
           >
             <div className="flex items-center justify-between border-b border-[#101A26]/15 pb-3">
-              <h2 id="tour-title" className="font-mono text-[10px] uppercase tracking-[.18em] text-[#0E2A63]">CuanApp product tour</h2>
+              <h2 id="tour-title" className="font-mono text-[10px] uppercase tracking-[.18em] text-[#0E2A63]">{t("landing.tour.dialogTitle")}</h2>
               <button onClick={() => setTourOpen(false)} className="rounded-[2px] border border-[#101A26]/20 p-1.5 text-[#3C4A5A] hover:border-[#101A26]/40" aria-label="Close product tour">
                 <X size={14} />
               </button>
             </div>
             <div className="mt-4 flex aspect-video flex-col items-center justify-center border border-[#101A26]/20 bg-white text-center">
               <span className="flex h-12 w-12 items-center justify-center rounded-[2px] border border-[#101A26]/20"><Play size={18} /></span>
-              <div className="mt-4 text-[15px] font-semibold">Walkthrough video</div>
+              <div className="mt-4 text-[15px] font-semibold">{t("landing.tour.dialogHeading")}</div>
               <p className="mt-2 max-w-md px-6 text-[13px] leading-[1.7] text-[#59667A]">
-                Placeholder untuk video walkthrough resmi atau demo aplikasi terpandu.
+                {t("landing.tour.dialogBody")}
               </p>
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <Label className="text-[#8A94A1]">Dashboard · Transactions · Inventory · Finance · Reports</Label>
-              <button onClick={() => setTourOpen(false)} className="rounded-[2px] bg-[#0E2A63] px-3.5 py-2 text-[11px] font-medium text-white">Close</button>
+              <button onClick={() => setTourOpen(false)} className="rounded-[2px] bg-[#0E2A63] px-3.5 py-2 text-[11px] font-medium text-white">{t("landing.tour.dialogClose")}</button>
             </div>
           </div>
         </div>
