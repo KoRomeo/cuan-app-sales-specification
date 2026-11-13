@@ -49,7 +49,7 @@ export function DocumentPreview({
   const heading = isInvoice ? 'FAKTUR / INVOICE' : 'SURAT JALAN'
   const paperWidth = paperSize === 'NCR' ? '9.5in' : paperSize === 'A4' ? '210mm' : '105mm'
   const pageSize = paperSize === 'NCR' ? '9.5in 5.5in' : paperSize === 'A4' ? '210mm 297mm' : '105mm 148mm'
-  const dialogMaxWidth = `min(calc(100vw - 2rem), calc(${paperWidth} + 3rem))`
+  const dialogMaxWidth = `min(calc(100vw - 2rem), calc(${paperWidth} + 4.5rem))`
 
   const paper = (
     <article className={`print-area ${paperClass} mx-auto bg-white text-black`}>
@@ -160,10 +160,10 @@ export function DocumentPreview({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="max-h-[94dvh] overflow-y-auto p-0 print:hidden"
+          className="flex max-h-[92dvh] flex-col gap-0 overflow-hidden p-0 sm:max-h-[94dvh] sm:p-0 print:hidden"
           style={{ maxWidth: dialogMaxWidth }}
         >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 print:hidden">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b px-5 py-3 print:hidden">
         <div>
           <DialogTitle className="text-sm">{isInvoice ? t('orders.viewInvoice') : t('orders.suratJalan')}</DialogTitle>
           <DialogDescription className="font-mono text-xs">{docNo}</DialogDescription>
@@ -182,7 +182,7 @@ export function DocumentPreview({
         </div>
       </div>
 
-          <div className="overflow-auto bg-muted/30 p-4 md:p-6">{paper}</div>
+          <div className="min-h-0 flex-1 overflow-auto bg-muted/30 p-4">{paper}</div>
         </DialogContent>
       </Dialog>
       <PrintRoot>{<style>{`@page { size: ${pageSize}; margin: 0; }`}</style>}{paper}</PrintRoot>
