@@ -50,7 +50,7 @@ export function DocumentPreview({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[94dvh] overflow-y-auto p-0 sm:max-w-4xl">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 print:hidden">
           <div>
             <DialogTitle className="text-sm">{isInvoice ? t('orders.viewInvoice') : t('orders.suratJalan')}</DialogTitle>
             <DialogDescription className="font-mono text-xs">{docNo}</DialogDescription>
@@ -109,10 +109,10 @@ export function DocumentPreview({
                     html, body { margin:0 !important; padding:0 !important; background:white !important; }
                     body * { visibility:hidden !important; }
                     .print-area.document-ncr, .print-area.document-ncr * { visibility:visible !important; }
-                    .print-area.document-ncr { position:absolute; top:0; left:0; width:9.5in; min-height:5.5in; height:5.5in; margin:0; padding:.28in .35in; box-shadow:none; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
-                    .print-area.document-ncr .continuous-invoice-expanded { position:relative; height:auto; min-height:var(--invoice-height); break-inside:avoid; page-break-inside:avoid; }
+                    .print-area.document-ncr { position:static; inset:auto; width:9.5in; min-height:5.5in; height:5.5in; margin:0; padding:.28in .35in; box-sizing:border-box; box-shadow:none; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+                    .print-area.document-ncr .continuous-invoice-expanded { position:relative; height:auto; min-height:var(--invoice-height); break-inside:auto; page-break-inside:auto; }
                     .continuous-delivery { height:5.5in; min-height:5.5in; }
-                    .continuous-delivery-expanded { height:auto; min-height:var(--delivery-height); break-inside:avoid; page-break-inside:avoid; }
+                    .continuous-delivery-expanded { height:auto; min-height:var(--delivery-height); break-inside:auto; page-break-inside:auto; }
                     .continuous-invoice-table tr { break-inside:avoid; page-break-inside:avoid; }
                   }
                 `}</style>

@@ -253,12 +253,18 @@
 
 @media print {
   html, body { width: auto !important; min-width: 0 !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
+  /* Drop everything around the document from the page flow (not just visually
+     hidden) so the document starts at the top of page 1 and no blank pages are
+     generated behind it. Batch printing keeps its own visibility-based path. */
+  body > *:not(:has(.print-area, .batch-invoice-print)) { display: none !important; }
   body * { visibility: hidden !important; }
-  [role="dialog"], [data-radix-portal], [data-slot="dialog-overlay"], [data-slot="dialog-content"] {
+  [data-slot="dialog-overlay"] { display: none !important; }
+  [role="dialog"], [data-slot="dialog-portal"], [data-slot="dialog-content"] {
     position: static !important; display: contents !important; transform: none !important; width: auto !important; height: auto !important; max-width: none !important; max-height: none !important; overflow: visible !important; border: 0 !important; box-shadow: none !important; background: transparent !important;
   }
   .print-area, .print-area * { visibility: visible !important; }
-  .print-area { position: absolute !important; top: 0 !important; left: 0 !important; margin: 0 !important; overflow: visible !important; background: #fff !important; color: #000 !important; box-shadow: none !important; break-after: avoid !important; break-inside: avoid !important; }
+  .print-area { position: static !important; inset: auto !important; margin: 0 auto !important; overflow: visible !important; background: #fff !important; color: #000 !important; box-shadow: none !important; break-after: avoid !important; }
+  .print-area.document-a6, .print-area.document-a4 { break-inside: avoid !important; }
   .print-area.document-a6 { width: 105mm !important; min-height: 148mm !important; padding: 5mm !important; font-size: 7pt !important; line-height: 1.15 !important; }
   .print-area.document-a4 { width: 210mm !important; min-height: 297mm !important; padding: 12mm !important; font-size: 9pt !important; line-height: 1.25 !important; }
   .print-area table { width: 100% !important; margin-top: 3mm !important; table-layout: fixed !important; }
