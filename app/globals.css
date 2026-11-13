@@ -360,9 +360,9 @@
   .print-area.document-ncr-expanded .continuous-invoice-table th,
   .print-area.document-ncr-expanded .continuous-invoice-table td { padding: 0.2mm 1mm !important; line-height: 1.05 !important; }
   .print-area section, .print-area footer { break-inside: avoid !important; }
-  .print-area.document-ncr { width: 9.5in !important; min-height: 5.5in !important; height: 5.5in !important; padding: 0.28in 0.35in !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-  .print-area.document-ncr-expanded { height: auto !important; }
-  .print-area.document-ncr.continuous-placeholder { height: auto !important; }
+  .print-area.document-ncr { width: 9.5in !important; min-height: 5.5in !important; padding: 0.28in 0.35in !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  /* Fixed sheet height only for a single-page invoice; longer ones flow. */
+  .print-area.document-ncr:not(.document-ncr-expanded):not(.continuous-placeholder) { height: 5.5in !important; }
   .print-area .continuous-invoice-expanded,
   .print-area .continuous-delivery-expanded { break-inside: auto !important; page-break-inside: auto !important; }
   .print-area .continuous-invoice-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
