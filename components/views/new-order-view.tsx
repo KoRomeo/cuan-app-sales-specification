@@ -264,7 +264,7 @@ export function NewOrderView() {
                 return (
                   <li key={l.key} className="rounded-lg border p-3">
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-12">
-                      <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-3">
+                      <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-4">
                         <Label htmlFor={`p-${l.key}`}>{t('common.product')}</Label>
                         <SearchableSelect id={`p-${l.key}`} name={`product-${l.key}`} value={l.productId} onChange={(value) => update(l.key, { productId: String(value), price: productsById.get(String(value))?.sellingPrice ?? 0 })} options={productRows.map((product) => ({ value: product.id, label: product.name, description: `${t('inventory.stock')}: ${productsById.get(product.id)?.stock ?? 0}` }))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />
                       </div>
@@ -276,9 +276,9 @@ export function NewOrderView() {
                         <Label htmlFor={`pr-${l.key}`}>{t('orders.sellingPrice')}</Label>
                         <Input id={`pr-${l.key}`} name={`price-${l.key}`} type="number" min={0} required className="font-mono" value={l.price} onChange={(e) => update(l.key, { price: Number(e.target.value) })} />
                       </div>
-                      <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2">
+                      <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-3">
                         <Label>{t('orders.discount')}</Label>
-                        <div className="flex gap-1"><select aria-label="Discount type" className="h-10 w-[76px] rounded-md border bg-background px-2 text-sm" value={l.discountType} onChange={(e) => update(l.key, { discountType: e.target.value as 'amount' | 'percent', discount: 0 })}><option value="amount">Rp</option><option value="percent">%</option></select><Input aria-label="Discount value" type="number" min={0} max={l.discountType === 'percent' ? 100 : l.qty * l.price} step="any" value={l.discount} onChange={(e) => update(l.key, { discount: Number(e.target.value) })} /></div>
+                        <div className="flex min-w-0 gap-1"><select aria-label="Discount type" className="h-10 w-[76px] shrink-0 rounded-md border bg-background px-2 text-sm" value={l.discountType} onChange={(e) => update(l.key, { discountType: e.target.value as 'amount' | 'percent', discount: 0 })}><option value="amount">Rp</option><option value="percent">%</option></select><Input aria-label="Discount value" type="number" min={0} max={l.discountType === 'percent' ? 100 : l.qty * l.price} step="any" className="min-w-0 flex-1" value={l.discount} onChange={(e) => update(l.key, { discount: Number(e.target.value) })} /></div>
                       </div>
                       <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-3"><Label>{t('orders.subtotal')}</Label><div className="flex h-10 min-w-0 items-center"><span title={formatIDR(l.qty * l.price - lineDiscount(l))} className="truncate font-mono text-sm font-semibold tabular-nums">{formatIDR(l.qty * l.price - lineDiscount(l))}</span></div></div>
                       <div className="flex flex-col gap-1.5 sm:col-span-1">

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { authClient } from '@/lib/auth-client'
-import { Bell, Building2, Check, ChevronsUpDown, LogOut, Menu, Moon, Search, Settings, Sun, User, CheckCheck } from 'lucide-react'
+import { Bell, Building2, Check, LogOut, Menu, Moon, Search, Settings, Sun, User, CheckCheck } from 'lucide-react'
 import useSWR from 'swr'
 import { LocaleSwitcher } from '@/components/common/locale-switcher'
 import { useApp } from '@/components/providers'
@@ -130,7 +130,6 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
             <span className="text-sm font-medium">{business?.name ?? t('common.loading')}</span>
             <span className="text-[11px] text-muted-foreground">{business ? t(business.type === 'bakery' ? 'onboarding.bakeryType' : 'onboarding.salesType') : ''}</span>
           </span>
-          <ChevronsUpDown className="size-3.5 text-muted-foreground" />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-64">
           <DropdownMenuGroup>
