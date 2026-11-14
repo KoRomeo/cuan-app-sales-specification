@@ -16,8 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { todayISODate } from '@/lib/format'
-import { formatIDR } from '@/lib/format'
+import { formatIDR, todayISODate } from '@/lib/format'
 
 const fetcher = (url: string) => fetch(url).then(async (response) => {
   if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load order data')
