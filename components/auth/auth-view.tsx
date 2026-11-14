@@ -3,12 +3,11 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
-import { ArrowRight, Boxes, CheckCircle2, Eye, EyeOff, LoaderCircle, ShoppingCart, Wallet } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Eye, EyeOff, LoaderCircle } from 'lucide-react'
 import { appToast as toast } from '@/lib/toast'
 import { authClient } from '@/lib/auth-client'
-import { LocaleSwitcher } from '@/components/common/locale-switcher'
 import { useApp } from '@/components/providers'
-import { Logo } from '@/components/shell/logo'
+import { MeasuredPageFrame } from '@/components/landing/measured-page-frame'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -32,10 +31,10 @@ function AuthField({
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id} className="font-mono text-[10px] uppercase tracking-[.18em] text-[#3C4A5A]">{label}</Label>
       {children}
-      {hint && <p id={`${id}-hint`} className="text-xs text-muted-foreground">{hint}</p>}
-      {error && <p id={`${id}-error`} role="alert" className="text-xs text-destructive">{error}</p>}
+      {hint && <p id={`${id}-hint`} className="text-[11.5px] leading-[1.45] text-[#5A6675]">{hint}</p>}
+      {error && <p id={`${id}-error`} role="alert" className="text-[11.5px] text-[#B42318]">{error}</p>}
     </div>
   )
 }
@@ -80,19 +79,26 @@ export function AuthView({ mode }: { mode: AuthMode }) {
 
     setIsLoading(true)
     setIsComplete(false)
-    const result = mode === 'register'
-      ? await authClient.signUp.email({ name: fields.name.trim(), email: fields.email.trim(), password: fields.password })
-      : await authClient.signIn.email({ email: fields.email.trim(), password: fields.password })
-      setIsLoading(false)
+    try {
+      const result = mode === 'register'
+        ? await authClient.signUp.email({ name: fields.name.trim(), email: fields.email.trim(), password: fields.password })
+        : await authClient.signIn.email({ email: fields.email.trim(), password: fields.password })
       if (result.error) {
-        const errorMessage =
-          result.error.message || "Login failed. Please try again."
+        const errorMessage = result.error.message || t('auth.requestError')
         toast.error(errorMessage)
         setErrors({ email: errorMessage })
         return
       }
-    router.push(isRegister ? '/onboarding' : '/dashboard')
-    router.refresh()
+
+      router.push(mode === 'register' ? '/onboarding' : '/dashboard')
+      router.refresh()
+    } catch {
+      const errorMessage = t('auth.requestError')
+      toast.error(errorMessage)
+      setErrors({ email: errorMessage })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const isRegister = mode === 'register'
@@ -100,65 +106,22 @@ export function AuthView({ mode }: { mode: AuthMode }) {
   const description = t(isRegister ? 'auth.registerDescription' : 'auth.loginDescription')
   const submitLabel = t(isRegister ? 'auth.registerAction' : 'auth.loginAction')
   const resultMessage = t(isRegister ? 'auth.registerResult' : 'auth.loginResult')
-  const highlights = [
-    { label: t('nav.orders'), icon: ShoppingCart },
-    { label: t('nav.products'), icon: Boxes },
-    { label: t('nav.profitLoss'), icon: Wallet },
-  ]
 
   return (
-    <main className="auth-light min-h-dvh bg-background">
-      <div className="mx-auto grid min-h-dvh max-w-[1440px] lg:grid-cols-[1.02fr_0.98fr]">
-        <aside className="hidden flex-col justify-between border-r bg-muted/45 px-10 py-9 lg:flex xl:px-14">
-          <Link href="/dashboard" aria-label={t('auth.backToDashboard')} className="w-fit rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <Logo />
-          </Link>
-
-          <div className="max-w-lg">
-            <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-              {t('auth.badge')}
-            </span>
-            <h2 className="mt-5 text-4xl font-semibold leading-tight tracking-tight text-foreground xl:text-5xl">
-              {t('auth.brandTitle')}
-            </h2>
-            <p className="mt-4 max-w-md text-base leading-7 text-muted-foreground">{t('auth.brandDescription')}</p>
-
-            <ul className="mt-9 grid gap-3">
-              {highlights.map(({ label, icon: Icon }) => (
-                <li key={label} className="flex items-center gap-3 rounded-xl border bg-card/70 px-4 py-3 text-sm font-medium">
-                  <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Icon aria-hidden="true" />
-                  </span>
-                  {label}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <p role="note" className="max-w-md text-xs leading-5 text-muted-foreground">{t('common.demoDataNotice')}</p>
-        </aside>
-
-        <section className="flex min-h-dvh flex-col">
-          <header className="flex items-center justify-between gap-4 px-5 py-5 sm:px-8 lg:justify-end lg:px-12">
-            <Link href="/dashboard" aria-label={t('auth.backToDashboard')} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden">
-              <Logo />
-            </Link>
-            <LocaleSwitcher />
-          </header>
-
-          <div className="flex flex-1 items-center justify-center px-4 pb-10 sm:px-8 lg:px-12">
-            <Card className="w-full max-w-md border-border/80 shadow-xl shadow-black/5">
-              <CardHeader className="gap-3">
-                <span className="inline-flex w-fit items-center rounded-full border bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-                  {t('auth.badge')}
+    <MeasuredPageFrame contentClassName="flex flex-col">
+      <div className="flex flex-1 items-center justify-center px-4 py-8 sm:px-10 sm:py-10">
+        <Card className="w-full max-w-[560px] rounded-none border-[#101A26]/20 bg-[#FCFCFA] shadow-none">
+              <CardHeader className="grid gap-3 border-b border-[#101A26]/15 px-5 py-5 sm:px-8 sm:py-7">
+                <span className="inline-flex w-fit items-center border border-[#0E2A63]/30 px-2 py-1 font-mono text-[10px] uppercase tracking-[.18em] text-[#0E2A63]">
+                  CuanApp
                 </span>
                 <div className="grid gap-1.5">
-                  <CardTitle role="heading" aria-level={1} className="text-2xl tracking-tight">{title}</CardTitle>
-                  <CardDescription className="leading-6">{description}</CardDescription>
+                  <CardTitle role="heading" aria-level={1} className="text-[24px] font-semibold leading-[1.15] tracking-[-.03em] text-[#101A26] sm:text-[28px]">{title}</CardTitle>
+                  <CardDescription className="max-w-[48ch] text-[13.5px] leading-[1.6] text-[#3C4A5A]">{description}</CardDescription>
                 </div>
               </CardHeader>
 
-              <CardContent>
+              <CardContent className="px-5 py-5 sm:px-8 sm:py-7">
                 <form noValidate onSubmit={handleSubmit} aria-busy={isLoading} className="grid gap-4">
                   {isRegister && (
                     <AuthField id="auth-name" label={t('auth.name')} error={errors.name}>
@@ -212,7 +175,7 @@ export function AuthView({ mode }: { mode: AuthMode }) {
                         type="button"
                         variant="ghost"
                         size="icon-sm"
-                        className="absolute right-1 top-1/2 -translate-y-1/2"
+                        className="absolute right-0.5 top-1/2 h-9 w-9 -translate-y-1/2 text-[#5A6675]"
                         aria-label={t(showPassword ? 'auth.hidePassword' : 'auth.showPassword')}
                         disabled={isLoading}
                         onClick={() => setShowPassword((visible) => !visible)}
@@ -259,12 +222,12 @@ export function AuthView({ mode }: { mode: AuthMode }) {
                   )}
 
                   {showResetNotice && (
-                    <p role="status" className="rounded-lg border bg-muted/60 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                    <p role="status" className="rounded-[2px] border bg-muted/60 px-3 py-2 text-xs leading-5 text-muted-foreground">
                       {t('auth.passwordResetPreview')}
                     </p>
                   )}
 
-                  <Button type="submit" className="mt-1 w-full" disabled={isLoading}>
+                  <Button type="submit" className="mt-1 h-11 w-full rounded-[2px] bg-[#0E2A63] text-[12.5px] font-medium text-white transition hover:bg-[#0A1F4A] focus-visible:ring-2 focus-visible:ring-[#0E2A63] focus-visible:ring-offset-2" disabled={isLoading}>
                     {isLoading && <LoaderCircle className="animate-spin" data-icon="inline-start" aria-hidden="true" />}
                     {isLoading ? t('auth.checking') : submitLabel}
                     {!isLoading && <ArrowRight data-icon="inline-end" aria-hidden="true" />}
@@ -272,7 +235,7 @@ export function AuthView({ mode }: { mode: AuthMode }) {
                 </form>
 
                 {isComplete && (
-                  <div role="status" aria-live="polite" className="mt-4 rounded-xl border border-primary/25 bg-primary/5 p-4">
+                  <div role="status" aria-live="polite" className="mt-4 rounded-[2px] border border-primary/25 bg-primary/5 p-4">
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
                       <div className="grid gap-2">
@@ -288,7 +251,7 @@ export function AuthView({ mode }: { mode: AuthMode }) {
                 )}
               </CardContent>
 
-              <CardFooter className="flex-col items-stretch gap-4 border-t pt-5">
+              <CardFooter className="flex-col items-stretch gap-3 border-t border-[#101A26]/15 px-5 py-4 sm:px-7">
                 <p className="text-center text-sm text-muted-foreground">
                   <Link href={isRegister ? '/login' : '/register'} className="font-medium text-primary underline-offset-4 hover:underline">
                     {t(isRegister ? 'auth.toLogin' : 'auth.toRegister')}
@@ -298,11 +261,8 @@ export function AuthView({ mode }: { mode: AuthMode }) {
                   {t('auth.backToDashboard')}
                 </Link>
               </CardFooter>
-            </Card>
-          </div>
-        </section>
+        </Card>
       </div>
-    </main>
+    </MeasuredPageFrame>
   )
 }
-

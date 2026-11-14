@@ -3,6 +3,7 @@ boolean,
 date,
 decimal,
 integer,
+index,
 jsonb,
 pgEnum,
 pgTable,
@@ -52,6 +53,9 @@ export const businesses = pgTable("businesses", {
 id: text("id").primaryKey(),
 name: text("name").notNull(),
 type: text("type").notNull(),
+// Costing method for COGS/HPP. "average" (moving average) is the default and the
+// only implemented method; "fifo" is stored for future use and is NOT implemented yet.
+costingMethod: text("costing_method").notNull().default("average"),
 createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -179,6 +183,9 @@ customerId: text("customer_id")
     .references(() => customers.id),
 status: orderStatusEnum("status").notNull().default("requested"),
 dueDate: date("due_date"),
+// Manual sales tax for this order (no default rate). Added to the invoice total and
+// credited to "Tax Payable"; it is not part of sales revenue.
+taxAmount: decimal("tax_amount", { precision: 14, scale: 2 }).notNull().default("0"),
 notes: text("notes"),
 createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

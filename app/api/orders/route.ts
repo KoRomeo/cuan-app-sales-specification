@@ -62,8 +62,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json(); const { businessId, date: orderDate, customerId, status = "requested", dueDate, notes, items: lineItems, paidAmount = 0, paymentAccount = "Cash", paymentDate = orderDate, paymentId } = body
-    if (![businessId, customerId].every((v) => typeof v === "string" && v.trim()) || !date(orderDate) || (dueDate && !date(dueDate)) || !STATUSES.includes(status) || !["requested", "ready"].includes(status) || !items(lineItems) || typeof paidAmount !== "number" || !Number.isFinite(paidAmount) || paidAmount < 0 || (paidAmount > 0 && (typeof paymentAccount !== "string" || !paymentAccount.trim())) || (paidAmount > 0 && !paymentId)) return NextResponse.json({ error: "Order fields, items, or payment are invalid" }, { status: 400 })
+    const body = await request.json(); const { businessId, date: orderDate, customerId, status = "requested", dueDate, notes, items: lineItems, paidAmount = 0, paymentAccount = "Cash", paymentDate = orderDate, taxAmount = 0 } = body
+    if (![businessId, customerId].every((v) => typeof v === "string" && v.trim()) || !date(orderDate) || (dueDate && !date(dueDate)) || !STATUSES.includes(status) || !["requested", "ready"].includes(status) || !items(lineItems) || typeof paidAmount !== "number" || !Number.isFinite(paidAmount) || paidAmount < 0 || typeof taxAmount !== "number" || !Number.isFinite(taxAmount) || taxAmount < 0 || (paidAmount > 0 && (typeof paymentAccount !== "string" || !paymentAccount.trim()))) return NextResponse.json({ error: "Order fields, items, or payment are invalid" }, { status: 400 })
     const allowed = await access(businessId); if (!allowed.ok) return NextResponse.json({ error: allowed.error }, { status: allowed.status })
     const id = await db.transaction(async (tx) => {
       const generatedId = await generateEntityId(tx, orders, businessId, "ORD", orderDate)
@@ -72,39 +72,45 @@ export async function POST(request: NextRequest) {
       const productRows = await tx.select({ id: products.id, sellingPrice: products.sellingPrice, averageCost: products.averageCost }).from(products).where(and(eq(products.businessId, businessId), inArray(products.id, [...new Set(lineItems.map((item) => item.productId))])))
       const byProduct = new Map(productRows.map((product) => [product.id, product]))
       const normalizedItems = lineItems.map((item) => ({ ...item, price: Number(item.price), unitCost: Number(byProduct.get(item.productId)?.averageCost) }))
-      const total = normalizedItems.reduce((sum, item) => sum + item.qty * item.price - itemDiscount(item), 0)
-      if (paidAmount > total) throw new Error("PAYMENT_EXCEEDS_TOTAL")
-      await tx.insert(orders).values({ id: generatedId, businessId, date: orderDate, customerId, status, dueDate: dueDate || null, notes: notes || null })
+      const subtotal = normalizedItems.reduce((sum, item) => sum + item.qty * item.price - itemDiscount(item), 0)
+      const tax = Number(taxAmount)
+      const invoiceTotal = subtotal + tax
+      if (paidAmount > invoiceTotal) throw new Error("PAYMENT_EXCEEDS_TOTAL")
+      await tx.insert(orders).values({ id: generatedId, businessId, date: orderDate, customerId, status, dueDate: dueDate || null, taxAmount: tax.toFixed(2), notes: notes || null })
       await tx.insert(orderItems).values(normalizedItems.map((item) => ({ id: item.id, orderId: generatedId, productId: item.productId, qty: Number(item.qty), price: String(item.price), discount: String(item.discount ?? 0), discountType: item.discountType ?? "amount", unitCost: String(item.unitCost) })))
       // Stock, revenue, and COGS are recognized at Order creation. Negative stock is allowed.
       await tx.insert(stockMovements).values(normalizedItems.map((item) => ({
         id: `SM-SALE-${generatedId}-${item.id}`, businessId, date: orderDate, productId: item.productId,
         type: "sale" as const, qty: -Number(item.qty), reference: `order:${generatedId}:sale`,
       })))
-      const revenue = total
+      const revenue = subtotal
       const cogs = normalizedItems.reduce((sum, item) => sum + Number(item.qty) * Number(item.unitCost), 0)
       const saleEntryId = `JE-SALE-${generatedId}`
       await tx.insert(journalEntries).values({ id: saleEntryId, businessId, entryDate: orderDate, kind: "sale", reference: generatedId, description: `Order sale and COGS for ${generatedId}` })
-      await tx.insert(journalEntryLines).values([
-        { id: `${saleEntryId}-ar`, journalEntryId: saleEntryId, account: "Accounts Receivable", debit: revenue.toFixed(2), credit: "0" },
+      const saleLines = [
+        { id: `${saleEntryId}-ar`, journalEntryId: saleEntryId, account: "Accounts Receivable", debit: invoiceTotal.toFixed(2), credit: "0" },
         { id: `${saleEntryId}-revenue`, journalEntryId: saleEntryId, account: "Sales Revenue", debit: "0", credit: revenue.toFixed(2) },
         { id: `${saleEntryId}-cogs`, journalEntryId: saleEntryId, account: "Cost of Goods Sold", debit: cogs.toFixed(2), credit: "0" },
         { id: `${saleEntryId}-inventory`, journalEntryId: saleEntryId, account: "Inventory", debit: "0", credit: cogs.toFixed(2) },
-      ])
+      ]
+      // Manual sales tax is collected for the tax authority, so it is a liability, not revenue.
+      if (tax > 0) saleLines.push({ id: `${saleEntryId}-tax`, journalEntryId: saleEntryId, account: "Tax Payable", debit: "0", credit: tax.toFixed(2) })
+      await tx.insert(journalEntryLines).values(saleLines)
+      let payId: string | null = null
       if (paidAmount > 0) {
         const [account] = await tx.select({ id: financialAccounts.id }).from(financialAccounts).where(and(eq(financialAccounts.businessId, businessId), eq(financialAccounts.name, paymentAccount.trim()), eq(financialAccounts.active, true))).limit(1)
         if (!account) throw new Error("INVALID_FINANCIAL_ACCOUNT")
-        const [existingPayment] = await tx.select({ id: payments.id }).from(payments).where(eq(payments.id, paymentId)).limit(1)
-        if (existingPayment) throw new Error("PAYMENT_ID_EXISTS")
-        const entryId = `JE-PAY-${paymentId}`
-        await tx.insert(payments).values({ id: paymentId, businessId, orderId: generatedId, purchaseId: null, date: paymentDate, amount: paidAmount.toFixed(2), account: paymentAccount.trim() })
-        await tx.insert(journalEntries).values({ id: entryId, businessId, entryDate: paymentDate, kind: "payment", reference: paymentId, description: `Customer payment received into ${paymentAccount.trim()} for ${generatedId}` })
+        // The server owns payment IDs so they follow PREFIX-YYYYMMDD-NNNN, whatever the client sends.
+        payId = await generateEntityId(tx, payments, businessId, "PAY", paymentDate || orderDate)
+        const entryId = `JE-PAY-${payId}`
+        await tx.insert(payments).values({ id: payId, businessId, orderId: generatedId, purchaseId: null, date: paymentDate, amount: paidAmount.toFixed(2), account: paymentAccount.trim() })
+        await tx.insert(journalEntries).values({ id: entryId, businessId, entryDate: paymentDate, kind: "payment", reference: payId, description: `Customer payment received into ${paymentAccount.trim()} for ${generatedId}` })
         await tx.insert(journalEntryLines).values([{ id: `${entryId}-debit`, journalEntryId: entryId, account: paymentAccount.trim(), debit: paidAmount.toFixed(2), credit: "0" }, { id: `${entryId}-credit`, journalEntryId: entryId, account: "Accounts Receivable", debit: "0", credit: paidAmount.toFixed(2) }])
       }
-      return generatedId
+      return { id: generatedId, paymentId: payId }
     })
-    await writeAudit({ businessId, page: "Orders", action: "Created order", reference: id })
-    return NextResponse.json({ message: "Order created successfully", id }, { status: 201 })
+    await writeAudit({ businessId, page: "Orders", action: "Created order", reference: id.id })
+    return NextResponse.json({ message: "Order created successfully", id: id.id, paymentId: id.paymentId }, { status: 201 })
   } catch (error) { return fail(error) }
 }
 

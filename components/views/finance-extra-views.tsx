@@ -16,8 +16,9 @@ const fetcher = async (url: string) => { const r = await fetch(url); const body 
 type Expense = { id: string; date: string; category: string; amount: string | number; account: string; description: string }
 type ExpenseAccount = { id: string; name: string; active: boolean }
 const today = () => new Date().toLocaleDateString('en-CA')
-type OrderItem = { qty: string | number; price: string | number; discount?: string | number; unitCost?: string | number }
+type OrderItem = { qty: string | number; price: string | number; discount?: string | number; discountType?: 'amount' | 'percent'; unitCost?: string | number }
 type Order = { id: string; date: string; status: string; items: OrderItem[] }
+type ReturnRow = { id: string; date: string; refundAmount: string | number; stockValue?: number; replacementCost?: number }
 export function ExpensesView() {
   const { t, locale } = useApp()
   const { data: business } = useSWR<{id:string}>('/api/businesses/current', fetcher)
@@ -87,22 +88,30 @@ export function ProfitLossView() {
   const { data: business } = useSWR<{id:string}>('/api/businesses/current', fetcher)
   const { data: orders, error: ordersError } = useSWR<Order[]>(business?.id ? '/api/orders?businessId='+encodeURIComponent(business.id) : null, fetcher)
   const { data: expenses, error: expensesError } = useSWR<Expense[]>(business?.id ? '/api/expenses?businessId='+encodeURIComponent(business.id) : null, fetcher)
+  const { data: returns, error: returnsError } = useSWR<ReturnRow[]>(business?.id ? '/api/returns?businessId='+encodeURIComponent(business.id) : null, fetcher)
   const label = (en:string,id:string) => locale === 'id' ? id : en
-  const error = ordersError || expensesError
+  const error = ordersError || expensesError || returnsError
   if (error) return <p role="alert" className="text-sm text-destructive">{error.message}</p>
-  if (!business || !orders || !expenses) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+  if (!business || !orders || !expenses || !returns) return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
   const active = orders.filter(o=>o.status!=='cancelled')
-  const revenue = active.reduce((sum,o)=>sum+o.items.reduce((sub,i)=>sub+Number(i.qty)*Number(i.price)-Number(i.discount||0),0),0)
-  const cogs = active.reduce((sum,o)=>sum+o.items.reduce((sub,i)=>sub+Number(i.qty)*Number(i.unitCost||0),0),0)
+  const lineNet = (i: OrderItem) => { const gross = Number(i.qty)*Number(i.price); return Math.max(0, gross - (i.discountType === 'percent' ? gross*Number(i.discount ?? 0)/100 : Number(i.discount ?? 0))) }
+  const grossRevenue = active.reduce((sum,o)=>sum+o.items.reduce((sub,i)=>sub+lineNet(i),0),0)
+  const refundTotal = returns.reduce((sum,r)=>sum+Number(r.refundAmount),0)
+  const returnedStockValue = returns.reduce((sum,r)=>sum+Number(r.stockValue ?? 0),0)
+  const replacementCost = returns.reduce((sum,r)=>sum+Number(r.replacementCost ?? 0),0)
+  const revenue = grossRevenue - refundTotal
+  const cogs = active.reduce((sum,o)=>sum+o.items.reduce((sub,i)=>sub+Number(i.qty)*Number(i.unitCost||0),0),0) - returnedStockValue
   const expenseTotal = expenses.reduce((sum,e)=>sum+Number(e.amount),0)
-  const gross = revenue-cogs, net = gross-expenseTotal
+  const gross = revenue-cogs-replacementCost, net = gross-expenseTotal
   return <>
     <PageHeader breadcrumbs={[{label:t('nav.finance')},{label:t('nav.profitLoss')}]} title={t('nav.profitLoss')} description={label('Revenue, cost of goods sold, expenses and net result from recorded transactions.','Pendapatan, harga pokok penjualan, biaya, dan hasil bersih dari transaksi yang tercatat.')} />
     <KpiGrid><KpiCard label={label('Revenue','Pendapatan')} value={<Money value={revenue}/>} icon={ChartNoAxesCombined}/><KpiCard label={label('Cost of goods sold','Harga pokok penjualan')} value={<Money value={cogs}/>} icon={Banknote} tone="warning"/><KpiCard label={label('Gross profit','Laba kotor')} value={<Money value={gross}/>} icon={ChartNoAxesCombined} tone={gross<0?'destructive':'success'}/><KpiCard label={label('Net profit','Laba bersih')} value={<Money value={net}/>} icon={Banknote} tone={net<0?'destructive':'success'}/></KpiGrid>
     <SectionCard title={label('Profit & loss statement','Laporan laba rugi')}>
       <div className="space-y-3 text-sm">
-        <Line label={label('Revenue','Pendapatan')} value={revenue}/>
+        <Line label={label('Revenue','Pendapatan')} value={grossRevenue}/>
+        <Line label={label('Returns / refunds','Retur / pengembalian')} value={-refundTotal}/>
         <Line label={label('Cost of goods sold','Harga pokok penjualan')} value={-cogs}/>
+        <Line label={label('Replacement cost','Biaya penggantian')} value={-replacementCost}/>
         <Line label={label('Gross profit','Laba kotor')} value={gross} strong/>
         <Line label={label('Operating expenses','Biaya operasional')} value={-expenseTotal}/>
         <Line label={label('Net profit / (loss)','Laba / (rugi) bersih')} value={net} strong/>

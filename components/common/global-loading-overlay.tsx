@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { createPortal } from 'react-dom'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const SHOW_DELAY = 180
 
@@ -16,16 +16,14 @@ export function GlobalLoadingOverlay() {
   const navigationPending = useRef(false)
   const activeProcesses = useRef(0)
 
-  const cancelNavigation = useCallback(() => {
+  useEffect(() => { setPortalReady(true) }, [])
+
+  useEffect(() => {
     navigationPending.current = false
     if (navigationTimer.current) clearTimeout(navigationTimer.current)
     navigationTimer.current = null
     setNavigationVisible(false)
-  }, [])
-
-  useEffect(() => { setPortalReady(true) }, [])
-
-  useEffect(() => { cancelNavigation() }, [pathname, cancelNavigation])
+  }, [pathname])
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
@@ -40,12 +38,20 @@ export function GlobalLoadingOverlay() {
       if (navigationTimer.current) clearTimeout(navigationTimer.current)
       navigationTimer.current = setTimeout(() => { if (navigationPending.current) setNavigationVisible(true) }, SHOW_DELAY)
     }
+    const onNavigationIntercepted = () => {
+      navigationPending.current = false
+      if (navigationTimer.current) clearTimeout(navigationTimer.current)
+      navigationTimer.current = null
+      setNavigationVisible(false)
+    }
+    window.addEventListener('cuanapp:navigation-intercepted', onNavigationIntercepted)
     document.addEventListener('click', onClick, true)
     return () => {
+      window.removeEventListener('cuanapp:navigation-intercepted', onNavigationIntercepted)
       document.removeEventListener('click', onClick, true)
       if (navigationTimer.current) clearTimeout(navigationTimer.current)
     }
-  }, [])
+  }, [pathname])
 
   useEffect(() => {
     const originalFetch = window.fetch

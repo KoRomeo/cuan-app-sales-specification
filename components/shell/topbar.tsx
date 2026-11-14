@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
 import { authClient } from '@/lib/auth-client'
-import { Bell, Building2, Check, ChevronsUpDown, LogOut, Menu, Moon, Search, Settings, Sun, User, CheckCheck } from 'lucide-react'
+import { Bell, Building2, Check, LogOut, Menu, Moon, Search, Settings, Sun, User, CheckCheck } from 'lucide-react'
 import useSWR from 'swr'
 import { LocaleSwitcher } from '@/components/common/locale-switcher'
 import { useApp } from '@/components/providers'
@@ -130,7 +130,6 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
             <span className="text-sm font-medium">{business?.name ?? t('common.loading')}</span>
             <span className="text-[11px] text-muted-foreground">{business ? t(business.type === 'bakery' ? 'onboarding.bakeryType' : 'onboarding.salesType') : ''}</span>
           </span>
-          <ChevronsUpDown className="size-3.5 text-muted-foreground" />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-64">
           <DropdownMenuGroup>
@@ -177,7 +176,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           <DropdownMenuContent align="end" className="w-[min(26rem,calc(100vw-2rem))] p-0">
             <div className="flex items-center justify-between px-4 py-3">
               <div>
-                <DropdownMenuLabel className="p-0 text-sm">{t('top.notifications')}</DropdownMenuLabel>
+                <p className="p-0 text-sm font-medium text-foreground">{t('top.notifications')}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{t('notif.unreadCount', { n: notificationData?.unreadCount ?? 0 })}</p>
               </div>
               <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs" disabled={!notificationData?.unreadCount} onClick={() => void markAllRead()}>

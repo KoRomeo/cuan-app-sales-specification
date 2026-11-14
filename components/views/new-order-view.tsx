@@ -16,8 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { TODAY } from '@/lib/data'
-import { formatIDR } from '@/lib/format'
+import { formatIDR, todayISODate } from '@/lib/format'
 
 const fetcher = (url: string) => fetch(url).then(async (response) => {
   if (!response.ok) throw new Error((await response.json()).error ?? 'Unable to load order data')
@@ -28,6 +27,24 @@ type Product = { id: string; name: string; sellingPrice: string | number; averag
 type StockRow = { productId: string; stock: number | string }
 type FinancialAccountRow = { id: string; name: string; type: 'cash' | 'bank'; active: boolean }
 const MAX_ORDER_QTY = 999999
+
+const hasMeaningfulOrderDraft = (draft: OrderDraft, defaultProduct?: Product) =>
+  Boolean(
+    draft.customerId ||
+    draft.notes.trim() ||
+    draft.dueDate ||
+    Number(draft.paid) > 0 ||
+    draft.paymentAccount ||
+    draft.lines.some((line, index) =>
+      index > 0 ||
+      !defaultProduct ||
+      line.productId !== defaultProduct.id ||
+      line.qty !== 1 ||
+      line.price !== Number(defaultProduct.sellingPrice) ||
+      line.discount !== 0 ||
+      line.discountType !== 'amount'
+    ),
+  )
 
 interface Line {
   key: number
@@ -62,10 +79,11 @@ export function NewOrderView() {
   const [lines, setLines] = useState<Line[]>([])
   const [customerId, setCustomerId] = useState('')
   const [paid, setPaid] = useState('0')
+  const [tax, setTax] = useState('0')
   const [paymentAccount, setPaymentAccount] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [lineToRemove, setLineToRemove] = useState<number | null>(null)
-  const [orderDate, setOrderDate] = useState(TODAY)
+  const [orderDate, setOrderDate] = useState(todayISODate())
   const [dueDate, setDueDate] = useState('')
   const [notes, setNotes] = useState('')
   const [draftReady, setDraftReady] = useState(false)
@@ -82,14 +100,13 @@ export function NewOrderView() {
       if (raw) {
         const draft = JSON.parse(raw) as OrderDraft
         setCustomerId(draft.customerId ?? '')
-        setOrderDate(draft.orderDate || TODAY)
+        setOrderDate(draft.orderDate || todayISODate())
         setDueDate(draft.dueDate ?? '')
         setNotes(draft.notes ?? '')
         setLines(Array.isArray(draft.lines) ? draft.lines : [])
         setPaid(draft.paid ?? '0')
         setPaymentAccount(draft.paymentAccount ?? '')
-        setDraftExists(true)
-        setLastSaved(new Date())
+        setDraftExists(false)
       }
     } catch {
       sessionStorage.removeItem(draftKey)
@@ -104,16 +121,22 @@ export function NewOrderView() {
   }, [draftReady, lines.length, productRows])
 
   useEffect(() => {
-    if (!draftReady || !draftKey) return
+    if (!draftReady || !draftKey || !productRows) return
     const draft: OrderDraft = { customerId, orderDate, dueDate, notes, lines, paid, paymentAccount }
+    if (!hasMeaningfulOrderDraft(draft, productRows[0])) {
+      sessionStorage.removeItem(draftKey)
+      setDraftExists(false)
+      setLastSaved(null)
+      return
+    }
     try {
       sessionStorage.setItem(draftKey, JSON.stringify(draft))
-      setDraftExists(Boolean(customerId || notes || dueDate || lines.length || Number(paid) > 0 || paymentAccount))
+      setDraftExists(true)
       setLastSaved(new Date())
     } catch {
       toast.error(locale === 'id' ? 'Draft tidak dapat disimpan di browser ini.' : 'Unable to save draft in this browser.')
     }
-  }, [draftReady, draftKey, customerId, orderDate, dueDate, notes, lines, paid, paymentAccount, locale])
+  }, [draftReady, draftKey, customerId, orderDate, dueDate, notes, lines, paid, paymentAccount, locale, productRows])
 
   useEffect(() => {
     const interceptInternalNavigation = (event: MouseEvent) => {
@@ -129,6 +152,9 @@ export function NewOrderView() {
       if (destination.pathname === window.location.pathname) return
       event.preventDefault()
       event.stopPropagation()
+      // The global navigation overlay also observes this click in the capture phase.
+      // Cancel its pending timer because this navigation now waits for the draft dialog.
+      window.dispatchEvent(new Event('cuanapp:navigation-intercepted'))
       setPendingNavigation(nextPath)
       setLeaveOpen(true)
     }
@@ -147,7 +173,7 @@ export function NewOrderView() {
   const discardDraft = () => {
     if (draftKey) sessionStorage.removeItem(draftKey)
     setCustomerId('')
-    setOrderDate(TODAY)
+    setOrderDate(todayISODate())
     setDueDate('')
     setNotes('')
     setLines(productRows?.[0] ? [{ key: 1, productId: productRows[0].id, qty: 1, price: Number(productRows[0].sellingPrice), discount: 0, discountType: 'amount' }] : [])
@@ -163,6 +189,8 @@ export function NewOrderView() {
 
   const lineDiscount = (line: Line) => line.discountType === 'percent' ? line.qty * line.price * line.discount / 100 : line.discount
   const total = lines.reduce((s, l) => s + l.qty * l.price - lineDiscount(l), 0)
+  const taxValue = Math.max(0, Number(tax) || 0)
+  const invoiceTotal = total + taxValue
   const stockAfterOrder = (productId: string) => {
     const product = productsById.get(productId)
     const quantity = lines.filter((line) => line.productId === productId).reduce((sum, line) => sum + line.qty, 0)
@@ -193,7 +221,7 @@ export function NewOrderView() {
           try {
             const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
             const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-              id: `ORD-${Date.now()}`, businessId: business.id, date: orderDate, customerId, status: 'requested', dueDate: dueDate || null, notes: notes || null, paidAmount: Number(paid || 0), paymentAccount: selectedPaymentAccount, paymentDate: orderDate, paymentId: Number(paid || 0) > 0 ? `PAY-ORD-${Date.now()}` : undefined,
+              businessId: business.id, date: orderDate, customerId, status: 'requested', dueDate: dueDate || null, notes: notes || null, paidAmount: Number(paid || 0), paymentAccount: selectedPaymentAccount, paymentDate: orderDate, taxAmount: taxValue,
               items: lines.map((line) => ({ id: `OI-${Date.now()}-${line.key}`, productId: line.productId, qty: line.qty, price: line.price, discount: line.discount, discountType: line.discountType, unitCost: productsById.get(line.productId)?.averageCost ?? 0 })),
             }) })
             const result = await response.json()
@@ -238,7 +266,7 @@ export function NewOrderView() {
                 return (
                   <li key={l.key} className="rounded-lg border p-3">
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-12">
-                      <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-3">
+                      <div className="col-span-2 flex flex-col gap-1.5 sm:col-span-4">
                         <Label htmlFor={`p-${l.key}`}>{t('common.product')}</Label>
                         <SearchableSelect id={`p-${l.key}`} name={`product-${l.key}`} value={l.productId} onChange={(value) => update(l.key, { productId: String(value), price: productsById.get(String(value))?.sellingPrice ?? 0 })} options={productRows.map((product) => ({ value: product.id, label: product.name, description: `${t('inventory.stock')}: ${productsById.get(product.id)?.stock ?? 0}` }))} placeholder={t('common.select')} searchPlaceholder={t('common.search')} emptyText={t('common.noResults')} required />
                       </div>
@@ -250,9 +278,9 @@ export function NewOrderView() {
                         <Label htmlFor={`pr-${l.key}`}>{t('orders.sellingPrice')}</Label>
                         <Input id={`pr-${l.key}`} name={`price-${l.key}`} type="number" min={0} required className="font-mono" value={l.price} onChange={(e) => update(l.key, { price: Number(e.target.value) })} />
                       </div>
-                      <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-2">
+                      <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-3">
                         <Label>{t('orders.discount')}</Label>
-                        <div className="flex gap-1"><select aria-label="Discount type" className="h-10 w-[76px] rounded-md border bg-background px-2 text-sm" value={l.discountType} onChange={(e) => update(l.key, { discountType: e.target.value as 'amount' | 'percent', discount: 0 })}><option value="amount">Rp</option><option value="percent">%</option></select><Input aria-label="Discount value" type="number" min={0} max={l.discountType === 'percent' ? 100 : l.qty * l.price} step="any" value={l.discount} onChange={(e) => update(l.key, { discount: Number(e.target.value) })} /></div>
+                        <div className="flex min-w-0 gap-1"><select aria-label="Discount type" className="h-10 w-[76px] shrink-0 rounded-md border bg-background px-2 text-sm" value={l.discountType} onChange={(e) => update(l.key, { discountType: e.target.value as 'amount' | 'percent', discount: 0 })}><option value="amount">Rp</option><option value="percent">%</option></select><Input aria-label="Discount value" type="number" min={0} max={l.discountType === 'percent' ? 100 : l.qty * l.price} step="any" className="min-w-0 flex-1" value={l.discount} onChange={(e) => update(l.key, { discount: Number(e.target.value) })} /></div>
                       </div>
                       <div className="flex min-w-0 flex-col gap-1.5 sm:col-span-3"><Label>{t('orders.subtotal')}</Label><div className="flex h-10 min-w-0 items-center"><span title={formatIDR(l.qty * l.price - lineDiscount(l))} className="truncate font-mono text-sm font-semibold tabular-nums">{formatIDR(l.qty * l.price - lineDiscount(l))}</span></div></div>
                       <div className="flex flex-col gap-1.5 sm:col-span-1">
@@ -301,8 +329,16 @@ export function NewOrderView() {
           <SectionCard title={t('orders.paymentSummary')} className="lg:sticky lg:top-20">
             <dl className="flex flex-col gap-2 text-sm">
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">{t('common.total')}</dt>
-                <dd className="font-mono text-lg font-semibold tabular-nums">{formatIDR(total)}</dd>
+                <dt className="text-muted-foreground">{locale === 'id' ? 'Subtotal' : 'Subtotal'}</dt>
+                <dd className="font-mono tabular-nums">{formatIDR(total)}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <dt className="text-muted-foreground">{locale === 'id' ? 'Pajak penjualan (manual)' : 'Sales tax (manual)'}</dt>
+                <dd><Input aria-label="taxAmount" type="number" min={0} step="0.01" className="h-8 w-32 text-right font-mono" value={tax} onChange={(e) => setTax(e.target.value)} /></dd>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <dt className="font-medium">{t('common.total')}</dt>
+                <dd className="font-mono text-lg font-semibold tabular-nums">{formatIDR(invoiceTotal)}</dd>
               </div>
               <div className="flex justify-between text-xs">
                 <dt className="text-muted-foreground">{t('orders.cogs')}</dt>
@@ -316,9 +352,9 @@ export function NewOrderView() {
             <div className="mt-4 flex flex-col gap-3 border-t pt-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="paid">{t('common.paid')}</Label>
-                <Input id="paid" name="paidAmount" type="number" min={0} max={Math.max(total, 0)} className="font-mono" value={paid} onChange={(e) => setPaid(e.target.value)} />
+                <Input id="paid" name="paidAmount" type="number" min={0} max={Math.max(invoiceTotal, 0)} className="font-mono" value={paid} onChange={(e) => setPaid(e.target.value)} />
               </div>
-              {total > 0 && Number(paid || 0) < total && <div className="flex flex-col gap-1.5">
+              {invoiceTotal > 0 && Number(paid || 0) < invoiceTotal && <div className="flex flex-col gap-1.5">
                 <Label htmlFor="due">{t('common.dueDate')}</Label>
                 <Input id="due" name="dueDate" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
               </div>}
@@ -329,7 +365,7 @@ export function NewOrderView() {
               </div>}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('common.outstanding')}</span>
-                <span className="font-mono font-semibold tabular-nums text-warning">{formatIDR(Math.max(total - Number(paid || 0), 0))}</span>
+                <span className="font-mono font-semibold tabular-nums text-warning">{formatIDR(Math.max(invoiceTotal - Number(paid || 0), 0))}</span>
               </div>
             </div>
             <div className="mt-5 flex flex-col gap-2">
@@ -338,7 +374,14 @@ export function NewOrderView() {
                 {lastSaved && <span>{locale === 'id' ? 'Tersimpan' : 'Saved'} {lastSaved.toLocaleTimeString(locale === 'id' ? 'id-ID' : 'en-US', { hour: '2-digit', minute: '2-digit' })}</span>}
               </div>
               <div className="flex gap-2">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => { setPendingNavigation('/orders'); setLeaveOpen(true) }}>
+                <Button type="button" variant="outline" className="flex-1" onClick={() => {
+                  if (draftExists) {
+                    setPendingNavigation('/orders')
+                    setLeaveOpen(true)
+                  } else {
+                    router.push('/orders')
+                  }
+                }}>
                   {t('common.cancel')}
                 </Button>
                 <Button type="submit" className="flex-1" disabled={isSaving || (Number(paid || 0) > 0 && !selectedPaymentAccount)}>{isSaving ? 'Saving…' : (locale === 'id' ? 'Simpan Order' : 'Save Order')}</Button>

@@ -240,35 +240,134 @@
   }
 }
 
-@page {
-  size: A6 portrait;
-  margin: 0;
+/* Page size is emitted per document (see document-preview.tsx) because Chrome
+   only honours explicit lengths; the A6 keyword is unsupported. */
+
+.document-a6 { width: 105mm; min-height: 148mm; padding: 3mm; box-sizing: border-box; font-size: 5.5pt; line-height: 1.05; }
+.document-a6 h1 { font-size: 11pt; }
+.document-a6 table { margin-top: 2mm; font-size: 5.5pt; }
+.document-a6 th, .document-a6 td { padding: 0.3mm; }
+.document-a6 tbody tr { height: auto; }
+.document-a6 section, .document-a6 footer { margin-top: 1mm; }
+.document-a6 dl > * + * { margin-top: 0.6mm; }
+.document-a6 footer > div > div { margin-top: 3mm; }
+.document-a6 > p { margin-top: 1mm; padding-top: 0.5mm; }
+.document-a4 { width: 210mm; min-height: 297mm; padding: 12mm; box-sizing: border-box; }
+
+/* ---- Continuous form (NCR) documents: on-screen preview and print ---- */
+.document-ncr {
+  width: 9.5in;
+  min-height: 5.5in;
+  height: 5.5in;
+  padding: 0.28in 0.35in;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  color: #000;
+  font-family: "Courier New", monospace;
+  font-size: 9pt;
+  line-height: 1.25;
 }
+/* More than ten items: the sheet grows downwards instead of clipping. */
+.document-ncr-expanded { height: auto; }
 
-@page cuan-a6 { size: 105mm 148mm portrait; margin: 0; }
-@page cuan-a4 { size: 210mm 297mm portrait; margin: 0; }
+.continuous-invoice,
+.continuous-delivery {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+.continuous-invoice-expanded,
+.continuous-delivery-expanded { height: auto; }
 
-.document-a6 { page: cuan-a6; width: 105mm; min-height: 148mm; padding: 5mm; box-sizing: border-box; }
-.document-a4 { page: cuan-a4; width: 210mm; min-height: 297mm; padding: 12mm; box-sizing: border-box; }
+.continuous-invoice-header { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 12px; }
+.continuous-invoice-meta { min-width: 40%; line-height: 1.7; }
+.continuous-invoice-recipient { text-align: right; }
+.continuous-invoice-recipient h1 { font-size: 18pt; font-weight: 700; margin: 0 0 6px; }
+.continuous-invoice-recipient p { margin: 2px 0; }
+
+.continuous-invoice-table { width: 100%; border-collapse: collapse; table-layout: fixed; border-top: 1px solid #000; border-bottom: 1px solid #000; }
+.continuous-invoice-table th { border-bottom: 1px solid #000; padding: 3px; text-align: center; font-weight: 700; line-height: 1.15; }
+.continuous-invoice-table td { padding: 1px 3px; vertical-align: top; line-height: 1.15; }
+.continuous-invoice-table .center { text-align: center; }
+.continuous-invoice-table .right { text-align: right; }
+
+/* Two aligned rows: totals and terms on top, both signatures on the same row. */
+.continuous-invoice-footer {
+  margin-top: auto;
+  padding-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1.1fr 1.25fr;
+  grid-template-areas:
+    "blank terms summary"
+    "left blank2 right";
+  column-gap: 12px;
+  row-gap: 6px;
+  align-items: start;
+}
+.continuous-invoice-terms { grid-area: terms; border: 1px solid #000; padding: 6px; text-align: center; font-size: 8pt; }
+.continuous-invoice-summary { grid-area: summary; }
+.continuous-invoice-sign { text-align: center; }
+.continuous-invoice-sign p { margin: 0; }
+.continuous-invoice-sign-left { grid-area: left; }
+.continuous-invoice-sign-right { grid-area: right; }
+.continuous-invoice-signature { width: 190px; height: 30px; margin: 0 auto; border-bottom: 1px solid #000; }
+.continuous-invoice-summary > div:not(.continuous-invoice-total) { display: flex; justify-content: space-between; gap: 8px; padding: 1px 0; }
+.continuous-invoice-total { display: flex; justify-content: space-between; margin-top: 4px; padding: 4px 0; border-top: 3px double #000; border-bottom: 3px double #000; }
+
+.continuous-delivery header { display: flex; flex-direction: column; align-items: flex-end; margin-bottom: 14px; }
+.continuous-delivery header h1 { font-size: 18pt; font-weight: 700; }
+.continuous-delivery table { width: 100%; border-collapse: collapse; border-top: 1px solid #000; border-bottom: 1px solid #000; }
+.continuous-delivery th { border-bottom: 1px solid #000; padding: 4px 3px; }
+.continuous-delivery td { padding: 2px 3px; }
+.continuous-delivery footer { margin-top: auto; padding-top: 14px; display: grid; grid-template-columns: 1fr 1.1fr 1fr; gap: 12px; text-align: center; }
+.continuous-delivery-signature { width: 85%; height: 30px; margin: 0 auto; border-bottom: 1px solid #000; }
+
+/* Print root: the only element left on the printed page. */
+[data-print-root] { display: none; }
 
 @media print {
   html, body { width: auto !important; min-width: 0 !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
-  body * { visibility: hidden !important; }
-  [role="dialog"], [data-radix-portal], [data-slot="dialog-overlay"], [data-slot="dialog-content"] {
-    position: static !important; display: contents !important; transform: none !important; width: auto !important; height: auto !important; max-width: none !important; max-height: none !important; overflow: visible !important; border: 0 !important; box-shadow: none !important; background: transparent !important;
-  }
-  .print-area, .print-area * { visibility: visible !important; }
-  .print-area { position: absolute !important; top: 0 !important; left: 0 !important; margin: 0 !important; overflow: visible !important; background: #fff !important; color: #000 !important; box-shadow: none !important; break-after: avoid !important; break-inside: avoid !important; }
-  .print-area.document-a6 { width: 105mm !important; min-height: 148mm !important; padding: 5mm !important; font-size: 7pt !important; line-height: 1.15 !important; }
+  /* Every body child except the dedicated print root leaves the page flow, so
+     the document starts at the top of page 1 with no trailing blank pages. */
+  body > *:not([data-print-root]) { display: none !important; }
+  [data-print-root] { display: block !important; }
+  .print-area { margin: 0 !important; overflow: visible !important; background: #fff !important; color: #000 !important; box-shadow: none !important; }
+  .print-area.document-a6, .print-area.document-a4 { break-inside: avoid !important; }
+  .print-area.document-a6 { width: 105mm !important; min-height: 148mm !important; padding: 3mm !important; font-size: 5.5pt !important; line-height: 1.05 !important; }
+  .print-area.document-a6 h1 { font-size: 11pt !important; }
   .print-area.document-a4 { width: 210mm !important; min-height: 297mm !important; padding: 12mm !important; font-size: 9pt !important; line-height: 1.25 !important; }
   .print-area table { width: 100% !important; margin-top: 3mm !important; table-layout: fixed !important; }
   .print-area th, .print-area td { padding: 1mm !important; line-height: 1.15 !important; }
-  .print-area.document-a6 table { font-size: 6.5pt !important; }
-  .print-area.document-a6 tbody tr { height: 6mm !important; }
   .print-area.document-a4 table { font-size: 8pt !important; }
   .print-area.document-a4 tbody tr { height: 8mm !important; }
+  /* A6 is a quarter of A4: the whole sheet has to shrink, not just the font. */
+  .print-area.document-a6 table { margin-top: 2mm !important; font-size: 5.5pt !important; }
+  .print-area.document-a6 th, .print-area.document-a6 td { padding: 0.3mm !important; }
+  .print-area.document-a6 tbody tr { height: auto !important; }
+  .print-area.document-a6 section, .print-area.document-a6 footer { margin-top: 1mm !important; }
+  .print-area.document-a6 dl > * + * { margin-top: 0.6mm !important; }
+  .print-area.document-a6 footer > div > div { margin-top: 3mm !important; }
+  .print-area.document-a6 > p { margin-top: 1mm !important; padding-top: 0.5mm !important; }
+  /* Continuous form cells stay tight in print as well. */
+  .print-area .continuous-invoice-table th,
+  .print-area .continuous-invoice-table td { padding: 0.5mm 1mm !important; line-height: 1.1 !important; }
+  /* Long invoices keep a tighter row so extra pages stay full. */
+  .print-area.document-ncr-expanded .continuous-invoice-table th,
+  .print-area.document-ncr-expanded .continuous-invoice-table td { padding: 0.2mm 1mm !important; line-height: 1.05 !important; }
   .print-area section, .print-area footer { break-inside: avoid !important; }
+  .print-area.document-ncr { width: 9.5in !important; min-height: 5.5in !important; padding: 0.28in 0.35in !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  /* Fixed sheet height only for a single-page invoice; longer ones flow. */
+  .print-area.document-ncr:not(.document-ncr-expanded):not(.continuous-placeholder) { height: 5.5in !important; }
+  .print-area .continuous-invoice-expanded,
+  .print-area .continuous-delivery-expanded { break-inside: auto !important; page-break-inside: auto !important; }
+  .print-area .continuous-invoice-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
 }
+
 
 /* Keep the loading indicator visible on both light and dark pages. */
 .cuan-loading-orbit__ring {
@@ -615,6 +714,165 @@ body > * {
   .cuan-loading-spinner { animation-duration: 1.8s; }
 }
 
+/* Landing page module marquee — duplicated list scrolls by half its width. */
+.animate-marquee {
+  animation: marquee 42s linear infinite;
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee { animation: none; transform: none; }
+  html { scroll-behavior: auto; }
+}
+
+/* ---- Auth pages: printed-form treatment, scoped so the app UI is untouched ---- */
+.auth-light [data-slot="input"] {
+  height: 2.75rem;
+  border-radius: 2px;
+  border-color: rgba(16, 26, 38, 0.25);
+  background: #fff;
+  padding-inline: 0.75rem;
+  font-size: 14px;
+  color: #101a26;
+}
+.auth-light [data-slot="input"]::placeholder { color: #5f6b7a; }
+.auth-light [data-slot="input"]:focus-visible {
+  border-color: #0e2a63;
+  box-shadow: inset 0 0 0 1px #0e2a63;
+  --tw-ring-shadow: 0 0 #0000;
+}
+.auth-light [data-slot="input"][aria-invalid="true"] {
+  border-color: #b42318;
+  box-shadow: inset 0 0 0 1px #b42318;
+}
+.auth-light [data-slot="input"]:disabled {
+  background: rgba(16, 26, 38, 0.04);
+  border-color: rgba(16, 26, 38, 0.15);
+  color: #5a6675;
+  opacity: 1;
+}
+.auth-light input:-webkit-autofill,
+.auth-light input:-webkit-autofill:focus {
+  box-shadow: inset 0 0 0 1000px #fcfcfa;
+  -webkit-text-fill-color: #101a26;
+}
+
+/* Page scrollbar. Each engine gets one mechanism: setting scrollbar-width in
+   Chromium 121+ switches off ::-webkit-scrollbar styling, so they are split. */
+html { scrollbar-gutter: stable; }
+
+@supports selector(::-webkit-scrollbar) {
+  html::-webkit-scrollbar { width: 12px; height: 12px; }
+  html::-webkit-scrollbar-track { background: #0e2a63; }
+  html::-webkit-scrollbar-thumb {
+    background: #fcfcfa;
+    border: 3px solid #0e2a63;
+    border-radius: 0;
+  }
+  html::-webkit-scrollbar-thumb:hover { background: #e4e4da; }
+  html::-webkit-scrollbar-corner { background: #0e2a63; }
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: #fcfcfa #0e2a63;
+  }
+}
+
+/* Continuous-form punch holes at a fixed pitch, shared by every sheet. */
+:root { --hole-gap: 46px; }
+.punch-holes {
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    #0e2a63 0 3px,
+    rgba(16, 26, 38, 0.35) 3px 4px,
+    transparent 4px
+  );
+  background-size: 9px var(--hole-gap);
+  background-repeat: repeat-y;
+  background-position: 0 calc(var(--hole-gap) / 2);
+}
+.punch-hole {
+  border-radius: 9999px;
+  background: #0e2a63;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(16, 26, 38, 0.3);
+}
+
+/* ---- Motion tokens and helpers (from the motion spec) ---- */
+:root {
+  --m-fast: 140ms; --m-base: 200ms; --m-slow: 320ms; --m-rise: 10px;
+  --m-ease-out: cubic-bezier(.22,1,.36,1);
+  --m-ease-soft: cubic-bezier(.4,0,.2,1);
+  --m-ease-panel: cubic-bezier(.16,1,.3,1);
+}
+
+/* Hero entrance: 0 / 40 / 110 / 170 / 230 ms */
+@media (prefers-reduced-motion: no-preference) {
+  .m-enter { animation: m-rise-in var(--m-slow) var(--m-ease-out) both; }
+  .m-enter--1 { animation-duration: 240ms; animation-delay: 0ms; }
+  .m-enter--2 { animation-duration: 300ms; animation-delay: 40ms; }
+  .m-enter--3 { animation-duration: 280ms; animation-delay: 110ms; }
+  .m-enter--4 { animation-duration: 240ms; animation-delay: 170ms; }
+  .m-enter--5 { animation-name: m-rise-in-lg; animation-duration: 420ms; animation-delay: 230ms; }
+}
+@keyframes m-rise-in {
+  from { opacity: 0; transform: translate3d(0, var(--m-rise), 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes m-rise-in-lg {
+  from { opacity: 0; transform: translate3d(0, 16px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* Scroll reveal — JS adds data-reveal-ready, so a JS failure never hides copy */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal-ready] { transition: opacity 280ms var(--m-ease-out), transform 280ms var(--m-ease-out); }
+  [data-reveal-ready]:not(.is-in) { opacity: 0; transform: translate3d(0, 12px, 0); }
+  [data-reveal-stagger] > *:nth-child(2) { transition-delay: 60ms; }
+  [data-reveal-stagger] > *:nth-child(3) { transition-delay: 120ms; }
+}
+
+/* Industries carousel */
+.m-track { scroll-behavior: auto; }
+.m-progress { transition: width 150ms linear; }
+.m-card {
+  transition: transform 200ms var(--m-ease-soft), border-color 200ms var(--m-ease-soft),
+              box-shadow 200ms var(--m-ease-soft);
+}
+.m-card:hover { transform: translate3d(0, -2px, 0); }
+.m-arrow { transition: border-color var(--m-fast) var(--m-ease-soft), color var(--m-fast) var(--m-ease-soft); }
+
+/* Settings mockup */
+.m-toggle-track { transition: background-color 180ms var(--m-ease-soft); }
+.m-toggle-knob  { transition: transform 180ms var(--m-ease-soft); }
+.m-chip { transition: background-color 160ms var(--m-ease-soft), border-color 160ms var(--m-ease-soft),
+          color 160ms var(--m-ease-soft); }
+
+/* Solution cards */
+.m-lift { transition: transform 200ms var(--m-ease-soft), box-shadow 200ms var(--m-ease-soft); }
+
+/* Product tour modal */
+.m-overlay { animation: m-fade-in 180ms var(--m-ease-soft) both; }
+.m-panel   { animation: m-panel-in 240ms var(--m-ease-panel) both; }
+@keyframes m-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes m-panel-in {
+  from { opacity: 0; transform: translate3d(0, 8px, 0) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* One switch to turn all of it off */
+@media (prefers-reduced-motion: reduce) {
+  .m-enter, .m-overlay, .m-panel { animation: none !important; }
+  [data-reveal-ready] { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .m-track { scroll-behavior: auto; }
+  .m-progress, .m-card, .m-arrow, .m-toggle-track, .m-toggle-knob, .m-chip, .m-lift { transition: none; }
+  .m-card:hover { transform: none; }
+}
+
 /* Dialogs share consistent breathing room and remain usable on short screens. */
 [data-slot="dialog-content"] {
   max-height: calc(100dvh - 2rem);
@@ -626,4 +884,15 @@ body > * {
 @media (max-width: 639px) {
   [data-slot="dialog-content"] { padding: 1.125rem; }
   [data-slot="dialog-footer"] { margin-inline: -1.125rem; margin-bottom: -1.125rem; padding: 1rem 1.125rem; }
+}
+
+/* Auth card reads as printed paper: overrides the app-wide light-mode card
+   depth system (gradient border + ambient shadow) for these pages only. */
+:root .auth-light [data-slot="card"],
+:root .auth-light [data-slot="card"]:hover {
+  border: 1px solid rgba(16, 26, 38, 0.2) !important;
+  border-color: rgba(16, 26, 38, 0.2) !important;
+  background: #fcfcfa !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
 }

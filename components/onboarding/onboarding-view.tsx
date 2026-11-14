@@ -5,9 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, LoaderCircle, Store, Truck } from 'lucide-react'
 import { appToast as toast } from '@/lib/toast'
-import { LocaleSwitcher } from '@/components/common/locale-switcher'
+import { MeasuredPageFrame } from '@/components/landing/measured-page-frame'
 import { useApp } from '@/components/providers'
-import { Logo } from '@/components/shell/logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -101,29 +100,21 @@ export function OnboardingView() {
   }
 
   return (
-    <main className="min-h-dvh bg-background">
-      <div className="mx-auto flex min-h-dvh max-w-5xl flex-col px-4 sm:px-8">
-        <header className="flex items-center justify-between gap-4 py-5">
-          <Link href="/dashboard" aria-label={t('auth.backToDashboard')} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <Logo />
-          </Link>
-          <LocaleSwitcher />
-        </header>
-
-        <div className="flex flex-1 items-center justify-center pb-10">
-          <Card className="w-full max-w-3xl border-border/80 shadow-xl shadow-black/5">
-            <CardHeader className="gap-3 border-b pb-6">
-              <span className="inline-flex w-fit items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary">
+    <MeasuredPageFrame contentClassName="flex flex-col">
+      <div className="flex flex-1 items-center justify-center px-4 py-6 sm:px-10 sm:py-10">
+          <Card className="w-full max-w-[900px] rounded-none border-[#101A26]/20 bg-[#FCFCFA] shadow-none">
+            <CardHeader className="gap-3 border-b border-[#101A26]/15 px-5 py-5 sm:px-8 sm:py-7">
+              <span className="inline-flex w-fit items-center border border-[#0E2A63]/30 px-2 py-1 font-mono text-[10px] uppercase tracking-[.16em] text-[#0E2A63]">
                 {t('onboarding.badge')}
               </span>
               <div className="grid gap-1.5">
-                <CardTitle role="heading" aria-level={1} className="text-2xl tracking-tight sm:text-3xl">{t('onboarding.title')}</CardTitle>
-                <CardDescription className="max-w-2xl leading-6">{t('onboarding.description')}</CardDescription>
+                <CardTitle role="heading" aria-level={1} className="text-[24px] font-semibold leading-[1.15] tracking-[-.03em] text-[#101A26] sm:text-[30px]">{t('onboarding.title')}</CardTitle>
+                <CardDescription className="max-w-[65ch] text-[13.5px] leading-[1.65] text-[#3C4A5A]">{t('onboarding.description')}</CardDescription>
               </div>
-              <p role="note" className="rounded-lg border bg-muted/50 px-3 py-2 text-xs leading-5 text-muted-foreground">{t('onboarding.note')}</p>
+              <p role="note" className="border-l-2 border-[#0E2A63] bg-[#0E2A63]/[.04] px-3 py-2 text-xs leading-5 text-[#3C4A5A]">{t('onboarding.note')}</p>
             </CardHeader>
 
-            <CardContent aria-busy={isLoading} className="grid gap-6 pt-6">
+            <CardContent aria-busy={isLoading} className="grid gap-6 px-5 py-5 sm:px-8 sm:py-7">
               {!isComplete ? (
                 <>
                   <div className="grid gap-4">
@@ -132,9 +123,9 @@ export function OnboardingView() {
                         <li
                           key={label}
                           aria-current={index === step ? 'step' : undefined}
-                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${index === step ? 'border-primary/40 bg-primary/5 text-foreground' : index < step ? 'border-primary/20 text-primary' : 'text-muted-foreground'}`}
+                          className={`flex items-center gap-2 border px-3 py-2 text-xs ${index === step ? 'border-[#0E2A63]/40 bg-[#0E2A63]/[.04] text-[#101A26]' : index < step ? 'border-[#0E2A63]/20 text-[#0E2A63]' : 'border-[#101A26]/15 text-[#6B7887]'}`}
                         >
-                          <span className="flex size-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold">
+                          <span className="flex size-6 shrink-0 items-center justify-center rounded-[2px] border text-[11px] font-semibold">
                             {index < step ? <Check className="size-3.5" aria-hidden="true" /> : index + 1}
                           </span>
                           <span className="leading-4">{label}</span>
@@ -147,9 +138,9 @@ export function OnboardingView() {
                       aria-valuemin={0}
                       aria-valuemax={100}
                       aria-valuenow={percent}
-                      className="h-1.5 overflow-hidden rounded-full bg-muted"
+                      className="h-1 overflow-hidden bg-[#101A26]/10"
                     >
-                      <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${percent}%` }} />
+                      <div className="h-full bg-[#0E2A63] transition-[width] duration-300" style={{ width: `${percent}%` }} />
                     </div>
                   </div>
 
@@ -165,7 +156,7 @@ export function OnboardingView() {
                           { value: 'sales' as const, label: t('onboarding.salesType'), description: t('onboarding.salesTypeDescription'), icon: Truck },
                           { value: 'bakery' as const, label: t('onboarding.bakeryType'), description: t('onboarding.bakeryTypeDescription'), icon: Store },
                         ]).map(({ value, label, description, icon: Icon }) => (
-                          <label key={value} className={`relative flex cursor-pointer gap-3 rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-ring/60 ${businessType === value ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/50'}`}>
+                          <label key={value} className={`relative flex cursor-pointer gap-3 rounded-[2px] border p-4 transition-colors focus-within:ring-2 focus-within:ring-[#0E2A63]/60 ${businessType === value ? 'border-[#0E2A63] bg-[#0E2A63]/[.04]' : 'border-[#101A26]/20 hover:bg-[#101A26]/[.02]'}`}>
                             <input
                               type="radio"
                               name="businessType"
@@ -177,7 +168,7 @@ export function OnboardingView() {
                               }}
                               className="sr-only"
                             />
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-[2px] bg-[#0E2A63]/[.08] text-[#0E2A63]">
                               <Icon aria-hidden="true" />
                             </span>
                             <span className="grid gap-1">
@@ -199,7 +190,7 @@ export function OnboardingView() {
                       </div>
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="grid gap-1.5">
-                          <Label htmlFor="onboarding-business-name">{t('onboarding.businessName')}</Label>
+                          <Label htmlFor="onboarding-business-name" className="font-mono text-[10px] uppercase tracking-[.16em] text-[#3C4A5A]">{t('onboarding.businessName')}</Label>
                           <Input
                             id="onboarding-business-name"
                             required
@@ -215,7 +206,7 @@ export function OnboardingView() {
                           {error && <p id="onboarding-name-error" role="alert" className="text-xs text-destructive">{error}</p>}
                         </div>
                         <div className="grid gap-1.5">
-                          <Label htmlFor="onboarding-city">{t('onboarding.city')}</Label>
+                          <Label htmlFor="onboarding-city" className="font-mono text-[10px] uppercase tracking-[.16em] text-[#3C4A5A]">{t('onboarding.city')}</Label>
                           <Input id="onboarding-city" value={city} placeholder={t('onboarding.cityPlaceholder')} onChange={(event) => setCity(event.target.value)} />
                         </div>
                       </div>
@@ -231,7 +222,7 @@ export function OnboardingView() {
                       <fieldset className="grid gap-3 sm:grid-cols-3">
                         <legend className="sr-only">{t(businessType === 'sales' ? 'onboarding.workflowSales' : 'onboarding.workflowBakery')}</legend>
                         {workflowChoices.map((choice) => (
-                          <label key={choice.value} className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors focus-within:ring-2 focus-within:ring-ring/60 ${workflow === choice.value ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-muted/50'}`}>
+                          <label key={choice.value} className={`flex cursor-pointer items-center gap-3 rounded-[2px] border px-4 py-3 transition-colors focus-within:ring-2 focus-within:ring-[#0E2A63]/60 ${workflow === choice.value ? 'border-[#0E2A63] bg-[#0E2A63]/[.04]' : 'border-[#101A26]/20 hover:bg-[#101A26]/[.02]'}`}>
                             <input
                               type="radio"
                               name="workflow"
@@ -253,7 +244,7 @@ export function OnboardingView() {
                         <h2 id="onboarding-review-title" className="text-lg font-semibold">{t('onboarding.reviewSummary')}</h2>
                         <p className="text-sm text-muted-foreground">{t('onboarding.reviewDescription')}</p>
                       </div>
-                      <dl className="grid gap-3 rounded-xl border bg-muted/30 p-4 sm:grid-cols-2">
+                      <dl className="grid gap-3 border border-[#101A26]/15 bg-[#101A26]/[.02] p-4 sm:grid-cols-2">
                         <div className="grid gap-1">
                           <dt className="text-xs text-muted-foreground">{t('onboarding.businessTypeLabel')}</dt>
                           <dd className="text-sm font-medium">{t(businessType === 'sales' ? 'onboarding.salesType' : 'onboarding.bakeryType')}</dd>
@@ -276,7 +267,7 @@ export function OnboardingView() {
                 </>
               ) : (
                 <section aria-labelledby="onboarding-complete-title" className="grid justify-items-center gap-4 py-8 text-center">
-                  <span className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <span className="flex size-14 items-center justify-center rounded-[2px] bg-[#0E2A63]/[.08] text-[#0E2A63]">
                     <CheckCircle2 className="size-7" aria-hidden="true" />
                   </span>
                   <div className="grid max-w-lg gap-2">
@@ -295,7 +286,7 @@ export function OnboardingView() {
             </CardContent>
 
             {!isComplete && (
-              <CardFooter className="flex-col items-stretch gap-3 border-t pt-5 sm:flex-row sm:justify-between">
+              <CardFooter className="flex-col items-stretch gap-3 border-t border-[#101A26]/15 px-5 py-4 sm:flex-row sm:justify-between sm:px-8">
                 <div>
                   {step === 0 ? (
                     <Button variant="ghost" disabled={isLoading} nativeButton={false} render={<Link href="/register" />}>
@@ -328,9 +319,8 @@ export function OnboardingView() {
               </CardFooter>
             )}
           </Card>
-        </div>
       </div>
-    </main>
+    </MeasuredPageFrame>
   )
 }
 

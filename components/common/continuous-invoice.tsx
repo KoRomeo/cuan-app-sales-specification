@@ -1,6 +1,5 @@
 'use client'
 
-import type { CSSProperties } from 'react'
 import type { Order } from '@/lib/data'
 import { formatDate, formatIDR } from '@/lib/format'
 import { lineSubtotal, orderTotal } from '@/lib/data'
@@ -19,11 +18,9 @@ export function ContinuousInvoice({
   const grossSubtotal = order.items.reduce((sum, item) => sum + Number(item.qty) * Number(item.price), 0)
   const lineDiscount = order.items.reduce((sum, item) => sum + Math.max(0, Number(item.qty) * Number(item.price) - lineSubtotal(item)), 0)
   const expanded = order.items.length > 10
-  const height = 5.5 + Math.max(0, order.items.length - 10) * 0.25
-  const style = { '--invoice-height': `${height}in` } as CSSProperties
 
   return (
-    <article className={`continuous-invoice ${expanded ? 'continuous-invoice-expanded' : ''}`} style={style}>
+    <article className={`continuous-invoice ${expanded ? 'continuous-invoice-expanded' : ''}`}>
       <header className="continuous-invoice-header">
         <div className="continuous-invoice-meta">
           <div>No. Faktur: <strong>{order.id}</strong></div>
@@ -72,10 +69,6 @@ export function ContinuousInvoice({
       </table>
 
       <footer className="continuous-invoice-footer">
-        <div className="continuous-invoice-receipt">
-          <p>Tanda Terima,</p>
-          <div className="continuous-invoice-signature" />
-        </div>
         <div className="continuous-invoice-terms">
           Barang yang sudah dibeli tidak dapat ditukar/dikembalikan
         </div>
@@ -85,10 +78,14 @@ export function ContinuousInvoice({
           <div><span>Disc 2</span><span>—</span></div>
           <div><span>Disc 3</span><span>—</span></div>
           <div className="continuous-invoice-total"><strong>TOTAL</strong><strong>{formatIDR(orderTotal(order))}</strong></div>
-          <div className="continuous-invoice-company">
-            <p>Hormat kami,</p>
-            <div className="continuous-invoice-signature" />
-          </div>
+        </div>
+        <div className="continuous-invoice-sign continuous-invoice-sign-left">
+          <p>Tanda Terima,</p>
+          <div className="continuous-invoice-signature" />
+        </div>
+        <div className="continuous-invoice-sign continuous-invoice-sign-right">
+          <p>Hormat kami,</p>
+          <div className="continuous-invoice-signature" />
         </div>
       </footer>
     </article>

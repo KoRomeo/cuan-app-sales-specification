@@ -1,0 +1,2 @@
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "tax_amount" numeric(14, 2) DEFAULT '0' NOT NULL;--> statement-breakpoint
+ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "costing_method" text DEFAULT 'average' NOT NULL;

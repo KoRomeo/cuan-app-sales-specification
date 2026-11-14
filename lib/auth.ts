@@ -17,7 +17,14 @@ const productionOrigins = [
     : undefined,
 ].filter((value): value is string => Boolean(value));
 
+const authSecret = process.env.BETTER_AUTH_SECRET;
+
+if (process.env.NODE_ENV === "production" && (!authSecret || authSecret.length < 32)) {
+  throw new Error("BETTER_AUTH_SECRET must be set to at least 32 characters in production.");
+}
+
 export const auth = betterAuth({
+  secret: authSecret,
   database: drizzleAdapter(db, { provider: "pg", schema }),
   emailAndPassword: { enabled: true },
   baseURL:

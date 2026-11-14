@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { DataTable, IdCell, Money, type Column } from '@/components/common/data-table'
 import { Button } from '@/components/ui/button'
 import { DocumentPreview } from '@/components/common/document-preview'
+import { PrintRoot } from '@/components/common/print-root'
 import { FormDialog } from '@/components/common/form-dialog'
 import { KpiCard, KpiGrid } from '@/components/common/kpi-card'
 import { PageHeader } from '@/components/common/page-header'
@@ -365,9 +366,10 @@ export function InvoicesView() {
           rowHref={(o) => `/orders/${o.id}`} editable={false} deletable={false}
           contextActions={(o) => [{ label: t('common.preview'), icon: Printer, onSelect: () => setPreview(o) }]} />
       </>}
-      {selectedInvoiceIds.length > 0 && (
+      {selectedInvoiceIds.length > 0 && !preview && (
+        <PrintRoot>
         <div className="batch-invoice-print" aria-hidden="true">
-          <style>{`@page { size: A4 portrait; margin: 0; } @media print { body * { visibility: hidden !important; } .batch-invoice-print, .batch-invoice-print * { visibility: visible !important; } .batch-invoice-print { display: block !important; position: absolute; inset: 0; width: 210mm; } .batch-invoice-sheet { display: grid !important; width: 210mm; height: 297mm; grid-template-columns: 105mm 105mm; grid-template-rows: 148.5mm 148.5mm; overflow: hidden; break-after: page; page-break-after: always; } .batch-invoice-card { width: 105mm; height: 148.5mm; box-sizing: border-box; padding: 7mm; overflow: hidden; break-inside: avoid; page-break-inside: avoid; } }`}</style>
+          <style>{`@page { size: A4 portrait; margin: 0; } @media print { .batch-invoice-print { display: block !important; width: 210mm; } .batch-invoice-sheet { display: grid !important; width: 210mm; height: 297mm; grid-template-columns: 105mm 105mm; grid-template-rows: 148.5mm 148.5mm; overflow: hidden; break-after: page; page-break-after: always; } .batch-invoice-card { width: 105mm; height: 148.5mm; box-sizing: border-box; padding: 7mm; overflow: hidden; break-inside: avoid; page-break-inside: avoid; } }`}</style>
           {Array.from({ length: Math.ceil(selectedInvoiceIds.length / 4) }, (_, sheetIndex) => (
             <div key={sheetIndex} className="batch-invoice-sheet hidden print:grid">
               {invoices.filter((invoice) => selectedInvoiceIds.slice(sheetIndex * 4, sheetIndex * 4 + 4).includes(invoice.id)).map((invoice) => (
@@ -385,6 +387,7 @@ export function InvoicesView() {
             </div>
           ))}
         </div>
+        </PrintRoot>
       )}
       {preview && <DocumentPreview order={preview} kind="invoice" open onOpenChange={(v) => !v && setPreview(null)} customerOverride={customerMap.get(preview.customerId)} productNames={Object.fromEntries([...productMap.entries()].map(([id, product]) => [id, product.name]))} />}
     </>

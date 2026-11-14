@@ -15,8 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { SearchableSelect } from '@/components/common/searchable-select'
 import { appToast as toast } from '@/lib/toast'
-import { TODAY } from '@/lib/data'
-import { formatIDR } from '@/lib/format'
+import { formatIDR, todayISODate } from '@/lib/format'
 
 const fetcher = async (url: string) => {
   const response = await fetch(url)
@@ -56,7 +55,7 @@ export function NewReturnView() {
   const refundCustomer = returnMode === 'refund' ? 'yes' : 'no'
   const [refundAmount, setRefundAmount] = useState('0')
   const [refundAccount, setRefundAccount] = useState('')
-  const [returnDate, setReturnDate] = useState(TODAY)
+  const [returnDate, setReturnDate] = useState(todayISODate())
   const [notes, setNotes] = useState('')
   const [lines, setLines] = useState<Line[]>([{ key: 1, productId: '', qty: 1 }])
   const [saving, setSaving] = useState(false)

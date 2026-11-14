@@ -10,7 +10,7 @@ export async function GET() {
   if (!session?.user) return NextResponse.json({ error: "Authentication required" }, { status: 401 })
 
   const [membership] = await db
-    .select({ id: businesses.id, name: businesses.name, type: businesses.type, role: businessMembers.role })
+    .select({ id: businesses.id, name: businesses.name, type: businesses.type, costingMethod: businesses.costingMethod, role: businessMembers.role })
     .from(businessMembers)
     .innerJoin(businesses, eq(businesses.id, businessMembers.businessId))
     .where(eq(businessMembers.userId, session.user.id))
@@ -25,9 +25,17 @@ export async function PATCH(request: Request) {
   if (!session?.user) return NextResponse.json({ error: "Authentication required" }, { status: 401 })
 
   const body = await request.json().catch(() => null)
-  const name = typeof body?.name === "string" ? body.name.trim() : ""
-  if (!name || name.length > 120) {
+  const name = typeof body?.name === "string" ? body.name.trim() : undefined
+  // "average" (moving average) is the implemented default; "fifo" is stored but not yet implemented.
+  const costingMethod = typeof body?.costingMethod === "string" ? body.costingMethod : undefined
+  if (name !== undefined && (!name || name.length > 120)) {
     return NextResponse.json({ error: "Business name must be between 1 and 120 characters" }, { status: 400 })
+  }
+  if (costingMethod !== undefined && !["average", "fifo"].includes(costingMethod)) {
+    return NextResponse.json({ error: "costingMethod must be average or fifo" }, { status: 400 })
+  }
+  if (name === undefined && costingMethod === undefined) {
+    return NextResponse.json({ error: "Provide a business name or costingMethod" }, { status: 400 })
   }
 
   const [membership] = await db
@@ -41,9 +49,9 @@ export async function PATCH(request: Request) {
 
   const [updated] = await db
     .update(businesses)
-    .set({ name })
+    .set({ ...(name !== undefined ? { name } : {}), ...(costingMethod !== undefined ? { costingMethod } : {}) })
     .where(eq(businesses.id, membership.id))
-    .returning({ id: businesses.id, name: businesses.name, type: businesses.type })
+    .returning({ id: businesses.id, name: businesses.name, type: businesses.type, costingMethod: businesses.costingMethod })
 
   return NextResponse.json(updated)
 }

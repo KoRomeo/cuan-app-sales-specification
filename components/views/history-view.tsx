@@ -6,7 +6,6 @@ import useSWR from 'swr'
 import { PageHeader } from '@/components/common/page-header'
 import { Pill } from '@/components/common/status-badge'
 import { useApp } from '@/components/providers'
-import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/format'
 import { translateAccountName, translateExpenseCategory, type TranslationKey } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -181,8 +180,22 @@ export function HistoryView() {
               const open = openId === h.id
               return (
                 <Fragment key={h.id}>
-                  <tr className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="px-4 py-3 font-mono text-xs font-medium text-primary">{h.id}</td>
+                  <tr
+                    tabIndex={0}
+                    aria-expanded={open}
+                    aria-controls={`history-changes-${h.id}`}
+                    onClick={() => setOpenId(open ? null : h.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        setOpenId(open ? null : h.id)
+                      }
+                    }}
+                    className="cursor-pointer border-b last:border-0 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                  >
+                    <td className="max-w-[220px] px-4 py-3">
+                      <span className="block truncate font-mono text-xs font-medium text-primary" title={h.id}>{h.id}</span>
+                    </td>
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{formatDate(h.date)}</td>
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{h.time}</td>
                     <td className="px-4 py-3">{pageLabelKeys[h.page] ? t(pageLabelKeys[h.page]!) : h.page}</td>
@@ -191,9 +204,10 @@ export function HistoryView() {
                     </td>
                     <td className="px-4 py-3">{h.user}</td>
                     <td className="px-4 py-3">
-                      <Button variant="ghost" size="icon-sm" aria-expanded={open} aria-controls={`history-changes-${h.id}`} aria-label={t(open ? 'history.hideChanges' : 'history.toggleChanges', { id: h.id })} onClick={() => setOpenId(open ? null : h.id)}>
+                      <span className="flex items-center justify-end gap-1 text-muted-foreground">
+                        <span className="sr-only">{t(open ? 'history.hideChanges' : 'history.toggleChanges', { id: h.id })}</span>
                         <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} aria-hidden="true" />
-                      </Button>
+                      </span>
                     </td>
                   </tr>
                   {open && (

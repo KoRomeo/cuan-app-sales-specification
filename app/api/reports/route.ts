@@ -11,6 +11,12 @@ import { requireBusinessAccess } from "@/lib/api-auth"
 const validDate = (value: string | null) => !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value + "T00:00:00Z"))
 const within = (date: string, from: string, to: string) => date >= from && date <= to
 const num = (value: unknown) => Number(value ?? 0)
+// Line total honours percent vs amount discounts; purchase totals round once like the ledger does.
+const lineTotal = (qty: number, price: number, discount: number, discountType: string) => { const gross = qty * price; return Math.max(0, gross - (discountType === "percent" ? gross * discount / 100 : discount)) }
+const purchaseTotalOf = (purchase: { totalOverride: unknown }, items: Array<{ qty: number; unitCost: unknown; discount: unknown; discountType: string }>) =>
+  purchase.totalOverride != null
+    ? num(purchase.totalOverride)
+    : Math.ceil(items.reduce((s, i) => s + lineTotal(i.qty, num(i.unitCost), num(i.discount), i.discountType), 0) - 1e-9)
 
 export async function GET(request: Request) {
   try {
@@ -56,7 +62,9 @@ export async function GET(request: Request) {
     }
     const sales = orderRows.filter(o => within(o.date, from!, to!) && o.status !== "cancelled").map(o => {
       const items = orderLineRows.filter(i => i.orderId === o.id)
-      const total = items.reduce((s, i) => s + i.qty * num(i.price) - num(i.discount), 0)
+      const subtotal = items.reduce((s, i) => s + lineTotal(i.qty, num(i.price), num(i.discount), i.discountType), 0)
+      const tax = num(o.taxAmount)
+      const invoiceTotal = subtotal + tax
       const cogs = items.reduce((s, i) => s + i.qty * num(i.unitCost), 0)
       const linkedReturns = returnRows.filter((r) => r.orderId === o.id && within(r.date, from!, to!))
       const linkedReturnIds = new Set(linkedReturns.map((r) => r.id))
@@ -68,15 +76,15 @@ export async function GET(request: Request) {
       const refundTotal = linkedReturns.reduce((sum, r) => sum + num(r.refundAmount), 0)
       const returnedCogs = linkedJournalLines.filter((line) => line.account === "Cost of Goods Sold").reduce((sum, line) => sum + num(line.credit) - num(line.debit), 0)
       const replacementCost = linkedJournalLines.filter((line) => line.account === "Replacement Cost").reduce((sum, line) => sum + num(line.debit) - num(line.credit), 0) + linkedReplacementLines.filter((line) => line.account === "Cost of Goods Sold").reduce((sum, line) => sum + num(line.debit) - num(line.credit), 0)
-      const netRevenue = total - refundTotal
+      const netRevenue = subtotal - refundTotal
       const netCogs = cogs - returnedCogs
-      return { id: o.id, date: o.date, customer: customerMap.get(o.customerId) ?? o.customerId, customerId: o.customerId, status: o.status, total, refundTotal, netRevenue, cogs, netCogs, replacementCost, grossProfit: netRevenue - netCogs - replacementCost, paid: orderPayments.get(o.id) ?? 0, outstanding: Math.max(0, total - (orderPayments.get(o.id) ?? 0)), returnCount: linkedReturns.length, items: items.map(i => ({ productId: i.productId, product: productMap.get(i.productId)?.name ?? i.productId, qty: i.qty, price: num(i.price), total: i.qty * num(i.price) - num(i.discount) })) }
+      return { id: o.id, date: o.date, customer: customerMap.get(o.customerId) ?? o.customerId, customerId: o.customerId, status: o.status, total: subtotal, tax, invoiceTotal, refundTotal, netRevenue, cogs, netCogs, replacementCost, grossProfit: netRevenue - netCogs - replacementCost, paid: orderPayments.get(o.id) ?? 0, outstanding: Math.max(0, invoiceTotal - (orderPayments.get(o.id) ?? 0)), returnCount: linkedReturns.length, items: items.map(i => ({ productId: i.productId, product: productMap.get(i.productId)?.name ?? i.productId, qty: i.qty, price: num(i.price), total: lineTotal(i.qty, num(i.price), num(i.discount), i.discountType) })) }
     })
-    const purchaseReport = purchaseRows.filter(p => within(p.date, from!, to!)).map(p => {
+    const purchaseReport = purchaseRows.filter(p => within(p.date, from!, to!) && p.status !== "cancelled").map(p => {
       const items = purchaseLineRows.filter(i => i.purchaseId === p.id)
-      const total = items.reduce((s, i) => s + i.qty * num(i.unitCost), 0)
+      const total = purchaseTotalOf(p, items)
       const paid = purchasePayments.get(p.id) ?? 0
-      return { id: p.id, date: p.date, supplier: supplierMap.get(p.supplierId) ?? p.supplierId, supplierId: p.supplierId, total, paid, outstanding: Math.max(0, total - paid), items: items.map(i => ({ productId: i.productId, product: productMap.get(i.productId)?.name ?? i.productId, qty: i.qty, unitCost: num(i.unitCost), total: i.qty * num(i.unitCost) })) }
+      return { id: p.id, date: p.date, supplier: supplierMap.get(p.supplierId) ?? p.supplierId, supplierId: p.supplierId, total, paid, outstanding: Math.max(0, total - paid), items: items.map(i => ({ productId: i.productId, product: productMap.get(i.productId)?.name ?? i.productId, qty: i.qty, unitCost: num(i.unitCost), total: lineTotal(i.qty, num(i.unitCost), num(i.discount), i.discountType) })) }
     })
     const inventory = productRows.map(p => {
       const stock = movementRows.filter(m => m.productId === p.id).reduce((s, m) => s + m.qty, 0)
@@ -111,15 +119,15 @@ export async function GET(request: Request) {
       return { id: r.id, date: r.date, orderId: r.orderId, total: num(r.total), refundAmount: num(r.refundAmount), replacementCost, stockReturned: r.stockReturned, notes: r.notes }
     })
     const purchaseTotal = purchaseReport.reduce((s,p)=>s+p.total,0)
-    const receivables = orderRows.filter(o=>o.status!=="cancelled").reduce((s,o)=>{const total=orderLineRows.filter(i=>i.orderId===o.id).reduce((n,i)=>n+i.qty*num(i.price)-num(i.discount),0);return s+Math.max(0,total-(orderPayments.get(o.id)??0))},0)
-    const payables = purchaseRows.reduce((s,p)=>{const total=purchaseLineRows.filter(i=>i.purchaseId===p.id).reduce((n,i)=>n+i.qty*num(i.unitCost),0);return s+Math.max(0,total-(purchasePayments.get(p.id)??0))},0)
+    const receivables = orderRows.filter(o=>o.status!=="cancelled").reduce((s,o)=>{const subtotal=orderLineRows.filter(i=>i.orderId===o.id).reduce((n,i)=>n+lineTotal(i.qty,num(i.price),num(i.discount),i.discountType),0);const invoiceTotal=subtotal+num(o.taxAmount);return s+Math.max(0,invoiceTotal-(orderPayments.get(o.id)??0))},0)
+    const payables = purchaseRows.filter(p=>p.status!=="cancelled").reduce((s,p)=>{const total=purchaseTotalOf(p,purchaseLineRows.filter(i=>i.purchaseId===p.id));return s+Math.max(0,total-(purchasePayments.get(p.id)??0))},0)
     const cashIn = paymentsReport.filter(p=>p.kind==="receivable").reduce((s,p)=>s+p.amount,0)
     const refundCashOut = returnsReport.reduce((sum, item) => sum + item.refundAmount, 0)
     const cashOut = paymentsReport.filter(p=>p.kind==="payable").reduce((s,p)=>s+p.amount,0)+expensesTotal+refundCashOut
     const periodJournals = entries.flatMap(e=>e.lines.map(l=>({entryId:e.id,date:e.date,kind:e.kind,reference:e.reference,description:e.description,account:l.account,debit:l.debit,credit:l.credit})))
     return NextResponse.json({
-      range:{from,to}, summary:{grossSales:grossRevenue,salesReturns,sales:revenue,orders:sales.length,averageOrder:sales.length?revenue/sales.length:0,cogs,grossProfit:revenue-cogs-replacementCost,transport:transportTotal,replacementCost,expenses:expensesTotal,netProfit:revenue-cogs-transportTotal-replacementCost-expensesTotal,purchases:purchaseTotal,receivables,payables,cashIn,cashOut,refundCashOut,netCash:cashIn-cashOut,inventoryValue:inventory.reduce((s,p)=>s+p.stockValue,0),negativeStock:inventory.filter(p=>p.stock<0).length,lowStock:inventory.filter(p=>p.status==="low").length},
-      sales,returns:returnsReport,purchases:purchaseReport,inventory,payments:paymentsReport,expenses:expenseReport,deliveries:deliveriesReport,replacements:replacementsReport,journals:entries,ledger:periodJournals,history,
+      range:{from,to}, summary:{grossSales:grossRevenue,salesReturns,sales:revenue,orders:sales.length,averageOrder:sales.length?revenue/sales.length:0,cogs,grossProfit:revenue-cogs-replacementCost,transport:transportTotal,replacementCost,expenses:expensesTotal,netProfit:revenue-cogs-transportTotal-replacementCost-expensesTotal,purchases:purchaseTotal,taxCollected:sales.reduce((s,o)=>s+o.tax,0),receivables,payables,cashIn,cashOut,refundCashOut,netCash:cashIn-cashOut,inventoryValue:inventory.reduce((s,p)=>s+p.stockValue,0),negativeStock:inventory.filter(p=>p.stock<0).length,lowStock:inventory.filter(p=>p.status==="low").length},
+      sales,salesTax:sales.map(o=>({id:o.id,date:o.date,customer:o.customer,tax:o.tax,invoiceTotal:o.invoiceTotal})),returns:returnsReport,purchases:purchaseReport,inventory,payments:paymentsReport,expenses:expenseReport,deliveries:deliveriesReport,replacements:replacementsReport,journals:entries,ledger:periodJournals,history,
     })
   } catch (error) {
     console.error("GET /api/reports", error)

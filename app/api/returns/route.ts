@@ -24,7 +24,22 @@ export async function GET(request: Request) {
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
     const rows = await db.select().from(returns).where(eq(returns.businessId, businessId)).orderBy(desc(returns.date))
     const items = rows.length ? await db.select().from(returnItems).where(inArray(returnItems.returnId, rows.map((row) => row.id))) : []
-    return NextResponse.json(rows.map((row) => ({ ...row, items: items.filter((item) => item.returnId === row.id) })))
+    const entryIds = rows.map((row) => `JE-${row.id}`)
+    const journalLines = entryIds.length
+      ? await db.select({ journalEntryId: journalEntryLines.journalEntryId, account: journalEntryLines.account, debit: journalEntryLines.debit, credit: journalEntryLines.credit }).from(journalEntryLines).where(inArray(journalEntryLines.journalEntryId, entryIds))
+      : []
+    const stockValueByReturn = new Map<string, number>()
+    const replacementCostByReturn = new Map<string, number>()
+    for (const line of journalLines) {
+      if (line.account === "Inventory" && Number(line.debit) > Number(line.credit)) stockValueByReturn.set(line.journalEntryId, Number(line.debit) - Number(line.credit))
+      if (line.account === "Replacement Cost") replacementCostByReturn.set(line.journalEntryId, (replacementCostByReturn.get(line.journalEntryId) ?? 0) + Number(line.debit) - Number(line.credit))
+    }
+    return NextResponse.json(rows.map((row) => ({
+      ...row,
+      stockValue: stockValueByReturn.get(`JE-${row.id}`) ?? 0,
+      replacementCost: replacementCostByReturn.get(`JE-${row.id}`) ?? 0,
+      items: items.filter((item) => item.returnId === row.id),
+    })))
   } catch (error) {
     console.error("GET /api/returns", error)
     return NextResponse.json({ error: "Failed to load returns" }, { status: 500 })

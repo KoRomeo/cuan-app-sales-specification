@@ -23,3 +23,5 @@ coverage/
 .env*
 !.env.example
 .obsidian
+.env.development
+.github
