@@ -9,8 +9,7 @@ import { PageHeader } from '@/components/common/page-header'
 import { SectionCard } from '@/components/common/section-card'
 import { useApp } from '@/components/providers'
 import { appToast as toast } from '@/lib/toast'
-import { formatIDR } from '@/lib/format'
-import { TODAY } from '@/lib/data'
+import { formatIDR, todayISODate } from '@/lib/format'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -34,7 +33,7 @@ export function NewPurchaseView() {
   const { data: stockRows } = useSWR<StockRow[]>(business?.id ? '/api/stock?businessId='+encodeURIComponent(business.id) : null, fetcher)
   const { data: financialAccounts } = useSWR<FinancialAccountRow[]>(business?.id ? '/api/financial-accounts?businessId='+encodeURIComponent(business.id) : null, fetcher)
   const [supplierId,setSupplierId] = useState('')
-  const [date,setDate] = useState(TODAY)
+  const [date,setDate] = useState(todayISODate())
   const [dueDate,setDueDate] = useState('')
   const [notes,setNotes] = useState('')
   const [paid,setPaid] = useState('0')

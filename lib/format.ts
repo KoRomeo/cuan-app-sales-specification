@@ -23,3 +23,8 @@ export function formatDate(iso: string | null) {
 export function formatPercent(value: number) {
   return `${value.toFixed(1).replace('.', ',')}%`
 }
+
+/* Real calendar day in the user's timezone, e.g. 2026-11-14. */
+export function todayISODate() {
+  return new Date().toLocaleDateString('en-CA')
+}

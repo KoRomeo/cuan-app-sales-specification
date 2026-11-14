@@ -239,21 +239,18 @@ export function StockView() {
       </span>
     ) },
     { key: 'stock', header: t('stock.current'), align: 'right', sortValue: (p) => p.stock, cell: (p) => <span className={`font-mono text-base font-semibold tabular-nums ${p.stock < 0 ? 'text-destructive' : p.stock === 0 ? 'text-muted-foreground' : ''}`}>{p.stock}</span> },
-    { key: 'min', header: t('products.minimumStock'), align: 'right', cell: (p) => <span className="font-mono tabular-nums text-muted-foreground">{p.minimumStock}</span> },
-    {
-      key: 'level',
-      header: '',
-      sortable: false,
-      cell: (p) => {
-        const pct = p.minimumStock ? Math.max(0, Math.min((p.stock / (p.minimumStock * 2)) * 100, 100)) : p.stock > 0 ? 100 : 0
-        const color = p.stock < 0 ? 'bg-destructive' : stockStatusOf(p) === 'low' ? 'bg-warning' : 'bg-success'
-        return (
-          <div className="h-1.5 w-28 overflow-hidden rounded-full bg-muted" aria-hidden="true">
-            <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
-          </div>
-        )
-      },
-    },
+    { key: 'min', header: t('products.minimumStock'), align: 'right', cell: (p) => {
+      const pct = p.minimumStock ? Math.max(0, Math.min((p.stock / (p.minimumStock * 2)) * 100, 100)) : p.stock > 0 ? 100 : 0
+      const color = p.stock < 0 ? 'bg-destructive' : stockStatusOf(p) === 'low' ? 'bg-warning' : 'bg-success'
+      return (
+        <span className="flex items-center justify-end gap-2">
+          <span className="font-mono tabular-nums text-muted-foreground">{p.minimumStock}</span>
+          <span className="h-1.5 w-20 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+            <span className={`block h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+          </span>
+        </span>
+      )
+    } },
     { key: 'avg', header: t('products.averageCost'), align: 'right', cell: (p) => <Money value={p.averageCost} className="text-muted-foreground" /> },
     { key: 'value', header: t('stock.value'), align: 'right', cell: (p) => <Money value={Math.max(p.stock, 0) * p.averageCost} /> },
     { key: 'status', header: t('stock.stockStatus'), sortValue: (p) => stockStatusOf(p), cell: (p) => <StockStatusBadge status={stockStatusOf(p)} /> },
