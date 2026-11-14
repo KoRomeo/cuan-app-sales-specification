@@ -10,11 +10,11 @@ import { useApp } from '@/components/providers'
 import { Button } from '@/components/ui/button'
 import { formatIDR, formatNumber } from '@/lib/format'
 
-type ReportTab = 'sales' | 'purchases' | 'inventory' | 'financial' | 'receivables' | 'delivery' | 'history'
+type ReportTab = 'sales' | 'purchases' | 'inventory' | 'financial' | 'receivables' | 'delivery' | 'tax' | 'history'
 type ReportData = {
   summary: Record<string, number>
   sales: any[]; purchases: any[]; inventory: any[]; payments: any[]; expenses: any[]
-  deliveries: any[]; replacements: any[]; journals: any[]; ledger: any[]; history: any[]
+  deliveries: any[]; replacements: any[]; journals: any[]; ledger: any[]; history: any[]; salesTax: any[]
 }
 const businessFetcher = async (url: string): Promise<{id:string}> => { const response = await fetch(url); if (!response.ok) throw new Error('Unable to load business'); return response.json() }
 const fetcher = async (url: string): Promise<ReportData> => {
@@ -26,11 +26,11 @@ const todayISO = () => {
   const d = new Date()
   return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-')
 }
-const monthStart = () => todayISO().slice(0,8) + '01'
+const yearStart = () => todayISO().slice(0,4) + '-01-01'
 const tabs: {id: ReportTab; label: string}[] = [
   {id:'sales',label:'Sales'}, {id:'purchases',label:'Purchases'}, {id:'inventory',label:'Inventory'},
   {id:'financial',label:'Financial'}, {id:'receivables',label:'Receivables & Payables'},
-  {id:'delivery',label:'Delivery & Replacement'}, {id:'history',label:'Activity History'},
+  {id:'delivery',label:'Delivery & Replacement'}, {id:'tax',label:'Sales Tax'}, {id:'history',label:'Activity History'},
 ]
 function display(value: unknown, key: string) {
   if (value === null || value === undefined || value === '') return '—'
@@ -60,7 +60,7 @@ function Table({ rows, search }: { rows: Record<string, unknown>[]; search: stri
 export function ReportsView() {
   const { t, locale } = useApp()
   const [tab,setTab] = useState<ReportTab>('sales')
-  const [from,setFrom] = useState(monthStart)
+  const [from,setFrom] = useState(yearStart)
   const [to,setTo] = useState(todayISO)
   const [search,setSearch] = useState('')
   const {data:business} = useSWR<{id:string}>('/api/businesses/current', businessFetcher)
@@ -77,6 +77,7 @@ export function ReportsView() {
       case 'financial': return [...data.ledger, ...data.expenses.map(x=>({...x, kind:'expense', debit: x.amount, credit: 0}))]
       case 'receivables': return [...data.sales.filter(x=>x.outstanding>0).map(x=>({id:x.id,date:x.date,party:x.customer,total:x.total,paid:x.paid,outstanding:x.outstanding,type:'receivable'})), ...data.purchases.filter(x=>x.outstanding>0).map(x=>({id:x.id,date:x.date,party:x.supplier,total:x.total,paid:x.paid,outstanding:x.outstanding,type:'payable'}))]
       case 'delivery': return [...data.deliveries.map(x=>({...x,type:'delivery'})), ...data.replacements.map(x=>({...x,type:'replacement'}))]
+      case 'tax': return data.salesTax ?? []
       case 'history': return data.history
     }
   },[data,tab])
@@ -106,6 +107,7 @@ export function ReportsView() {
         <KpiCard label={labels.receivable} value={currency(s.receivables)} tone="warning"/>
         <KpiCard label={labels.payable} value={currency(s.payables)} tone="warning"/>
         <KpiCard label={labels.inventory} value={currency(s.inventoryValue)} />
+        <KpiCard label={locale==='id'?'Pajak penjualan':'Sales tax'} value={currency(s.taxCollected)} />
         <KpiCard label={locale==='id'?'Laba bersih':'Net profit'} value={currency(s.netProfit)} tone={Number(s.netProfit)>=0?'success':'warning'}/>
       </KpiGrid></div>
       <div className="mt-5"><SectionCard title={title} description={from+' — '+to} bodyClassName="p-0 md:p-0"><Table rows={rows as Record<string,unknown>[]} search={search}/></SectionCard></div>

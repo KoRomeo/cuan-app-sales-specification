@@ -141,6 +141,13 @@
       "when": 1793865600000,
       "tag": "0019_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793952000000,
+      "tag": "0020_order_tax_and_business_costing",
+      "breakpoints": true
     }
   ]
 }

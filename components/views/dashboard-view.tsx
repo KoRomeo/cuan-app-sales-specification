@@ -13,7 +13,7 @@ import { useApp } from '@/components/providers'
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import useSWR from 'swr'
 
-type DashboardItem = { productId: string; qty: number; price: number; discount: number; unitCost: number }
+type DashboardItem = { productId: string; qty: number; price: number; discount: number; discountType?: 'amount' | 'percent'; unitCost: number }
 type DashboardPayment = { amount: number }
 type DashboardOrder = {
   id: string
@@ -21,6 +21,7 @@ type DashboardOrder = {
   customerId: string
   status: 'requested' | 'ready' | 'delivered' | 'cancelled'
   dueDate: string | null
+  taxAmount?: number
   items: DashboardItem[]
   payments: DashboardPayment[]
 }
@@ -74,7 +75,10 @@ const dateRange = (filter:DashboardDateFilter):[string,string] => {
  if(!week)return [start,end]
  return filter.day===null?[week.start,week.end]:[filter.day,filter.day]
 }
-const totalOfOrder = (order: DashboardOrder) => order.items.reduce((sum, item) => sum + item.qty * item.price - item.discount, 0)
+const lineNet = (item: DashboardItem) => { const gross = item.qty * item.price; return Math.max(0, gross - (item.discountType === 'percent' ? gross * Number(item.discount ?? 0) / 100 : Number(item.discount ?? 0))) }
+// Revenue/COGS use the subtotal; receivables and payment status use the invoice total (+ manual tax).
+const subtotalOfOrder = (order: DashboardOrder) => order.items.reduce((sum, item) => sum + lineNet(item), 0)
+const totalOfOrder = (order: DashboardOrder) => subtotalOfOrder(order) + Number(order.taxAmount ?? 0)
 const paidOfOrder = (order: DashboardOrder) => order.payments.reduce((sum, payment) => sum + payment.amount, 0)
 const outstandingOfOrder = (order: DashboardOrder) => order.status === 'cancelled' ? 0 : Math.max(totalOfOrder(order) - paidOfOrder(order), 0)
 const totalOfPurchase = (purchase: DashboardPurchase) => purchase.totalOverride != null
@@ -136,7 +140,7 @@ export function DashboardView() {
   const periodOrders = activeOrders.filter((order) => inRange(order.date))
   // Keep dashboard financial KPIs aligned with the selected reporting period.
   const revenueOrders = periodOrders
-  const grossRevenue = revenueOrders.reduce((sum, order) => sum + totalOfOrder(order), 0)
+  const grossRevenue = revenueOrders.reduce((sum, order) => sum + subtotalOfOrder(order), 0)
   const periodReturns = returns.filter((item) => inRange(item.date))
   const refundTotal = periodReturns.reduce((sum, item) => sum + item.refundAmount, 0)
   const returnedStockValue = periodReturns.reduce((sum, item) => sum + item.stockValue, 0)
@@ -169,7 +173,7 @@ export function DashboardView() {
       const groupOrders=activeOrders.filter(x=>matches(x.date)), groupReturns=returns.filter(x=>matches(x.date))
       const refunds=groupReturns.reduce((s,x)=>s+x.refundAmount,0), returnedStock=groupReturns.reduce((s,x)=>s+x.stockValue,0)
       const replacement=groupReturns.reduce((s,x)=>s+x.replacementCost,0)+(data.replacements??[]).filter(x=>matches(x.date)).reduce((s,x)=>s+x.cost,0)
-      const gross=groupOrders.reduce((s,x)=>s+totalOfOrder(x),0), revenue=gross-refunds
+      const gross=groupOrders.reduce((s,x)=>s+subtotalOfOrder(x),0), revenue=gross-refunds
       const cogs=groupOrders.reduce((s,x)=>s+x.items.reduce((a,it)=>a+it.qty*it.unitCost,0),0)-returnedStock
       const costs=expenses.filter(x=>matches(x.date)).reduce((s,x)=>s+x.amount,0)
       const date=granularity==='month'?new Date(`${group}-01T12:00:00`):new Date(`${group}T12:00:00`)

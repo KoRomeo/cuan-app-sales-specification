@@ -6,6 +6,7 @@ import { deliveries } from "./schema"
  * advisory lock. Call only from inside the same transaction that inserts the row.
  *
  * Monthly format: PREFIX-YYYYMM-0001
+ * Daily format (default): PREFIX-YYYYMMDD-0001
  * Yearly format (customers): PREFIX-YYYY-0001
  */
 export async function generateEntityId(
@@ -14,7 +15,7 @@ export async function generateEntityId(
   businessId: string,
   prefix: string,
   dateValue: string,
-  period: "month" | "year" = "month",
+  period: "day" | "month" | "year" = "day",
 ): Promise<string> {
   const date = new Date(`${dateValue}T00:00:00.000Z`)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue) || Number.isNaN(date.getTime())) {
@@ -23,7 +24,9 @@ export async function generateEntityId(
 
   const periodKey = period === "year"
     ? dateValue.slice(0, 4)
-    : dateValue.slice(0, 7).replace("-", "")
+    : period === "day"
+      ? dateValue.slice(0, 10).replace(/-/g, "")
+      : dateValue.slice(0, 7).replace("-", "")
   const lockKey = `cuanapp:id:${prefix}:${periodKey}`
 
   // Serializes concurrent ID generation for the same entity/period across all businesses.

@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { TODAY } from '@/lib/data'
+import { todayISODate } from '@/lib/format'
 import { formatIDR } from '@/lib/format'
 
 const fetcher = (url: string) => fetch(url).then(async (response) => {
@@ -80,10 +80,11 @@ export function NewOrderView() {
   const [lines, setLines] = useState<Line[]>([])
   const [customerId, setCustomerId] = useState('')
   const [paid, setPaid] = useState('0')
+  const [tax, setTax] = useState('0')
   const [paymentAccount, setPaymentAccount] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [lineToRemove, setLineToRemove] = useState<number | null>(null)
-  const [orderDate, setOrderDate] = useState(TODAY)
+  const [orderDate, setOrderDate] = useState(todayISODate())
   const [dueDate, setDueDate] = useState('')
   const [notes, setNotes] = useState('')
   const [draftReady, setDraftReady] = useState(false)
@@ -100,7 +101,7 @@ export function NewOrderView() {
       if (raw) {
         const draft = JSON.parse(raw) as OrderDraft
         setCustomerId(draft.customerId ?? '')
-        setOrderDate(draft.orderDate || TODAY)
+        setOrderDate(draft.orderDate || todayISODate())
         setDueDate(draft.dueDate ?? '')
         setNotes(draft.notes ?? '')
         setLines(Array.isArray(draft.lines) ? draft.lines : [])
@@ -173,7 +174,7 @@ export function NewOrderView() {
   const discardDraft = () => {
     if (draftKey) sessionStorage.removeItem(draftKey)
     setCustomerId('')
-    setOrderDate(TODAY)
+    setOrderDate(todayISODate())
     setDueDate('')
     setNotes('')
     setLines(productRows?.[0] ? [{ key: 1, productId: productRows[0].id, qty: 1, price: Number(productRows[0].sellingPrice), discount: 0, discountType: 'amount' }] : [])
@@ -189,6 +190,8 @@ export function NewOrderView() {
 
   const lineDiscount = (line: Line) => line.discountType === 'percent' ? line.qty * line.price * line.discount / 100 : line.discount
   const total = lines.reduce((s, l) => s + l.qty * l.price - lineDiscount(l), 0)
+  const taxValue = Math.max(0, Number(tax) || 0)
+  const invoiceTotal = total + taxValue
   const stockAfterOrder = (productId: string) => {
     const product = productsById.get(productId)
     const quantity = lines.filter((line) => line.productId === productId).reduce((sum, line) => sum + line.qty, 0)
@@ -219,7 +222,7 @@ export function NewOrderView() {
           try {
             const business = await fetch('/api/businesses/current').then((response) => response.ok ? response.json() : Promise.reject(new Error('Business access required')))
             const response = await fetch('/api/orders', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-              id: `ORD-${Date.now()}`, businessId: business.id, date: orderDate, customerId, status: 'requested', dueDate: dueDate || null, notes: notes || null, paidAmount: Number(paid || 0), paymentAccount: selectedPaymentAccount, paymentDate: orderDate, paymentId: Number(paid || 0) > 0 ? `PAY-ORD-${Date.now()}` : undefined,
+              businessId: business.id, date: orderDate, customerId, status: 'requested', dueDate: dueDate || null, notes: notes || null, paidAmount: Number(paid || 0), paymentAccount: selectedPaymentAccount, paymentDate: orderDate, taxAmount: taxValue,
               items: lines.map((line) => ({ id: `OI-${Date.now()}-${line.key}`, productId: line.productId, qty: line.qty, price: line.price, discount: line.discount, discountType: line.discountType, unitCost: productsById.get(line.productId)?.averageCost ?? 0 })),
             }) })
             const result = await response.json()
@@ -327,8 +330,16 @@ export function NewOrderView() {
           <SectionCard title={t('orders.paymentSummary')} className="lg:sticky lg:top-20">
             <dl className="flex flex-col gap-2 text-sm">
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">{t('common.total')}</dt>
-                <dd className="font-mono text-lg font-semibold tabular-nums">{formatIDR(total)}</dd>
+                <dt className="text-muted-foreground">{locale === 'id' ? 'Subtotal' : 'Subtotal'}</dt>
+                <dd className="font-mono tabular-nums">{formatIDR(total)}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <dt className="text-muted-foreground">{locale === 'id' ? 'Pajak penjualan (manual)' : 'Sales tax (manual)'}</dt>
+                <dd><Input aria-label="taxAmount" type="number" min={0} step="0.01" className="h-8 w-32 text-right font-mono" value={tax} onChange={(e) => setTax(e.target.value)} /></dd>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <dt className="font-medium">{t('common.total')}</dt>
+                <dd className="font-mono text-lg font-semibold tabular-nums">{formatIDR(invoiceTotal)}</dd>
               </div>
               <div className="flex justify-between text-xs">
                 <dt className="text-muted-foreground">{t('orders.cogs')}</dt>
@@ -342,9 +353,9 @@ export function NewOrderView() {
             <div className="mt-4 flex flex-col gap-3 border-t pt-4">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="paid">{t('common.paid')}</Label>
-                <Input id="paid" name="paidAmount" type="number" min={0} max={Math.max(total, 0)} className="font-mono" value={paid} onChange={(e) => setPaid(e.target.value)} />
+                <Input id="paid" name="paidAmount" type="number" min={0} max={Math.max(invoiceTotal, 0)} className="font-mono" value={paid} onChange={(e) => setPaid(e.target.value)} />
               </div>
-              {total > 0 && Number(paid || 0) < total && <div className="flex flex-col gap-1.5">
+              {invoiceTotal > 0 && Number(paid || 0) < invoiceTotal && <div className="flex flex-col gap-1.5">
                 <Label htmlFor="due">{t('common.dueDate')}</Label>
                 <Input id="due" name="dueDate" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
               </div>}
@@ -355,7 +366,7 @@ export function NewOrderView() {
               </div>}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('common.outstanding')}</span>
-                <span className="font-mono font-semibold tabular-nums text-warning">{formatIDR(Math.max(total - Number(paid || 0), 0))}</span>
+                <span className="font-mono font-semibold tabular-nums text-warning">{formatIDR(Math.max(invoiceTotal - Number(paid || 0), 0))}</span>
               </div>
             </div>
             <div className="mt-5 flex flex-col gap-2">

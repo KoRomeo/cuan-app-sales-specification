@@ -88,7 +88,7 @@ export async function PATCH(request: Request, { params }: Context) {
       })
     }
     const dueDate = body.dueDate === "" || body.dueDate === null ? null : body.dueDate
-    if (dueDate !== null && (typeof dueDate !== "string" || !/^\\d{4}-\\d{2}-\\d{2}$/.test(dueDate) || Number.isNaN(Date.parse(dueDate)))) {
+    if (dueDate !== null && (typeof dueDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dueDate) || Number.isNaN(Date.parse(dueDate)))) {
       return NextResponse.json({ error: "dueDate must be a valid YYYY-MM-DD date or null" }, { status: 400 })
     }
     const [updated] = await db.update(purchases).set({ dueDate }).where(and(eq(purchases.id, id), eq(purchases.businessId, businessId))).returning()

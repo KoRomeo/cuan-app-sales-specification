@@ -42,6 +42,7 @@ export function SettingsView() {
     requested === 'features' || requested === 'profile' || requested === 'preferences' ? requested : 'business',
   )
   const [businessName, setBusinessName] = useState('')
+  const [costingMethod, setCostingMethod] = useState('average')
   const [businessLoading, setBusinessLoading] = useState(true)
   const [businessSaving, setBusinessSaving] = useState(false)
   const [businessError, setBusinessError] = useState('')
@@ -60,7 +61,7 @@ export function SettingsView() {
         if (!response.ok) throw new Error('Unable to load business details')
         return response.json()
       })
-      .then((business) => { if (active) { setBusinessName(business.name ?? ''); setProfileRole(business.role ?? 'owner') } })
+      .then((business) => { if (active) { setBusinessName(business.name ?? ''); setProfileRole(business.role ?? 'owner'); setCostingMethod(business.costingMethod ?? 'average') } })
       .catch((error) => { if (active) toast.error(error instanceof Error ? error.message : 'Unable to load business details') })
       .finally(() => { if (active) setBusinessLoading(false) })
     return () => { active = false }
@@ -81,7 +82,7 @@ export function SettingsView() {
       const response = await fetch('/api/businesses/current', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, costingMethod }),
       })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.error ?? 'Unable to save business name')
@@ -194,8 +195,11 @@ export function SettingsView() {
             <Field id="settings-currency" label={t('settings.currency')} hint={t('settings.currencyLocked')}>
               <Input id="settings-currency" value="IDR (Rp)" disabled readOnly aria-describedby="settings-currency-hint" />
             </Field>
-            <Field id="settings-costing" label={t('settings.costing')}>
-              <Input id="settings-costing" value={t('settings.costingValue')} disabled readOnly />
+            <Field id="settings-costing" label={t('settings.costing')} hint={locale === 'id' ? 'Rata-rata bergerak adalah metode default. FIFO disimpan tetapi belum diimplementasikan.' : 'Moving average is the default. FIFO is stored but not implemented yet.'}>
+              <select id="settings-costing" value={costingMethod} disabled={businessLoading || businessSaving} onChange={(event) => setCostingMethod(event.target.value)} className="h-9 rounded-md border bg-background px-3 text-sm">
+                <option value="average">{locale === 'id' ? 'Rata-rata bergerak (Average)' : 'Moving average (Average)'}</option>
+                <option value="fifo">FIFO ({locale === 'id' ? 'belum diimplementasikan' : 'not implemented yet'})</option>
+              </select>
             </Field>
             <Button type="submit" disabled={businessLoading || businessSaving} className="w-fit">{businessSaving ? (locale === 'id' ? 'Menyimpan…' : 'Saving…') : t('settings.savePreview')}</Button>
           </form>
